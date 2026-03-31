@@ -128,29 +128,38 @@
             </button>
         </header>
 
-        <!-- Botones de Acción -->
-        <div id="panel-acciones" class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <button onclick="iniciarCronometro('Baño')" class="flex flex-col items-center justify-center p-8 bg-blue-50 hover:bg-blue-100 text-blue-700 rounded-2xl border-2 border-blue-200 transition-all active:scale-95 group shadow-sm">
-                <i class="ph ph-toilet text-6xl mb-4 group-hover:scale-110 transition-transform"></i>
-                <span class="text-2xl font-bold">Ir al Baño</span>
-            </button>
-            <button onclick="iniciarCronometro('Comida')" class="flex flex-col items-center justify-center p-8 bg-orange-50 hover:bg-orange-100 text-orange-700 rounded-2xl border-2 border-orange-200 transition-all active:scale-95 group shadow-sm">
-                <i class="ph ph-fork-knife text-6xl mb-4 group-hover:scale-110 transition-transform"></i>
-                <span class="text-2xl font-bold">Ir a Comer</span>
-            </button>
-        </div>
+        <!-- Panel Principal Unificado -->
+        <div id="panel-principal" class="bg-white rounded-2xl shadow-lg border border-gray-100 p-6">
+            <h2 class="text-xl font-bold text-gray-800 mb-6 text-center">Registrar Descanso</h2>
 
-        <!-- Panel del Cronómetro Activo -->
-        <div id="panel-cronometro" class="hidden bg-white rounded-2xl shadow-lg border border-gray-100 p-8 text-center">
-            <h2 class="text-3xl font-bold text-gray-800 mb-2" id="cronometro-titulo">Descanso</h2>
-            <div id="display-tiempo" class="text-7xl font-mono font-bold text-gray-800 mt-8 mb-2 py-10 rounded-2xl bg-gray-50 border-4 border-gray-100 transition-colors duration-300">
-                00:00
+            <div class="grid grid-cols-2 gap-4">
+                <!-- Botón Baño -->
+                <button id="btn-Baño" onclick="iniciarCronometro('Baño')" class="flex flex-col items-center justify-center p-4 sm:p-6 rounded-xl relative border border-gray-200 hover:bg-blue-50 hover:scale-[1.02] transition-all cursor-pointer bg-gray-50/50 group">
+                    <div class="text-xs sm:text-sm font-extrabold uppercase text-gray-500 mb-2 flex items-center justify-center gap-1 group-hover:text-blue-600 transition-colors">
+                        <i class="ph-bold ph-toilet text-lg"></i> Baño
+                    </div>
+                    <div class="font-mono font-bold text-3xl sm:text-5xl text-gray-800 tabular-nums my-2 transition-colors" id="disp-Baño">00:00</div>
+                    <div class="text-xs text-gray-400 font-medium">/ <span id="lim-Baño">15</span>m</div>
+                    <div id="rem-Baño" class="text-[0.7rem] sm:text-sm font-extrabold mt-3 text-gray-400 transition-colors">Restan: --</div>
+                </button>
+                
+                <!-- Botón Comida -->
+                <button id="btn-Comida" onclick="iniciarCronometro('Comida')" class="flex flex-col items-center justify-center p-4 sm:p-6 rounded-xl relative border border-gray-200 hover:bg-orange-50 hover:scale-[1.02] transition-all cursor-pointer bg-gray-50/50 group">
+                    <div class="text-xs sm:text-sm font-extrabold uppercase text-gray-500 mb-2 flex items-center justify-center gap-1 group-hover:text-orange-600 transition-colors">
+                        <i class="ph-bold ph-hamburger text-lg"></i> Comida
+                    </div>
+                    <div class="font-mono font-bold text-3xl sm:text-5xl text-gray-800 tabular-nums my-2 transition-colors" id="disp-Comida">00:00</div>
+                    <div class="text-xs text-gray-400 font-medium">/ <span id="lim-Comida">30</span>m</div>
+                    <div id="rem-Comida" class="text-[0.7rem] sm:text-sm font-extrabold mt-3 text-gray-400 transition-colors">Restan: --</div>
+                </button>
             </div>
-            <p id="display-restante" class="text-gray-500 mb-8 text-lg font-medium"></p>
-            <button id="btn-detener-cronometro" onclick="detenerCronometro()" class="w-full sm:w-auto px-12 py-5 bg-red-600 hover:bg-red-700 text-white font-bold rounded-xl shadow-md transition-all active:scale-95 flex items-center justify-center gap-2 mx-auto text-xl disabled:opacity-50 disabled:cursor-not-allowed">
-                <i class="ph ph-stop-circle text-3xl"></i>
-                Terminar Descanso
-            </button>
+
+            <div id="contenedor-stop" class="mt-8 hidden">
+                <button id="btn-detener-cronometro" onclick="detenerCronometro()" class="w-full py-4 bg-red-600 hover:bg-red-700 text-white font-bold rounded-xl shadow-md transition-all active:scale-95 flex items-center justify-center gap-2 text-lg disabled:opacity-50 disabled:cursor-not-allowed">
+                    <i class="ph ph-stop-circle text-2xl"></i>
+                    Terminar Descanso
+                </button>
+            </div>
         </div>
     </div>
 
@@ -606,7 +615,11 @@
         // ==========================================
         function iniciarEscuchasEmpleado() {
             unsubConfig = onSnapshot(doc(db, 'config', 'global'), (docSnap) => {
-                if(docSnap.exists()) limitesGlobales = docSnap.data();
+                if(docSnap.exists()) {
+                    limitesGlobales = docSnap.data();
+                    document.getElementById('lim-Baño').textContent = limitesGlobales.bano;
+                    document.getElementById('lim-Comida').textContent = limitesGlobales.comida;
+                }
             });
 
             unsubMiSesion = onSnapshot(doc(db, 'sesiones_activas', empleadoActual.pin), (docSnap) => {
@@ -638,16 +651,25 @@
         };
 
         function activarInterfazCronometro(datosSesion) {
-            document.getElementById('panel-acciones').classList.add('hidden');
-            document.getElementById('panel-cronometro').classList.remove('hidden');
+            document.getElementById('contenedor-stop').classList.remove('hidden');
             
-            const icon = datosSesion.tipo === 'Baño' ? '<i class="ph ph-toilet"></i>' : '<i class="ph ph-fork-knife"></i>';
-            document.getElementById('cronometro-titulo').innerHTML = `${icon} En ${datosSesion.tipo}`;
+            const tipoActivo = datosSesion.tipo;
+            const tipoInactivo = tipoActivo === 'Baño' ? 'Comida' : 'Baño';
             
-            const limiteMinutos = datosSesion.tipo === 'Baño' ? limitesGlobales.bano : limitesGlobales.comida;
+            // Desactivar visualmente el botón que no se está usando
+            const btnInactivo = document.getElementById('btn-' + tipoInactivo);
+            btnInactivo.classList.add('opacity-40', 'pointer-events-none');
+            
+            // Resaltar el botón activo
+            const btnActivo = document.getElementById('btn-' + tipoActivo);
+            btnActivo.classList.add('border-blue-400', 'bg-blue-50/80', 'scale-[1.02]', 'ring-4', 'ring-blue-100');
+            btnActivo.classList.remove('hover:bg-blue-50', 'hover:bg-orange-50', 'bg-gray-50/50');
+            btnActivo.onclick = null; // Prevenir doble click
+
+            const limiteMinutos = tipoActivo === 'Baño' ? limitesGlobales.bano : limitesGlobales.comida;
             const limiteSegundos = limiteMinutos * 60;
-            const display = document.getElementById('display-tiempo');
-            const displayRestante = document.getElementById('display-restante');
+            const display = document.getElementById('disp-' + tipoActivo);
+            const displayRestante = document.getElementById('rem-' + tipoActivo);
 
             if(intervaloCronometro) clearInterval(intervaloCronometro);
             
@@ -657,19 +679,18 @@
                 
                 const restante = limiteSegundos - transcurrido;
                 if (restante > 0) {
-                    displayRestante.innerHTML = `Llevas <strong>${formatearTiempo(transcurrido)}</strong>. Te quedan <span class="text-blue-600 font-bold">${formatearTiempo(restante)}</span> de tus ${limiteMinutos} min.`;
-                    displayRestante.className = "text-gray-600 mb-8 text-lg font-medium";
+                    displayRestante.innerHTML = `Restan: ${formatearTiempo(restante)}`;
+                    displayRestante.className = "text-[0.7rem] sm:text-sm font-extrabold mt-3 text-blue-600";
                 } else {
-                    displayRestante.innerHTML = `¡Te has pasado por <span class="text-red-600 font-bold">${formatearTiempo(Math.abs(restante))}</span>!`;
-                    displayRestante.className = "text-red-600 mb-8 text-lg font-bold animate-pulse";
+                    displayRestante.innerHTML = `Excedido: ${formatearTiempo(Math.abs(restante))}`;
+                    displayRestante.className = "text-[0.7rem] sm:text-sm font-extrabold mt-3 text-red-600 animate-pulse";
                 }
 
                 if (transcurrido > limiteSegundos) {
-                    if (!display.classList.contains('overtime-alert')) {
-                        display.className = "text-7xl font-mono font-bold mt-8 mb-2 py-10 rounded-2xl border-4 overtime-alert transition-colors duration-300";
-                    }
-                } else {
-                    display.className = "text-7xl font-mono font-bold text-gray-800 mt-8 mb-2 py-10 rounded-2xl bg-gray-50 border-4 border-gray-100 transition-colors duration-300";
+                    display.classList.add('text-red-600');
+                    display.classList.remove('text-gray-800');
+                    btnActivo.classList.add('border-red-400', 'bg-red-50', 'ring-red-100');
+                    btnActivo.classList.remove('border-blue-400', 'bg-blue-50/80', 'ring-blue-100');
                 }
             };
             
@@ -679,12 +700,26 @@
 
         function desactivarInterfazCronometro() {
             if(intervaloCronometro) clearInterval(intervaloCronometro);
-            document.getElementById('panel-cronometro').classList.add('hidden');
-            document.getElementById('panel-acciones').classList.remove('hidden');
+            document.getElementById('contenedor-stop').classList.add('hidden');
             
-            const btn = document.getElementById('btn-detener-cronometro');
-            btn.disabled = false;
-            btn.innerHTML = '<i class="ph ph-stop-circle text-3xl"></i> Terminar Descanso';
+            ['Baño', 'Comida'].forEach(tipo => {
+                const btn = document.getElementById('btn-' + tipo);
+                btn.classList.remove('opacity-40', 'pointer-events-none', 'border-blue-400', 'bg-blue-50/80', 'scale-[1.02]', 'ring-4', 'ring-blue-100', 'border-red-400', 'bg-red-50', 'ring-red-100');
+                btn.classList.add('bg-gray-50/50');
+                btn.onclick = () => iniciarCronometro(tipo);
+                
+                document.getElementById('disp-' + tipo).textContent = '00:00';
+                document.getElementById('disp-' + tipo).classList.remove('text-red-600');
+                document.getElementById('disp-' + tipo).classList.add('text-gray-800');
+                
+                const rem = document.getElementById('rem-' + tipo);
+                rem.textContent = 'Restan: --';
+                rem.className = 'text-[0.7rem] sm:text-sm font-extrabold mt-3 text-gray-400 transition-colors';
+            });
+            
+            const btnStop = document.getElementById('btn-detener-cronometro');
+            btnStop.disabled = false;
+            btnStop.innerHTML = '<i class="ph ph-stop-circle text-2xl"></i> Terminar Descanso';
         }
 
         window.detenerCronometro = async function() {
