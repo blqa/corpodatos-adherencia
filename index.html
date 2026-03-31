@@ -123,7 +123,7 @@
                 <h1 class="text-2xl font-bold text-gray-800">Hola, <span id="nombre-empleado-display" class="text-blue-600"></span></h1>
                 <p class="text-sm text-gray-500">ID: <span id="id-empleado-display"></span></p>
             </div>
-            <button onclick="cerrarSesionEmpleado()" class="text-red-500 hover:text-red-700 flex flex-col items-center text-sm font-medium">
+            <button onclick="cerrarSesionGeneral()" class="text-red-500 hover:text-red-700 flex flex-col items-center text-sm font-medium">
                 <i class="ph ph-sign-out text-2xl"></i> Salir
             </button>
         </header>
@@ -162,7 +162,7 @@
                     <i class="ph ph-lock-key text-slate-600"></i> Panel de Administración
                 </h1>
             </div>
-            <button onclick="mostrarVista('vista-seleccion')" class="text-slate-500 hover:text-slate-800 flex items-center gap-1 font-medium bg-white px-4 py-2 rounded-lg border shadow-sm">
+            <button onclick="cerrarSesionGeneral()" class="text-slate-500 hover:text-slate-800 flex items-center gap-1 font-medium bg-white px-4 py-2 rounded-lg border shadow-sm">
                 <i class="ph ph-sign-out"></i> Salir
             </button>
         </header>
@@ -248,12 +248,17 @@
     <!-- SCRIPT PRINCIPAL (Firebase y Lógica) -->
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { getFirestore, collection, doc, setDoc, getDoc, addDoc, onSnapshot, deleteDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        // Importamos ahora las funciones de Correo/Contraseña en lugar de las Anónimas
+        import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, collection, doc, setDoc, getDocs, addDoc, onSnapshot, deleteDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
         // --- Configuración e Inicialización de Firebase ---
         let app, auth, db;
         let conectado = false;
+
+        // CONSTANTES GLOBALES DE AUTENTICACIÓN
+        const PASSWORD_DEFAULT = "CorpoDatos2024!";
+        const EMAIL_ADMIN = "admin@corpodatos.com";
 
         try {
             const firebaseConfig = {
@@ -286,31 +291,24 @@
         
         let unsubConfig = null, unsubColaboradores = null, unsubRegistros = null, unsubActivas = null, unsubMiSesion = null;
 
-        // --- Autenticación Inicial Mandatoria ---
+        // --- ROUTER DE AUTENTICACIÓN ---
         if (conectado) {
-            const initAuth = async () => {
-                try {
-                    await signInAnonymously(auth);
-                } catch (error) {
-                    console.error("Error auth:", error);
-                    let sugerencia = error.message;
-                    if (error.code === 'auth/configuration-not-found' || error.code === 'auth/operation-not-allowed') {
-                        sugerencia = `<strong>Paso Faltante:</strong> Tu proyecto de Firebase no tiene habilitado el Inicio de Sesión Anónimo.<br><br>Ve a Firebase Console > <strong>Authentication</strong> > Pestaña <strong>Sign-in method</strong>, busca "Anónimo" y actívalo.`;
-                    }
-                    document.getElementById('texto-error-detalle').innerHTML = sugerencia;
-                    mostrarVista('vista-error');
-                }
-            };
-
-            initAuth();
+            mostrarVista('vista-cargando'); // Esperamos a ver si ya había sesión guardada
 
             onAuthStateChanged(auth, (user) => {
                 if (user) {
                     usuarioAutenticado = user;
-                    cargarColaboradoresBasico();
-                    mostrarVista('vista-seleccion');
+                    // Redirigir según el tipo de correo ficticio
+                    if (user.email === EMAIL_ADMIN) {
+                        cargarAdminViews();
+                    } else {
+                        // Es un empleado. Extraemos su PIN del correo (ej. 1234@corpodatos.com -> 1234)
+                        const pin = user.email.split('@')[0];
+                        validarEmpleadoYMostrar(pin);
+                    }
                 } else {
                     usuarioAutenticado = null;
+                    mostrarVista('vista-seleccion');
                 }
             });
         }
@@ -338,24 +336,126 @@
             return `${m}:${s}`;
         }
 
+        // --- LÓGICA DE LOGIN EMPLEADO ---
+        window.loginEmpleado = async function() {
+            const pinDigitado = document.getElementById('pin-empleado').value.trim();
+            if(!pinDigitado) return mostrarNotificacion('Ingresa tu ID', 'error');
+            
+            mostrarVista('vista-cargando');
+            // Aquí armamos el correo ficticio por sistema
+            const emailFicticio = `${pinDigitado}@corpodatos.com`;
+            
+            try {
+                // Intento 1: Iniciar sesión normalmente
+                await signInWithEmailAndPassword(auth, emailFicticio, PASSWORD_DEFAULT);
+                // El onAuthStateChanged redirigirá automáticamente
+            } catch (error) {
+                // Si el usuario no existe aún en Auth, lo creamos automáticamente
+                if (error.code === 'auth/user-not-found' || error.code === 'auth/invalid-credential' || error.code === 'auth/invalid-login-credentials') {
+                    try {
+                        await createUserWithEmailAndPassword(auth, emailFicticio, PASSWORD_DEFAULT);
+                        // El onAuthStateChanged redirigirá automáticamente
+                    } catch (err2) {
+                        mostrarVista('vista-login-colaborador');
+                        mostrarNotificacion('Error del sistema al crear ID: ' + err2.message, 'error');
+                    }
+                } else {
+                    mostrarVista('vista-login-colaborador');
+                    mostrarNotificacion('Error de conexión a Firebase', 'error');
+                }
+            }
+        };
+
+        // --- VALIDACIÓN DE SEGURIDAD EMPLEADO ---
+        async function validarEmpleadoYMostrar(pin) {
+            try {
+                // Descargar lista de IDs permitidos creados por el Admin
+                const snap = await getDocs(collection(db, 'colaboradores'));
+                todosLosColaboradores = snap.docs.map(d => ({ docId: d.id, ...d.data() }));
+                
+                empleadoActual = todosLosColaboradores.find(c => c.pin === pin);
+                
+                if (!empleadoActual) {
+                    // El ID no está registrado en la base de datos por el admin. Lo expulsamos.
+                    await signOut(auth); 
+                    mostrarNotificacion('Tu ID no ha sido registrado por el administrador.', 'error');
+                    return; 
+                }
+                
+                // ID válido. Preparamos interfaz.
+                document.getElementById('nombre-empleado-display').textContent = empleadoActual.nombre;
+                document.getElementById('id-empleado-display').textContent = empleadoActual.pin;
+                document.getElementById('pin-empleado').value = ''; 
+                
+                mostrarVista('vista-empleado');
+                iniciarEscuchasEmpleado();
+            } catch (error) {
+                console.error("Error validando:", error);
+                await signOut(auth);
+                mostrarNotificacion('Error al leer datos. Contacta al administrador.', 'error');
+            }
+        }
+
+        // --- LÓGICA DE LOGIN ADMIN ---
+        window.solicitarAdmin = function() {
+            document.getElementById('modal-overlay').classList.remove('hidden');
+            document.getElementById('modal-password').classList.remove('hidden');
+            document.getElementById('modal-confirm').classList.add('hidden');
+            document.getElementById('admin-password-input').value = '';
+            setTimeout(() => document.getElementById('admin-password-input').focus(), 100);
+        };
+
+        window.verificarPasswordAdmin = async function() {
+            const pass = document.getElementById('admin-password-input').value;
+            if(!pass) return;
+
+            cerrarModales();
+            mostrarVista('vista-cargando');
+            
+            try {
+                // Iniciar sesión como Admin
+                await signInWithEmailAndPassword(auth, EMAIL_ADMIN, pass);
+            } catch (error) {
+                if (error.code === 'auth/user-not-found' || error.code === 'auth/invalid-credential' || error.code === 'auth/invalid-login-credentials') {
+                    // Si es la primera vez que se usa el sistema, crea al admin si la pass es admin123
+                    if (pass === 'admin123') { 
+                        try {
+                            await createUserWithEmailAndPassword(auth, EMAIL_ADMIN, pass);
+                        } catch (err2) {
+                            mostrarVista('vista-seleccion');
+                            mostrarNotificacion('Error al configurar cuenta de Administrador.', 'error');
+                        }
+                    } else {
+                        mostrarVista('vista-seleccion');
+                        mostrarNotificacion('Palabra secreta incorrecta', 'error');
+                    }
+                } else {
+                    mostrarVista('vista-seleccion');
+                    mostrarNotificacion('Palabra secreta incorrecta', 'error');
+                }
+            }
+        };
+
+        // --- CERRAR SESIÓN GENERAL ---
+        window.cerrarSesionGeneral = async function() {
+            // Limpiar temporizadores y escuchas
+            if(intervaloCronometro) clearInterval(intervaloCronometro);
+            if(unsubMiSesion) unsubMiSesion();
+            if(unsubConfig) unsubConfig();
+            if(unsubColaboradores) unsubColaboradores();
+            if(unsubRegistros) unsubRegistros();
+            if(unsubActivas) unsubActivas();
+            
+            empleadoActual = null;
+            await signOut(auth); // Desconecta de Firebase, enviando a la vista de selección
+        };
+
         // --- LÓGICA DE MODALES PERSONALIZADOS ---
         window.cerrarModales = function() {
             document.getElementById('modal-overlay').classList.add('hidden');
             document.getElementById('modal-password').classList.add('hidden');
             document.getElementById('modal-confirm').classList.add('hidden');
             idColaboradorAEliminar = null;
-        };
-
-        window.verificarPasswordAdmin = function() {
-            const pass = document.getElementById('admin-password-input').value;
-            if(pass === 'admin123') {
-                cerrarModales();
-                iniciarAdmin();
-            } else {
-                mostrarNotificacion('Palabra secreta incorrecta', 'error');
-                document.getElementById('admin-password-input').value = '';
-                document.getElementById('admin-password-input').focus();
-            }
         };
 
         document.getElementById('btn-confirmar-eliminar').addEventListener('click', async () => {
@@ -371,53 +471,11 @@
             cerrarModales();
         });
 
-        // --- LÓGICA COMPARTIDA ---
-        function cargarColaboradoresBasico() {
-            if (!usuarioAutenticado) return; // Salvaguarda
-
-            const colRef = collection(db, 'colaboradores');
-            onSnapshot(colRef, (snap) => {
-                todosLosColaboradores = snap.docs.map(d => ({ docId: d.id, ...d.data() }));
-            }, (error) => {
-                 console.error("Error leyendo datos:", error);
-                 if (error.code === 'permission-denied') {
-                     let estadoAuth = usuarioAutenticado ? "Autenticado correctamente (UID: " + usuarioAutenticado.uid + ")" : "NO Autenticado";
-                     
-                     document.getElementById('texto-error-detalle').innerHTML = `
-                        <p class="mb-3">La aplicación no tiene permiso para leer tu base de datos.</p>
-                        <p class="mb-3 text-xs font-mono bg-white p-2 border border-red-200 rounded">Estado Auth: ${estadoAuth}</p>
-                        <p class="mb-2 font-bold text-slate-800">Sigue estos dos pasos en tu consola de Firebase:</p>
-                        <ol class="list-decimal pl-5 space-y-2 mb-4">
-                            <li>Asegúrate de haber habilitado <strong>"Anónimo"</strong> en Authentication > Sign-in method.</li>
-                            <li>Ve a Firestore Database > <strong>Reglas</strong> y pega este código exacto:</li>
-                        </ol>
-                        <pre class="bg-gray-800 text-white p-3 rounded text-left text-xs overflow-x-auto">rules_version = '2';
-service cloud.firestore {
-  match /databases/{database}/documents {
-    match /{document=**} {
-      allow read, write: if request.auth != null;
-    }
-  }
-}</pre>
-                        <p class="mt-3 text-xs italic text-red-600">Nota: Después de publicar las reglas, Firebase puede tardar hasta 2 minutos en aplicarlas. Intenta recargar la página en un momento.</p>
-                     `;
-                     mostrarVista('vista-error');
-                 }
-            });
-        }
 
         // ==========================================
-        //         LÓGICA DEL ADMINISTRADOR
+        //         VISTA DEL ADMINISTRADOR
         // ==========================================
-        window.solicitarAdmin = function() {
-            document.getElementById('modal-overlay').classList.remove('hidden');
-            document.getElementById('modal-password').classList.remove('hidden');
-            document.getElementById('modal-confirm').classList.add('hidden');
-            document.getElementById('admin-password-input').value = '';
-            setTimeout(() => document.getElementById('admin-password-input').focus(), 100);
-        };
-
-        window.iniciarAdmin = function() {
+        function cargarAdminViews() {
             mostrarVista('vista-admin');
             
             unsubConfig = onSnapshot(doc(db, 'config', 'global'), (docSnap) => {
@@ -496,7 +554,7 @@ service cloud.firestore {
                     `;
                 });
             });
-        };
+        }
 
         window.guardarConfiguracionGlobal = async function() {
             const bano = parseInt(document.getElementById('limit-bano').value) || 15;
@@ -536,31 +594,8 @@ service cloud.firestore {
         };
 
         // ==========================================
-        //         LÓGICA DEL COLABORADOR
+        //         VISTA DEL COLABORADOR
         // ==========================================
-        window.loginEmpleado = function() {
-            const pinDigitado = document.getElementById('pin-empleado').value.trim();
-            empleadoActual = todosLosColaboradores.find(c => c.pin === pinDigitado);
-            
-            if(!empleadoActual) {
-                return mostrarNotificacion('ID no encontrado. Verifica con tu administrador.', 'error');
-            }
-
-            document.getElementById('nombre-empleado-display').textContent = empleadoActual.nombre;
-            document.getElementById('id-empleado-display').textContent = empleadoActual.pin;
-            document.getElementById('pin-empleado').value = ''; 
-            
-            mostrarVista('vista-empleado');
-            iniciarEscuchasEmpleado();
-        };
-
-        window.cerrarSesionEmpleado = function() {
-            if(unsubMiSesion) unsubMiSesion();
-            empleadoActual = null;
-            if(intervaloCronometro) clearInterval(intervaloCronometro);
-            mostrarVista('vista-seleccion');
-        };
-
         function iniciarEscuchasEmpleado() {
             unsubConfig = onSnapshot(doc(db, 'config', 'global'), (docSnap) => {
                 if(docSnap.exists()) limitesGlobales = docSnap.data();
