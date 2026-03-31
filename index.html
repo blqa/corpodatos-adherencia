@@ -34,6 +34,17 @@
     <!-- MODALES PERSONALIZADOS -->
     <div id="modal-overlay" class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 hidden flex items-center justify-center px-4 transition-opacity">
         
+        <!-- Modal Password Admin -->
+        <div id="modal-password" class="bg-white rounded-2xl shadow-xl w-full max-w-sm p-6 hidden">
+            <h3 class="text-xl font-bold text-slate-800 mb-2">Acceso Administrador</h3>
+            <p class="text-slate-500 text-sm mb-4">Ingresa la palabra secreta para continuar.</p>
+            <input type="password" id="admin-password-input" class="w-full border-2 border-slate-200 rounded-xl p-3 mb-6 focus:border-blue-500 outline-none" placeholder="Palabra secreta (blqa)" onkeypress="if(event.key === 'Enter') verificarPasswordAdmin()">
+            <div class="flex justify-end gap-3">
+                <button onclick="cerrarModales()" class="px-4 py-2 text-slate-500 hover:bg-slate-100 rounded-lg font-medium transition-colors">Cancelar</button>
+                <button onclick="verificarPasswordAdmin()" class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-bold transition-colors">Ingresar</button>
+            </div>
+        </div>
+
         <!-- Modal Confirmación Eliminar -->
         <div id="modal-confirm" class="bg-white rounded-2xl shadow-xl w-full max-w-sm p-6 hidden">
             <h3 class="text-xl font-bold text-slate-800 mb-2 flex items-center gap-2"><i class="ph ph-warning text-red-500 text-2xl"></i> ¿Eliminar Colaborador?</h3>
@@ -510,6 +521,7 @@
         // --- MODALES Y LÓGICA ---
         window.cerrarModales = function() {
             document.getElementById('modal-overlay').classList.add('hidden');
+            document.getElementById('modal-password').classList.add('hidden');
             document.getElementById('modal-confirm').classList.add('hidden');
             document.getElementById('modal-editar').classList.add('hidden');
             document.getElementById('modal-calidad').classList.add('hidden');
@@ -671,6 +683,8 @@
         }
 
         window.abrirModalEditar = function(pin, nombre, docId) {
+            cerrarModales(); // Se llama PRIMERO para no limpiar las variables después de establecerlas
+            
             pinEditando = pin;
             idDocEditando = docId;
             const hoy = obtenerFechaHoy();
@@ -691,7 +705,6 @@
             document.getElementById('edit-limite-bano').value = colab.limiteBano || '';
             document.getElementById('edit-limite-comida').value = colab.limiteComida || '';
             
-            cerrarModales();
             document.getElementById('modal-overlay').classList.remove('hidden');
             document.getElementById('modal-editar').classList.remove('hidden');
         };
@@ -763,8 +776,8 @@
         };
 
         window.eliminarColaborador = function(docId) {
+            cerrarModales(); // Se llama PRIMERO
             idColaboradorAEliminar = docId;
-            cerrarModales();
             document.getElementById('modal-overlay').classList.remove('hidden');
             document.getElementById('modal-confirm').classList.remove('hidden');
         };
@@ -875,7 +888,7 @@
         // --- LÓGICA DE CALIDAD ---
         window.abrirModalCalidad = function() {
             if(sesionActivaActual) return;
-            cerrarModales();
+            cerrarModales(); // Correcto
             document.getElementById('calidad-justificacion').value = '';
             document.getElementById('modal-overlay').classList.remove('hidden');
             document.getElementById('modal-calidad').classList.remove('hidden');
