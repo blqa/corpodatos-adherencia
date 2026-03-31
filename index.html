@@ -19,7 +19,6 @@
             width: 40px; height: 40px; animation: spin 1s linear infinite;
         }
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
-        /* Scrollbar styling */
         .custom-scrollbar::-webkit-scrollbar { width: 6px; }
         .custom-scrollbar::-webkit-scrollbar-track { background: #f1f5f9; border-radius: 4px; }
         .custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
@@ -34,6 +33,7 @@
 
     <!-- MODALES PERSONALIZADOS -->
     <div id="modal-overlay" class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 hidden flex items-center justify-center px-4 transition-opacity">
+        
         <!-- Modal Password Admin -->
         <div id="modal-password" class="bg-white rounded-2xl shadow-xl w-full max-w-sm p-6 hidden">
             <h3 class="text-xl font-bold text-slate-800 mb-2">Acceso Administrador</h3>
@@ -52,6 +52,60 @@
             <div class="flex justify-end gap-3">
                 <button onclick="cerrarModales()" class="px-4 py-2 text-slate-500 hover:bg-slate-100 rounded-lg font-medium transition-colors">Cancelar</button>
                 <button id="btn-confirmar-eliminar" class="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg font-bold transition-colors">Eliminar</button>
+            </div>
+        </div>
+
+        <!-- Modal Editar Tiempos y Límites Admin -->
+        <div id="modal-editar" class="bg-white rounded-2xl shadow-xl w-full max-w-md p-6 hidden max-h-[90vh] overflow-y-auto">
+            <h3 class="text-xl font-bold text-slate-800 mb-2 flex items-center gap-2"><i class="ph ph-pencil-simple text-blue-500"></i> Ajustes de <span id="edit-nombre"></span></h3>
+            <p class="text-slate-500 text-sm mb-4">Modifica los tiempos de HOY o establece límites personalizados (déjalos en 0 para usar los globales).</p>
+            
+            <div class="bg-slate-50 p-4 rounded-xl border border-slate-200 mb-4">
+                <h4 class="font-bold text-sm text-slate-700 mb-3 border-b pb-2">Minutos Consumidos HOY</h4>
+                <div class="grid grid-cols-3 gap-3">
+                    <div>
+                        <label class="block text-xs text-slate-500 mb-1">Baño</label>
+                        <input type="number" id="edit-consumido-bano" class="w-full border-2 border-slate-200 rounded-lg p-2 text-sm focus:border-blue-500 outline-none" min="0">
+                    </div>
+                    <div>
+                        <label class="block text-xs text-slate-500 mb-1">Comida</label>
+                        <input type="number" id="edit-consumido-comida" class="w-full border-2 border-slate-200 rounded-lg p-2 text-sm focus:border-blue-500 outline-none" min="0">
+                    </div>
+                    <div>
+                        <label class="block text-xs text-slate-500 mb-1">Calidad</label>
+                        <input type="number" id="edit-consumido-calidad" class="w-full border-2 border-slate-200 rounded-lg p-2 text-sm focus:border-purple-500 outline-none" min="0">
+                    </div>
+                </div>
+            </div>
+
+            <div class="bg-slate-50 p-4 rounded-xl border border-slate-200 mb-6">
+                <h4 class="font-bold text-sm text-slate-700 mb-3 border-b pb-2">Límites Personales (Minutos)</h4>
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="block text-xs text-slate-500 mb-1">Baño Individual</label>
+                        <input type="number" id="edit-limite-bano" class="w-full border-2 border-slate-200 rounded-lg p-2 text-sm focus:border-blue-500 outline-none" placeholder="0 = Global">
+                    </div>
+                    <div>
+                        <label class="block text-xs text-slate-500 mb-1">Comida Individual</label>
+                        <input type="number" id="edit-limite-comida" class="w-full border-2 border-slate-200 rounded-lg p-2 text-sm focus:border-blue-500 outline-none" placeholder="0 = Global">
+                    </div>
+                </div>
+            </div>
+
+            <div class="flex justify-end gap-3">
+                <button onclick="cerrarModales()" class="px-4 py-2 text-slate-500 hover:bg-slate-100 rounded-lg font-medium transition-colors">Cancelar</button>
+                <button onclick="guardarEdicionTiempoYLimites()" class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-bold transition-colors">Guardar Cambios</button>
+            </div>
+        </div>
+
+        <!-- Modal Justificación Calidad -->
+        <div id="modal-calidad" class="bg-white rounded-2xl shadow-xl w-full max-w-sm p-6 hidden">
+            <h3 class="text-xl font-bold text-slate-800 mb-2 flex items-center gap-2"><i class="ph ph-star text-purple-500 text-2xl"></i> Tiempo de Calidad</h3>
+            <p class="text-slate-500 text-sm mb-4">Ingresa el justificante o razón para usar este tiempo. No hay límite, pero quedará registrado.</p>
+            <textarea id="calidad-justificacion" class="w-full border-2 border-slate-200 rounded-xl p-3 mb-6 focus:border-purple-500 outline-none resize-none h-24" placeholder="Ej. Revisión de caso especial #123..."></textarea>
+            <div class="flex justify-end gap-3">
+                <button onclick="cerrarModales()" class="px-4 py-2 text-slate-500 hover:bg-slate-100 rounded-lg font-medium transition-colors">Cancelar</button>
+                <button onclick="confirmarCalidad()" class="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg font-bold transition-colors">Iniciar Cronómetro</button>
             </div>
         </div>
     </div>
@@ -117,7 +171,7 @@
     </div>
 
     <!-- PANTALLA PRINCIPAL COLABORADOR -->
-    <div id="vista-empleado" class="hidden max-w-2xl mx-auto pt-8 px-4">
+    <div id="vista-empleado" class="hidden max-w-4xl mx-auto pt-8 px-4">
         <header class="flex justify-between items-center mb-8 bg-white p-4 rounded-xl shadow-sm border border-gray-100">
             <div>
                 <h1 class="text-2xl font-bold text-gray-800">Hola, <span id="nombre-empleado-display" class="text-blue-600"></span></h1>
@@ -130,108 +184,148 @@
 
         <!-- Panel Principal Unificado -->
         <div id="panel-principal" class="bg-white rounded-2xl shadow-lg border border-gray-100 p-6">
-            <h2 class="text-xl font-bold text-gray-800 mb-6 text-center">Registrar Descanso</h2>
+            <div class="flex justify-between items-center mb-6">
+                <h2 class="text-xl font-bold text-gray-800" id="titulo-panel-empleado">Tus Tiempos de Hoy</h2>
+                <div class="text-sm text-slate-500 font-medium" id="fecha-empleado-display"></div>
+            </div>
 
-            <div class="grid grid-cols-2 gap-4">
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
                 <!-- Botón Baño -->
                 <button id="btn-Baño" onclick="iniciarCronometro('Baño')" class="flex flex-col items-center justify-center p-4 sm:p-6 rounded-xl relative border border-gray-200 hover:bg-blue-50 hover:scale-[1.02] transition-all cursor-pointer bg-gray-50/50 group">
                     <div class="text-xs sm:text-sm font-extrabold uppercase text-gray-500 mb-2 flex items-center justify-center gap-1 group-hover:text-blue-600 transition-colors">
-                        <i class="ph-bold ph-toilet text-lg"></i> Baño
+                        <i class="ph-bold ph-toilet text-lg"></i> Baño <i class="ph-bold ph-play-circle text-blue-400 text-[1.1em] hidden" id="play-Baño"></i>
                     </div>
-                    <div class="font-mono font-bold text-3xl sm:text-5xl text-gray-800 tabular-nums my-2 transition-colors" id="disp-Baño">00:00</div>
+                    <div class="font-mono font-bold text-3xl sm:text-4xl text-gray-800 tabular-nums my-2 transition-colors" id="disp-Baño">00:00</div>
                     <div class="text-xs text-gray-400 font-medium">/ <span id="lim-Baño">15</span>m</div>
-                    <div id="rem-Baño" class="text-[0.7rem] sm:text-sm font-extrabold mt-3 text-gray-400 transition-colors">Restan: --</div>
+                    <div id="rem-Baño" class="text-[0.7rem] sm:text-xs font-extrabold mt-3 text-gray-500 transition-colors">Restan: --</div>
                 </button>
                 
                 <!-- Botón Comida -->
                 <button id="btn-Comida" onclick="iniciarCronometro('Comida')" class="flex flex-col items-center justify-center p-4 sm:p-6 rounded-xl relative border border-gray-200 hover:bg-orange-50 hover:scale-[1.02] transition-all cursor-pointer bg-gray-50/50 group">
                     <div class="text-xs sm:text-sm font-extrabold uppercase text-gray-500 mb-2 flex items-center justify-center gap-1 group-hover:text-orange-600 transition-colors">
-                        <i class="ph-bold ph-hamburger text-lg"></i> Comida
+                        <i class="ph-bold ph-hamburger text-lg"></i> Comida <i class="ph-bold ph-play-circle text-orange-400 text-[1.1em] hidden" id="play-Comida"></i>
                     </div>
-                    <div class="font-mono font-bold text-3xl sm:text-5xl text-gray-800 tabular-nums my-2 transition-colors" id="disp-Comida">00:00</div>
+                    <div class="font-mono font-bold text-3xl sm:text-4xl text-gray-800 tabular-nums my-2 transition-colors" id="disp-Comida">00:00</div>
                     <div class="text-xs text-gray-400 font-medium">/ <span id="lim-Comida">30</span>m</div>
-                    <div id="rem-Comida" class="text-[0.7rem] sm:text-sm font-extrabold mt-3 text-gray-400 transition-colors">Restan: --</div>
+                    <div id="rem-Comida" class="text-[0.7rem] sm:text-xs font-extrabold mt-3 text-gray-500 transition-colors">Restan: --</div>
+                </button>
+
+                <!-- Botón Calidad -->
+                <button id="btn-Calidad" onclick="abrirModalCalidad()" class="flex flex-col items-center justify-center p-4 sm:p-6 rounded-xl relative border border-gray-200 hover:bg-purple-50 hover:scale-[1.02] transition-all cursor-pointer bg-gray-50/50 group">
+                    <div class="text-xs sm:text-sm font-extrabold uppercase text-gray-500 mb-2 flex items-center justify-center gap-1 group-hover:text-purple-600 transition-colors">
+                        <i class="ph-bold ph-star text-lg"></i> Calidad <i class="ph-bold ph-play-circle text-purple-400 text-[1.1em] hidden" id="play-Calidad"></i>
+                    </div>
+                    <div class="font-mono font-bold text-3xl sm:text-4xl text-gray-800 tabular-nums my-2 transition-colors" id="disp-Calidad">00:00</div>
+                    <div class="text-xs text-purple-400 font-medium">Sin límite</div>
+                    <div id="rem-Calidad" class="text-[0.7rem] sm:text-xs mt-3 text-gray-400 transition-colors px-2 text-center truncate w-full">Requiere justificación</div>
                 </button>
             </div>
 
             <div id="contenedor-stop" class="mt-8 hidden">
                 <button id="btn-detener-cronometro" onclick="detenerCronometro()" class="w-full py-4 bg-red-600 hover:bg-red-700 text-white font-bold rounded-xl shadow-md transition-all active:scale-95 flex items-center justify-center gap-2 text-lg disabled:opacity-50 disabled:cursor-not-allowed">
-                    <i class="ph ph-stop-circle text-2xl"></i>
-                    Terminar Descanso
+                    <i class="ph ph-pause-circle text-2xl"></i>
+                    Pausar Descanso
                 </button>
             </div>
         </div>
     </div>
 
     <!-- PANTALLA ADMINISTRADOR -->
-    <div id="vista-admin" class="hidden max-w-4xl mx-auto pt-6 px-4">
+    <div id="vista-admin" class="hidden max-w-6xl mx-auto pt-6 px-4">
         <header class="flex flex-wrap justify-between items-center mb-6 gap-4">
             <div>
                 <h1 class="text-2xl font-bold text-slate-800 flex items-center gap-2">
                     <i class="ph ph-lock-key text-slate-600"></i> Panel de Administración
                 </h1>
             </div>
-            <button onclick="cerrarSesionGeneral()" class="text-slate-500 hover:text-slate-800 flex items-center gap-1 font-medium bg-white px-4 py-2 rounded-lg border shadow-sm">
+            <button onclick="cerrarSesionGeneral()" class="text-slate-500 hover:text-slate-800 flex items-center gap-1 font-medium bg-white px-4 py-2 rounded-lg border shadow-sm transition-colors text-sm">
                 <i class="ph ph-sign-out"></i> Salir
             </button>
         </header>
 
         <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
             <!-- Columna Izquierda: Config y Usuarios -->
-            <div class="space-y-6">
+            <div class="space-y-6 lg:col-span-1">
                 
                 <!-- Configuración -->
                 <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-5">
-                    <h2 class="font-bold text-slate-700 mb-4 flex items-center gap-2"><i class="ph ph-gear"></i> Límites (minutos)</h2>
+                    <h2 class="font-bold text-slate-700 mb-4 flex items-center gap-2"><i class="ph ph-gear"></i> Límites Base / Globales</h2>
                     <div class="grid grid-cols-2 gap-3 mb-4">
                         <div>
-                            <label class="block text-xs text-slate-500 mb-1">Baño</label>
+                            <label class="block text-xs text-slate-500 mb-1">Baño (min)</label>
                             <input type="number" id="limit-bano" class="w-full border rounded p-2 text-sm outline-none focus:border-blue-500">
                         </div>
                         <div>
-                            <label class="block text-xs text-slate-500 mb-1">Comida</label>
+                            <label class="block text-xs text-slate-500 mb-1">Comida (min)</label>
                             <input type="number" id="limit-comida" class="w-full border rounded p-2 text-sm outline-none focus:border-blue-500">
                         </div>
                     </div>
-                    <button onclick="guardarConfiguracionGlobal()" class="w-full bg-slate-800 hover:bg-slate-900 text-white text-sm font-bold py-2 rounded transition-colors">Guardar Límites</button>
+                    <button onclick="guardarConfiguracionGlobal()" class="w-full bg-slate-800 hover:bg-slate-900 text-white text-sm font-bold py-2 rounded transition-colors">Guardar Globales</button>
                 </div>
 
-                <!-- Gestión de Usuarios -->
+                <!-- Añadir Usuario -->
                 <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-5">
-                    <h2 class="font-bold text-slate-700 mb-4 flex items-center gap-2"><i class="ph ph-users"></i> Colaboradores</h2>
-                    
-                    <div class="mb-4 bg-slate-50 p-3 rounded-lg border border-slate-100">
-                        <label class="block text-xs text-slate-500 mb-1">Nuevo ID / PIN</label>
+                    <h2 class="font-bold text-slate-700 mb-4 flex items-center gap-2"><i class="ph ph-user-plus"></i> Nuevo Colaborador</h2>
+                    <div class="bg-slate-50 p-3 rounded-lg border border-slate-100">
+                        <label class="block text-xs text-slate-500 mb-1">ID / PIN de Acceso *</label>
                         <input type="text" id="nuevo-pin" placeholder="Ej. 101" class="w-full border rounded p-2 text-sm mb-2 outline-none focus:border-blue-500">
-                        <label class="block text-xs text-slate-500 mb-1">Nombre</label>
-                        <input type="text" id="nuevo-nombre" placeholder="Ej. María López" class="w-full border rounded p-2 text-sm mb-3 outline-none focus:border-blue-500">
-                        <button onclick="agregarColaborador()" class="w-full bg-blue-600 hover:bg-blue-700 text-white text-sm font-bold py-2 rounded transition-colors flex justify-center items-center gap-1">
-                            <i class="ph ph-plus-circle"></i> Agregar
-                        </button>
-                    </div>
+                        <label class="block text-xs text-slate-500 mb-1">Nombre *</label>
+                        <input type="text" id="nuevo-nombre" placeholder="Ej. María López" class="w-full border rounded p-2 text-sm mb-4 outline-none focus:border-blue-500">
+                        
+                        <div class="border-t border-slate-200 pt-3 mb-4">
+                            <p class="text-xs text-slate-500 mb-2 italic">Límites personalizados (Opcional, deja en blanco para usar el global):</p>
+                            <div class="grid grid-cols-2 gap-2">
+                                <div>
+                                    <label class="block text-[10px] uppercase text-slate-400 mb-1">Baño</label>
+                                    <input type="number" id="nuevo-limite-bano" placeholder="Global" class="w-full border rounded p-2 text-sm outline-none focus:border-blue-500">
+                                </div>
+                                <div>
+                                    <label class="block text-[10px] uppercase text-slate-400 mb-1">Comida</label>
+                                    <input type="number" id="nuevo-limite-comida" placeholder="Global" class="w-full border rounded p-2 text-sm outline-none focus:border-blue-500">
+                                </div>
+                            </div>
+                        </div>
 
-                    <div class="max-h-48 overflow-y-auto pr-2 custom-scrollbar">
-                        <ul id="lista-colaboradores" class="space-y-2 text-sm">
-                            <!-- JS renderiza lista -->
-                        </ul>
+                        <button onclick="agregarColaborador()" class="w-full bg-blue-600 hover:bg-blue-700 text-white text-sm font-bold py-2 rounded transition-colors flex justify-center items-center gap-1">
+                            <i class="ph ph-plus-circle"></i> Crear
+                        </button>
                     </div>
                 </div>
             </div>
 
-            <!-- Columna Derecha: Monitoreo y Registros -->
+            <!-- Columna Derecha: Tiempos Acumulados y Monitor -->
             <div class="lg:col-span-2 space-y-6">
                 
                 <!-- Monitor en Vivo -->
                 <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-5 border-l-4 border-l-orange-400">
-                    <h2 class="font-bold text-slate-700 mb-4 flex items-center gap-2"><i class="ph ph-broadcast text-orange-500 animate-pulse"></i> Descansos en Curso</h2>
-                    <div id="lista-activos" class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <h2 class="font-bold text-slate-700 mb-4 flex items-center gap-2"><i class="ph ph-broadcast text-orange-500 animate-pulse"></i> Descansos Activos</h2>
+                    <div id="lista-activos" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
                         <p class="text-sm text-slate-400 col-span-full">Nadie en descanso en este momento.</p>
                     </div>
                 </div>
 
-                <!-- Historial Global -->
+                <!-- Tiempos Acumulados -->
                 <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-5">
-                    <h2 class="font-bold text-slate-700 mb-4 flex items-center gap-2"><i class="ph ph-list-dashes"></i> Historial General</h2>
+                    <div class="flex justify-between items-center mb-4">
+                        <h2 class="font-bold text-slate-700 flex items-center gap-2"><i class="ph ph-users"></i> Tiempos Consumidos (Hoy)</h2>
+                    </div>
+                    
+                    <div class="max-h-96 overflow-y-auto pr-2 custom-scrollbar">
+                        <ul id="lista-colaboradores" class="space-y-3 text-sm">
+                            <!-- JS renderiza lista de acumulados -->
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- Historial Global con Filtro por Fecha -->
+                <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-5">
+                    <div class="flex flex-wrap justify-between items-center mb-4 gap-2">
+                        <h2 class="font-bold text-slate-700 flex items-center gap-2"><i class="ph ph-list-dashes"></i> Historial de Descansos</h2>
+                        <div class="flex items-center gap-2">
+                            <label class="text-sm font-medium text-slate-600">Fecha:</label>
+                            <input type="date" id="filtro-fecha-historial" class="border rounded px-3 py-1 text-sm outline-none focus:border-blue-500" onchange="renderizarHistorial()">
+                        </div>
+                    </div>
                     <div class="overflow-x-auto">
                         <table class="w-full text-left text-sm border-collapse">
                             <thead>
@@ -239,8 +333,8 @@
                                     <th class="p-2 font-medium">Colaborador</th>
                                     <th class="p-2 font-medium">Tipo</th>
                                     <th class="p-2 font-medium">Tiempo</th>
-                                    <th class="p-2 font-medium">Estado</th>
-                                    <th class="p-2 font-medium">Fecha/Hora</th>
+                                    <th class="p-2 font-medium">Justificación / Estado</th>
+                                    <th class="p-2 font-medium">Hora</th>
                                 </tr>
                             </thead>
                             <tbody id="tabla-registros-global" class="divide-y divide-slate-100">
@@ -257,15 +351,13 @@
     <!-- SCRIPT PRINCIPAL (Firebase y Lógica) -->
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        // Importamos ahora las funciones de Correo/Contraseña en lugar de las Anónimas
         import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
         import { getFirestore, collection, doc, setDoc, getDocs, addDoc, onSnapshot, deleteDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
-        // --- Configuración e Inicialización de Firebase ---
+        // --- Configuración e Inicialización ---
         let app, auth, db;
         let conectado = false;
 
-        // CONSTANTES GLOBALES DE AUTENTICACIÓN
         const PASSWORD_DEFAULT = "CorpoDatos2024!";
         const EMAIL_ADMIN = "admin@corpodatos.com";
 
@@ -285,7 +377,6 @@
         } catch (error) {
             console.error("No se pudo iniciar Firebase:", error);
             document.getElementById('texto-error-detalle').innerHTML = `<strong>Error de Configuración:</strong> ${error.message}`;
-            // mostrarVista se define más abajo, se llamará directamente manipulando clases en este caso crítico
             ['vista-cargando', 'vista-seleccion', 'vista-login-colaborador', 'vista-empleado', 'vista-admin'].forEach(v => {
                 const el = document.getElementById(v);
                 if(el) el.classList.add('hidden');
@@ -296,17 +387,30 @@
 
         // --- Variables de Estado ---
         let usuarioAutenticado = null;
-        let todosLosColaboradores = []; 
         let limitesGlobales = { bano: 15, comida: 30 };
         
         let empleadoActual = null; 
         let sesionActivaActual = null;
+        let tiempoAcumuladoActual = { Baño: 0, Comida: 0, Calidad: 0, fecha: '' }; 
         let intervaloCronometro = null;
-        let idColaboradorAEliminar = null;
         
-        let unsubConfig = null, unsubColaboradores = null, unsubRegistros = null, unsubActivas = null, unsubMiSesion = null;
+        // Admin Data
+        let datosColaboradoresRaw = [];
+        let tiemposAcumuladosGlobal = {};
+        let todosLosRegistros = [];
+        let idColaboradorAEliminar = null;
+        let pinEditando = null;
+        let idDocEditando = null;
+        
+        let unsubConfig = null, unsubColaboradores = null, unsubRegistros = null, unsubActivas = null, unsubMiSesion = null, unsubAcumulados = null, unsubAcumuladosAdmin = null, unsubMisDatos = null;
 
-        // --- Utilidades de Interfaz (Movidas al inicio para evitar ReferenceError) ---
+        // --- Utilidades ---
+        function obtenerFechaHoy() {
+            // Devuelve YYYY-MM-DD ajustado a la zona horaria local
+            const tzOffset = (new Date()).getTimezoneOffset() * 60000;
+            return (new Date(Date.now() - tzOffset)).toISOString().split('T')[0];
+        }
+
         window.mostrarVista = function(idVista) {
             ['vista-cargando', 'vista-error', 'vista-seleccion', 'vista-login-colaborador', 'vista-empleado', 'vista-admin'].forEach(v => {
                 const el = document.getElementById(v);
@@ -326,23 +430,23 @@
         }
 
         function formatearTiempo(segundos) {
+            const sign = segundos < 0 ? "-" : "";
+            segundos = Math.abs(segundos);
             const m = Math.floor(segundos / 60).toString().padStart(2, '0');
             const s = (segundos % 60).toString().padStart(2, '0');
-            return `${m}:${s}`;
+            return `${sign}${m}:${s}`;
         }
 
         // --- ROUTER DE AUTENTICACIÓN ---
         if (conectado) {
-            window.mostrarVista('vista-cargando'); // Ahora sí puede ejecutarse sin error
+            window.mostrarVista('vista-cargando');
 
             onAuthStateChanged(auth, (user) => {
                 if (user) {
                     usuarioAutenticado = user;
-                    // Redirigir según el tipo de correo ficticio
                     if (user.email === EMAIL_ADMIN) {
                         cargarAdminViews();
                     } else {
-                        // Es un empleado. Extraemos su PIN del correo (ej. 1234@corpodatos.com -> 1234)
                         const pin = user.email.split('@')[0];
                         validarEmpleadoYMostrar(pin);
                     }
@@ -359,22 +463,17 @@
             if(!pinDigitado) return mostrarNotificacion('Ingresa tu ID', 'error');
             
             window.mostrarVista('vista-cargando');
-            // Aquí armamos el correo ficticio por sistema
             const emailFicticio = `${pinDigitado}@corpodatos.com`;
             
             try {
-                // Intento 1: Iniciar sesión normalmente
                 await signInWithEmailAndPassword(auth, emailFicticio, PASSWORD_DEFAULT);
-                // El onAuthStateChanged redirigirá automáticamente
             } catch (error) {
-                // Si el usuario no existe aún en Auth, lo creamos automáticamente
                 if (error.code === 'auth/user-not-found' || error.code === 'auth/invalid-credential' || error.code === 'auth/invalid-login-credentials') {
                     try {
                         await createUserWithEmailAndPassword(auth, emailFicticio, PASSWORD_DEFAULT);
-                        // El onAuthStateChanged redirigirá automáticamente
                     } catch (err2) {
                         window.mostrarVista('vista-login-colaborador');
-                        mostrarNotificacion('Error del sistema al crear ID: ' + err2.message, 'error');
+                        mostrarNotificacion('Error del sistema al crear ID', 'error');
                     }
                 } else {
                     window.mostrarVista('vista-login-colaborador');
@@ -383,31 +482,26 @@
             }
         };
 
-        // --- VALIDACIÓN DE SEGURIDAD EMPLEADO ---
         async function validarEmpleadoYMostrar(pin) {
             try {
-                // Descargar lista de IDs permitidos creados por el Admin
                 const snap = await getDocs(collection(db, 'colaboradores'));
-                todosLosColaboradores = snap.docs.map(d => ({ docId: d.id, ...d.data() }));
-                
-                empleadoActual = todosLosColaboradores.find(c => c.pin === pin);
+                const todos = snap.docs.map(d => ({ docId: d.id, ...d.data() }));
+                empleadoActual = todos.find(c => c.pin === pin);
                 
                 if (!empleadoActual) {
-                    // El ID no está registrado en la base de datos por el admin. Lo expulsamos.
                     await signOut(auth); 
                     mostrarNotificacion('Tu ID no ha sido registrado por el administrador.', 'error');
                     return; 
                 }
                 
-                // ID válido. Preparamos interfaz.
                 document.getElementById('nombre-empleado-display').textContent = empleadoActual.nombre;
                 document.getElementById('id-empleado-display').textContent = empleadoActual.pin;
                 document.getElementById('pin-empleado').value = ''; 
+                document.getElementById('fecha-empleado-display').textContent = obtenerFechaHoy();
                 
                 window.mostrarVista('vista-empleado');
                 iniciarEscuchasEmpleado();
             } catch (error) {
-                console.error("Error validando:", error);
                 await signOut(auth);
                 mostrarNotificacion('Error al leer datos. Contacta al administrador.', 'error');
             }
@@ -415,9 +509,9 @@
 
         // --- LÓGICA DE LOGIN ADMIN ---
         window.solicitarAdmin = function() {
+            cerrarModales();
             document.getElementById('modal-overlay').classList.remove('hidden');
             document.getElementById('modal-password').classList.remove('hidden');
-            document.getElementById('modal-confirm').classList.add('hidden');
             document.getElementById('admin-password-input').value = '';
             setTimeout(() => document.getElementById('admin-password-input').focus(), 100);
         };
@@ -430,17 +524,15 @@
             window.mostrarVista('vista-cargando');
             
             try {
-                // Iniciar sesión como Admin
                 await signInWithEmailAndPassword(auth, EMAIL_ADMIN, pass);
             } catch (error) {
                 if (error.code === 'auth/user-not-found' || error.code === 'auth/invalid-credential' || error.code === 'auth/invalid-login-credentials') {
-                    // Si es la primera vez que se usa el sistema, crea al admin si la pass es admin123
                     if (pass === 'admin123') { 
                         try {
                             await createUserWithEmailAndPassword(auth, EMAIL_ADMIN, pass);
                         } catch (err2) {
                             window.mostrarVista('vista-seleccion');
-                            mostrarNotificacion('Error al configurar cuenta de Administrador.', 'error');
+                            mostrarNotificacion('Error al configurar cuenta Admin.', 'error');
                         }
                     } else {
                         window.mostrarVista('vista-seleccion');
@@ -453,26 +545,31 @@
             }
         };
 
-        // --- CERRAR SESIÓN GENERAL ---
         window.cerrarSesionGeneral = async function() {
-            // Limpiar temporizadores y escuchas
             if(intervaloCronometro) clearInterval(intervaloCronometro);
             if(unsubMiSesion) unsubMiSesion();
             if(unsubConfig) unsubConfig();
             if(unsubColaboradores) unsubColaboradores();
             if(unsubRegistros) unsubRegistros();
             if(unsubActivas) unsubActivas();
+            if(unsubAcumulados) unsubAcumulados();
+            if(unsubAcumuladosAdmin) unsubAcumuladosAdmin();
+            if(unsubMisDatos) unsubMisDatos();
             
             empleadoActual = null;
-            await signOut(auth); // Desconecta de Firebase, enviando a la vista de selección
+            await signOut(auth);
         };
 
-        // --- LÓGICA DE MODALES PERSONALIZADOS ---
+        // --- MODALES Y LÓGICA ---
         window.cerrarModales = function() {
             document.getElementById('modal-overlay').classList.add('hidden');
             document.getElementById('modal-password').classList.add('hidden');
             document.getElementById('modal-confirm').classList.add('hidden');
+            document.getElementById('modal-editar').classList.add('hidden');
+            document.getElementById('modal-calidad').classList.add('hidden');
             idColaboradorAEliminar = null;
+            pinEditando = null;
+            idDocEditando = null;
         };
 
         document.getElementById('btn-confirmar-eliminar').addEventListener('click', async () => {
@@ -481,8 +578,7 @@
                     await deleteDoc(doc(db, 'colaboradores', idColaboradorAEliminar));
                     mostrarNotificacion('Colaborador eliminado');
                 } catch(e) {
-                    console.error("Error de Firestore:", e);
-                    mostrarNotificacion('Error de permisos al eliminar', 'error');
+                    mostrarNotificacion('Error al eliminar', 'error');
                 }
             }
             cerrarModales();
@@ -494,6 +590,7 @@
         // ==========================================
         function cargarAdminViews() {
             window.mostrarVista('vista-admin');
+            document.getElementById('filtro-fecha-historial').value = obtenerFechaHoy(); // Set filter to today
             
             unsubConfig = onSnapshot(doc(db, 'config', 'global'), (docSnap) => {
                 if(docSnap.exists()){
@@ -503,22 +600,15 @@
                 }
             });
 
+            unsubAcumuladosAdmin = onSnapshot(collection(db, 'tiempos_acumulados'), (snap) => {
+                tiemposAcumuladosGlobal = {};
+                snap.forEach(d => { tiemposAcumuladosGlobal[d.id] = d.data(); });
+                renderizarListaAdmin();
+            });
+
             unsubColaboradores = onSnapshot(collection(db, 'colaboradores'), (snap) => {
-                const lista = document.getElementById('lista-colaboradores');
-                lista.innerHTML = '';
-                if(snap.empty) {
-                    lista.innerHTML = '<li class="text-slate-400 italic">No hay colaboradores.</li>';
-                    return;
-                }
-                snap.forEach(d => {
-                    const c = d.data();
-                    lista.innerHTML += `
-                        <li class="flex justify-between items-center bg-slate-50 p-2 rounded border border-slate-100">
-                            <div><span class="font-bold text-slate-700">${c.pin}</span> - ${c.nombre}</div>
-                            <button onclick="eliminarColaborador('${d.id}')" class="text-red-400 hover:text-red-600 p-1 rounded hover:bg-red-50 transition-colors"><i class="ph ph-trash"></i></button>
-                        </li>
-                    `;
-                });
+                datosColaboradoresRaw = snap.docs.map(d => ({id: d.id, ...d.data()}));
+                renderizarListaAdmin();
             });
 
             unsubActivas = onSnapshot(collection(db, 'sesiones_activas'), (snap) => {
@@ -530,14 +620,19 @@
                 }
                 snap.forEach(d => {
                     const act = d.data();
-                    const icon = act.tipo === 'Baño' ? '<i class="ph ph-toilet text-blue-500"></i>' : '<i class="ph ph-fork-knife text-orange-500"></i>';
+                    let icon = '<i class="ph ph-star text-purple-500"></i>';
+                    let bg = 'purple';
+                    if(act.tipo === 'Baño') { icon = '<i class="ph ph-toilet text-blue-500"></i>'; bg = 'blue'; }
+                    else if(act.tipo === 'Comida') { icon = '<i class="ph ph-fork-knife text-orange-500"></i>'; bg = 'orange'; }
+                    
                     const minutos = Math.floor((Date.now() - act.inicio) / 60000);
                     contenedor.innerHTML += `
-                        <div class="bg-slate-50 border border-slate-100 rounded-lg p-3 flex items-center gap-3 shadow-sm">
-                            <div class="text-2xl">${icon}</div>
+                        <div class="bg-slate-50 border border-slate-100 rounded-lg p-3 flex items-center gap-3 shadow-sm relative overflow-hidden">
+                            <div class="absolute top-0 right-0 w-1 h-full bg-${bg}-400 animate-pulse"></div>
+                            <div class="text-3xl">${icon}</div>
                             <div>
                                 <p class="font-bold text-slate-700 text-sm">${act.nombre}</p>
-                                <p class="text-xs text-slate-500">${act.tipo} • hace ${minutos} min</p>
+                                <p class="text-xs text-slate-500">En ${act.tipo} hace ${minutos}m</p>
                             </div>
                         </div>
                     `;
@@ -545,68 +640,186 @@
             });
 
             unsubRegistros = onSnapshot(collection(db, 'registros'), (snap) => {
-                let registros = snap.docs.map(d => d.data());
-                registros.sort((a, b) => b.fin - a.fin);
-                
-                const tabla = document.getElementById('tabla-registros-global');
-                tabla.innerHTML = '';
-                if(registros.length === 0) {
-                    tabla.innerHTML = '<tr><td colspan="5" class="p-3 text-center text-slate-400">Sin registros recientes</td></tr>';
-                    return;
-                }
-
-                registros.slice(0, 50).forEach(reg => {
-                    const badgeClass = reg.estado === 'A tiempo' ? 'bg-green-100 text-green-700 border-green-200' : 'bg-red-100 text-red-700 border-red-200 font-bold';
-                    const fechaObj = new Date(reg.fin);
-                    const fechaStr = `${fechaObj.toLocaleDateString()} ${fechaObj.toLocaleTimeString([],{hour:'2-digit', minute:'2-digit'})}`;
-                    
-                    tabla.innerHTML += `
-                        <tr class="hover:bg-slate-50">
-                            <td class="p-2 font-medium text-slate-700">${reg.nombre} <span class="text-xs text-slate-400 ml-1">#${reg.pin}</span></td>
-                            <td class="p-2 text-slate-600">${reg.tipo}</td>
-                            <td class="p-2 font-mono">${reg.duracionStr}</td>
-                            <td class="p-2"><span class="px-2 py-1 text-xs rounded-md border ${badgeClass}">${reg.estado}</span></td>
-                            <td class="p-2 text-xs text-slate-500">${fechaStr}</td>
-                        </tr>
-                    `;
-                });
+                todosLosRegistros = snap.docs.map(d => d.data());
+                todosLosRegistros.sort((a, b) => b.fin - a.fin);
+                renderizarHistorial(); // Renderiza usando el filtro de fecha
             });
         }
+
+        window.renderizarHistorial = function() {
+            const fechaFiltro = document.getElementById('filtro-fecha-historial').value;
+            const tabla = document.getElementById('tabla-registros-global');
+            tabla.innerHTML = '';
+            
+            // Filtrar en memoria por fecha (regla de no complex queries)
+            const registrosFiltrados = todosLosRegistros.filter(r => r.fechaISO === fechaFiltro);
+
+            if(registrosFiltrados.length === 0) {
+                tabla.innerHTML = `<tr><td colspan="5" class="p-4 text-center text-slate-400">No hay registros para la fecha ${fechaFiltro}</td></tr>`;
+                return;
+            }
+
+            registrosFiltrados.forEach(reg => {
+                let badgeClass = reg.estado === 'A tiempo' ? 'bg-green-100 text-green-700 border-green-200' : 'bg-red-100 text-red-700 border-red-200 font-bold';
+                if(reg.tipo === 'Calidad') badgeClass = 'bg-purple-100 text-purple-700 border-purple-200';
+                
+                const justificacionTxt = reg.justificacion ? `<div class="text-xs text-slate-500 italic mt-0.5 max-w-xs truncate" title="${reg.justificacion}">${reg.justificacion}</div>` : '';
+                const fechaObj = new Date(reg.fin);
+                const horaStr = fechaObj.toLocaleTimeString([],{hour:'2-digit', minute:'2-digit'});
+                
+                tabla.innerHTML += `
+                    <tr class="hover:bg-slate-50">
+                        <td class="p-2 font-medium text-slate-700">${reg.nombre} <span class="text-xs text-slate-400 ml-1">#${reg.pin}</span></td>
+                        <td class="p-2 text-slate-600">${reg.tipo}</td>
+                        <td class="p-2 font-mono">${reg.duracionStr}</td>
+                        <td class="p-2">
+                            <span class="px-2 py-1 text-xs rounded-md border inline-block ${badgeClass}">${reg.estado}</span>
+                            ${justificacionTxt}
+                        </td>
+                        <td class="p-2 text-xs text-slate-500">${horaStr}</td>
+                    </tr>
+                `;
+            });
+        }
+
+        function renderizarListaAdmin() {
+            const lista = document.getElementById('lista-colaboradores');
+            lista.innerHTML = '';
+            if(datosColaboradoresRaw.length === 0) {
+                lista.innerHTML = '<li class="text-slate-400 italic">No hay colaboradores registrados.</li>';
+                return;
+            }
+
+            const hoy = obtenerFechaHoy();
+
+            datosColaboradoresRaw.forEach(c => {
+                const acumulado = tiemposAcumuladosGlobal[c.pin] || {};
+                const esDeHoy = acumulado.fecha === hoy;
+                const minBano = esDeHoy ? (acumulado.Baño || 0) : 0;
+                const minComida = esDeHoy ? (acumulado.Comida || 0) : 0;
+                const minCalidad = esDeHoy ? (acumulado.Calidad || 0) : 0;
+                
+                const limB = c.limiteBano ? `${c.limiteBano}m` : `Global`;
+                const limC = c.limiteComida ? `${c.limiteComida}m` : `Global`;
+
+                lista.innerHTML += `
+                    <li class="flex flex-col bg-slate-50 p-3 rounded-lg border border-slate-100 gap-2 hover:shadow-sm transition-shadow">
+                        <div class="flex justify-between items-center border-b border-slate-200 pb-2 mb-1">
+                            <div>
+                                <span class="font-bold text-slate-800">${c.pin}</span> - ${c.nombre}
+                                <div class="text-[10px] text-slate-400">Límites: Baño(${limB}) • Comida(${limC})</div>
+                            </div>
+                            <div class="flex gap-1">
+                                <button onclick="abrirModalEditar('${c.pin}', '${c.nombre}', '${c.id}')" class="text-blue-500 hover:bg-blue-100 px-2 py-1 rounded text-xs flex items-center gap-1 font-medium"><i class="ph ph-pencil-simple"></i> Ajustar</button>
+                                <button onclick="eliminarColaborador('${c.id}')" class="text-red-400 hover:text-red-600 hover:bg-red-50 p-1.5 rounded transition-colors"><i class="ph ph-trash"></i></button>
+                            </div>
+                        </div>
+                        <div class="grid grid-cols-3 text-xs text-slate-600">
+                            <div class="flex items-center gap-1"><i class="ph ph-toilet text-slate-400"></i> <strong>${formatearTiempo(minBano)}</strong></div>
+                            <div class="flex items-center gap-1"><i class="ph ph-fork-knife text-slate-400"></i> <strong>${formatearTiempo(minComida)}</strong></div>
+                            <div class="flex items-center gap-1 text-purple-600"><i class="ph ph-star text-purple-400"></i> <strong>${formatearTiempo(minCalidad)}</strong></div>
+                        </div>
+                    </li>
+                `;
+            });
+        }
+
+        window.abrirModalEditar = function(pin, nombre, docId) {
+            pinEditando = pin;
+            idDocEditando = docId;
+            const hoy = obtenerFechaHoy();
+            const acumulado = tiemposAcumuladosGlobal[pin] || {};
+            const esDeHoy = acumulado.fecha === hoy;
+            
+            // Buscar datos del colaborador para rellenar límites
+            const colab = datosColaboradoresRaw.find(c => c.id === docId) || {};
+            
+            document.getElementById('edit-nombre').textContent = nombre;
+            
+            // Consumidos
+            document.getElementById('edit-consumido-bano').value = esDeHoy ? Math.floor((acumulado.Baño || 0) / 60) : 0;
+            document.getElementById('edit-consumido-comida').value = esDeHoy ? Math.floor((acumulado.Comida || 0) / 60) : 0;
+            document.getElementById('edit-consumido-calidad').value = esDeHoy ? Math.floor((acumulado.Calidad || 0) / 60) : 0;
+            
+            // Limites individuales
+            document.getElementById('edit-limite-bano').value = colab.limiteBano || '';
+            document.getElementById('edit-limite-comida').value = colab.limiteComida || '';
+            
+            cerrarModales();
+            document.getElementById('modal-overlay').classList.remove('hidden');
+            document.getElementById('modal-editar').classList.remove('hidden');
+        };
+
+        window.guardarEdicionTiempoYLimites = async function() {
+            if(!pinEditando || !idDocEditando) return;
+            
+            const minBano = parseInt(document.getElementById('edit-consumido-bano').value) || 0;
+            const minComida = parseInt(document.getElementById('edit-consumido-comida').value) || 0;
+            const minCalidad = parseInt(document.getElementById('edit-consumido-calidad').value) || 0;
+            
+            const limBano = parseInt(document.getElementById('edit-limite-bano').value) || null;
+            const limComida = parseInt(document.getElementById('edit-limite-comida').value) || null;
+            
+            try {
+                // 1. Guardar Tiempos Consumidos
+                await setDoc(doc(db, 'tiempos_acumulados', pinEditando), {
+                    Baño: minBano * 60,
+                    Comida: minComida * 60,
+                    Calidad: minCalidad * 60,
+                    fecha: obtenerFechaHoy(),
+                    ultimaActualizacion: Date.now()
+                }, { merge: true });
+                
+                // 2. Guardar Límites Personales en el documento del colaborador
+                await setDoc(doc(db, 'colaboradores', idDocEditando), {
+                    limiteBano: limBano,
+                    limiteComida: limComida
+                }, { merge: true });
+                
+                mostrarNotificacion('Datos de colaborador actualizados.');
+                cerrarModales();
+            } catch(e) {
+                mostrarNotificacion('Error al guardar datos.', 'error');
+            }
+        };
 
         window.guardarConfiguracionGlobal = async function() {
             const bano = parseInt(document.getElementById('limit-bano').value) || 15;
             const comida = parseInt(document.getElementById('limit-comida').value) || 30;
             try {
                 await setDoc(doc(db, 'config', 'global'), { bano, comida });
-                mostrarNotificacion('Límites actualizados en toda la red.');
-            } catch(e) { 
-                mostrarNotificacion('Error de permisos en Firebase', 'error'); 
-            }
+                mostrarNotificacion('Límites globales actualizados.');
+            } catch(e) { mostrarNotificacion('Error al guardar configuración', 'error'); }
         };
 
         window.agregarColaborador = async function() {
             const pin = document.getElementById('nuevo-pin').value.trim();
             const nombre = document.getElementById('nuevo-nombre').value.trim();
-            if(!pin || !nombre) return mostrarNotificacion('Llena ambos campos', 'error');
-            
-            if(todosLosColaboradores.some(c => c.pin === pin)) {
-                return mostrarNotificacion('Ese ID ya está registrado', 'error');
-            }
+            const limBano = parseInt(document.getElementById('nuevo-limite-bano').value) || null;
+            const limComida = parseInt(document.getElementById('nuevo-limite-comida').value) || null;
+
+            if(!pin || !nombre) return mostrarNotificacion('El ID y Nombre son obligatorios', 'error');
+            if(datosColaboradoresRaw.some(c => c.pin === pin)) return mostrarNotificacion('Ese ID ya está registrado', 'error');
 
             try {
-                await addDoc(collection(db, 'colaboradores'), { pin, nombre });
+                await addDoc(collection(db, 'colaboradores'), { 
+                    pin, 
+                    nombre,
+                    limiteBano: limBano,
+                    limiteComida: limComida
+                });
                 document.getElementById('nuevo-pin').value = '';
                 document.getElementById('nuevo-nombre').value = '';
-                mostrarNotificacion('Colaborador agregado');
-            } catch(e) { 
-                mostrarNotificacion('Error de permisos al guardar', 'error'); 
-            }
+                document.getElementById('nuevo-limite-bano').value = '';
+                document.getElementById('nuevo-limite-comida').value = '';
+                mostrarNotificacion('Colaborador creado con éxito');
+            } catch(e) { mostrarNotificacion('Error al guardar', 'error'); }
         };
 
         window.eliminarColaborador = function(docId) {
             idColaboradorAEliminar = docId;
+            cerrarModales();
             document.getElementById('modal-overlay').classList.remove('hidden');
-            document.getElementById('modal-password').classList.add('hidden');
             document.getElementById('modal-confirm').classList.remove('hidden');
         };
 
@@ -614,12 +827,34 @@
         //         VISTA DEL COLABORADOR
         // ==========================================
         function iniciarEscuchasEmpleado() {
+            // Escuchar mis propios datos (por si el admin cambia mis límites en vivo)
+            unsubMisDatos = onSnapshot(doc(db, 'colaboradores', empleadoActual.docId), (docSnap) => {
+                if(docSnap.exists()){
+                    empleadoActual = { docId: docSnap.id, ...docSnap.data() };
+                    actualizarDisplaysInactivos();
+                }
+            });
+
             unsubConfig = onSnapshot(doc(db, 'config', 'global'), (docSnap) => {
                 if(docSnap.exists()) {
                     limitesGlobales = docSnap.data();
-                    document.getElementById('lim-Baño').textContent = limitesGlobales.bano;
-                    document.getElementById('lim-Comida').textContent = limitesGlobales.comida;
+                    actualizarDisplaysInactivos();
                 }
+            });
+
+            unsubAcumulados = onSnapshot(doc(db, 'tiempos_acumulados', empleadoActual.pin), (docSnap) => {
+                const hoy = obtenerFechaHoy();
+                let data = docSnap.data();
+                
+                // AUTO RESET DIARIO
+                if(!data || data.fecha !== hoy) {
+                    data = { Baño: 0, Comida: 0, Calidad: 0, fecha: hoy, ultimaActualizacion: Date.now() };
+                    // Se guarda en background
+                    setDoc(doc(db, 'tiempos_acumulados', empleadoActual.pin), data);
+                }
+                
+                tiempoAcumuladoActual = data;
+                actualizarDisplaysInactivos();
             });
 
             unsubMiSesion = onSnapshot(doc(db, 'sesiones_activas', empleadoActual.pin), (docSnap) => {
@@ -633,40 +868,102 @@
             });
         }
 
-        window.iniciarCronometro = async function(tipo) {
-            if(!empleadoActual) return;
+        function obtenerLimiteActual(tipo) {
+            if (tipo === 'Baño') return empleadoActual.limiteBano || limitesGlobales.bano;
+            if (tipo === 'Comida') return empleadoActual.limiteComida || limitesGlobales.comida;
+            return Infinity; // Calidad
+        }
+
+        function actualizarDisplaysInactivos() {
+            if(sesionActivaActual) return; 
+            
+            // Actualizar labels visuales base
+            document.getElementById('lim-Baño').textContent = obtenerLimiteActual('Baño');
+            document.getElementById('lim-Comida').textContent = obtenerLimiteActual('Comida');
+
+            ['Baño', 'Comida', 'Calidad'].forEach(tipo => {
+                const acumulado = tiempoAcumuladoActual[tipo] || 0;
+                const limiteMinutos = obtenerLimiteActual(tipo);
+                const limiteSegundos = limiteMinutos * 60;
+                const restante = limiteSegundos - acumulado;
+
+                const disp = document.getElementById('disp-' + tipo);
+                const rem = document.getElementById('rem-' + tipo);
+
+                disp.textContent = formatearTiempo(acumulado);
+
+                if(tipo === 'Calidad') {
+                    // Calidad no tiene límite numérico visual inactivo
+                } else {
+                    if (restante > 0) {
+                        rem.innerHTML = `Restan: ${formatearTiempo(restante)}`;
+                        rem.className = "text-[0.7rem] sm:text-xs font-extrabold mt-3 text-gray-500";
+                        disp.className = "font-mono font-bold text-3xl sm:text-4xl text-gray-800 tabular-nums my-2 transition-colors";
+                    } else {
+                        rem.innerHTML = `Excedido: ${formatearTiempo(Math.abs(restante))}`;
+                        rem.className = "text-[0.7rem] sm:text-xs font-extrabold mt-3 text-red-600";
+                        disp.className = "font-mono font-bold text-3xl sm:text-4xl text-red-600 tabular-nums my-2 transition-colors";
+                    }
+                }
+            });
+        }
+
+        window.iniciarCronometro = async function(tipo, justificacion = '') {
+            if(!empleadoActual || sesionActivaActual) return;
             
             const nuevaSesion = {
                 pin: empleadoActual.pin,
                 nombre: empleadoActual.nombre,
                 tipo: tipo,
+                justificacion: justificacion,
                 inicio: Date.now()
             };
 
             try {
                 await setDoc(doc(db, 'sesiones_activas', empleadoActual.pin), nuevaSesion);
             } catch(e) {
-                mostrarNotificacion('Error al conectar con la nube: ' + e.message, 'error');
+                mostrarNotificacion('Error al conectar con la base de datos.', 'error');
             }
+        };
+
+        // --- LÓGICA DE CALIDAD ---
+        window.abrirModalCalidad = function() {
+            if(sesionActivaActual) return;
+            cerrarModales();
+            document.getElementById('calidad-justificacion').value = '';
+            document.getElementById('modal-overlay').classList.remove('hidden');
+            document.getElementById('modal-calidad').classList.remove('hidden');
+            setTimeout(() => document.getElementById('calidad-justificacion').focus(), 100);
+        };
+
+        window.confirmarCalidad = function() {
+            const val = document.getElementById('calidad-justificacion').value.trim();
+            if(!val) return mostrarNotificacion('La justificación es obligatoria', 'error');
+            cerrarModales();
+            iniciarCronometro('Calidad', val);
         };
 
         function activarInterfazCronometro(datosSesion) {
             document.getElementById('contenedor-stop').classList.remove('hidden');
+            document.getElementById('titulo-panel-empleado').textContent = "Descanso en Progreso";
             
             const tipoActivo = datosSesion.tipo;
-            const tipoInactivo = tipoActivo === 'Baño' ? 'Comida' : 'Baño';
             
-            // Desactivar visualmente el botón que no se está usando
-            const btnInactivo = document.getElementById('btn-' + tipoInactivo);
-            btnInactivo.classList.add('opacity-40', 'pointer-events-none');
-            
-            // Resaltar el botón activo
-            const btnActivo = document.getElementById('btn-' + tipoActivo);
-            btnActivo.classList.add('border-blue-400', 'bg-blue-50/80', 'scale-[1.02]', 'ring-4', 'ring-blue-100');
-            btnActivo.classList.remove('hover:bg-blue-50', 'hover:bg-orange-50', 'bg-gray-50/50');
-            btnActivo.onclick = null; // Prevenir doble click
+            // Apagar y bloquear los inactivos
+            ['Baño', 'Comida', 'Calidad'].forEach(t => {
+                const btn = document.getElementById('btn-' + t);
+                if (t !== tipoActivo) {
+                    btn.classList.add('opacity-40', 'pointer-events-none');
+                } else {
+                    let colorCode = t==='Baño'?'blue':t==='Comida'?'orange':'purple';
+                    btn.classList.add(`border-${colorCode}-400`, `bg-${colorCode}-50/80`, 'scale-[1.02]', 'ring-4', `ring-${colorCode}-100`);
+                    btn.classList.remove('hover:bg-blue-50', 'hover:bg-orange-50', 'hover:bg-purple-50', 'bg-gray-50/50');
+                    btn.onclick = null; 
+                    document.getElementById('play-' + t).classList.remove('hidden');
+                }
+            });
 
-            const limiteMinutos = tipoActivo === 'Baño' ? limitesGlobales.bano : limitesGlobales.comida;
+            const limiteMinutos = obtenerLimiteActual(tipoActivo);
             const limiteSegundos = limiteMinutos * 60;
             const display = document.getElementById('disp-' + tipoActivo);
             const displayRestante = document.getElementById('rem-' + tipoActivo);
@@ -674,23 +971,33 @@
             if(intervaloCronometro) clearInterval(intervaloCronometro);
             
             const tick = () => {
-                const transcurrido = Math.floor((Date.now() - datosSesion.inicio) / 1000);
-                display.textContent = formatearTiempo(transcurrido);
+                const acumuladoBase = tiempoAcumuladoActual[tipoActivo] || 0;
+                const transcurridoSegmento = Math.floor((Date.now() - datosSesion.inicio) / 1000);
+                const transcurridoTotal = acumuladoBase + transcurridoSegmento;
                 
-                const restante = limiteSegundos - transcurrido;
-                if (restante > 0) {
-                    displayRestante.innerHTML = `Restan: ${formatearTiempo(restante)}`;
-                    displayRestante.className = "text-[0.7rem] sm:text-sm font-extrabold mt-3 text-blue-600";
+                display.textContent = formatearTiempo(transcurridoTotal);
+                
+                if (tipoActivo === 'Calidad') {
+                    displayRestante.innerHTML = `<span class="truncate w-full px-2" title="${datosSesion.justificacion}">${datosSesion.justificacion}</span>`;
+                    displayRestante.className = "text-[0.7rem] sm:text-xs mt-3 text-purple-600 font-medium italic block";
                 } else {
-                    displayRestante.innerHTML = `Excedido: ${formatearTiempo(Math.abs(restante))}`;
-                    displayRestante.className = "text-[0.7rem] sm:text-sm font-extrabold mt-3 text-red-600 animate-pulse";
-                }
+                    const restante = limiteSegundos - transcurridoTotal;
+                    if (restante > 0) {
+                        displayRestante.innerHTML = `Restan: ${formatearTiempo(restante)}`;
+                        displayRestante.className = "text-[0.7rem] sm:text-xs font-extrabold mt-3 text-blue-600";
+                    } else {
+                        displayRestante.innerHTML = `Excedido: ${formatearTiempo(Math.abs(restante))}`;
+                        displayRestante.className = "text-[0.7rem] sm:text-xs font-extrabold mt-3 text-red-600 animate-pulse";
+                    }
 
-                if (transcurrido > limiteSegundos) {
-                    display.classList.add('text-red-600');
-                    display.classList.remove('text-gray-800');
-                    btnActivo.classList.add('border-red-400', 'bg-red-50', 'ring-red-100');
-                    btnActivo.classList.remove('border-blue-400', 'bg-blue-50/80', 'ring-blue-100');
+                    if (transcurridoTotal > limiteSegundos) {
+                        display.classList.add('text-red-600');
+                        display.classList.remove('text-gray-800');
+                        const btnActivo = document.getElementById('btn-' + tipoActivo);
+                        let cCode = tipoActivo==='Baño'?'blue':'orange';
+                        btnActivo.classList.add('border-red-400', 'bg-red-50', 'ring-red-100');
+                        btnActivo.classList.remove(`border-${cCode}-400`, `bg-${cCode}-50/80`, `ring-${cCode}-100`);
+                    }
                 }
             };
             
@@ -701,25 +1008,28 @@
         function desactivarInterfazCronometro() {
             if(intervaloCronometro) clearInterval(intervaloCronometro);
             document.getElementById('contenedor-stop').classList.add('hidden');
+            document.getElementById('titulo-panel-empleado').textContent = "Tus Tiempos de Hoy";
             
-            ['Baño', 'Comida'].forEach(tipo => {
-                const btn = document.getElementById('btn-' + tipo);
-                btn.classList.remove('opacity-40', 'pointer-events-none', 'border-blue-400', 'bg-blue-50/80', 'scale-[1.02]', 'ring-4', 'ring-blue-100', 'border-red-400', 'bg-red-50', 'ring-red-100');
-                btn.classList.add('bg-gray-50/50');
-                btn.onclick = () => iniciarCronometro(tipo);
+            ['Baño', 'Comida', 'Calidad'].forEach(t => {
+                const btn = document.getElementById('btn-' + t);
+                btn.className = "flex flex-col items-center justify-center p-4 sm:p-6 rounded-xl relative border border-gray-200 transition-all cursor-pointer bg-gray-50/50 group";
+                if(t==='Baño') { btn.classList.add('hover:bg-blue-50', 'hover:scale-[1.02]'); btn.onclick = () => iniciarCronometro(t); }
+                if(t==='Comida') { btn.classList.add('hover:bg-orange-50', 'hover:scale-[1.02]'); btn.onclick = () => iniciarCronometro(t); }
+                if(t==='Calidad') { btn.classList.add('hover:bg-purple-50', 'hover:scale-[1.02]'); btn.onclick = () => abrirModalCalidad(); }
                 
-                document.getElementById('disp-' + tipo).textContent = '00:00';
-                document.getElementById('disp-' + tipo).classList.remove('text-red-600');
-                document.getElementById('disp-' + tipo).classList.add('text-gray-800');
-                
-                const rem = document.getElementById('rem-' + tipo);
-                rem.textContent = 'Restan: --';
-                rem.className = 'text-[0.7rem] sm:text-sm font-extrabold mt-3 text-gray-400 transition-colors';
+                document.getElementById('play-' + t).classList.add('hidden');
             });
             
+            // Reinstalar clases por defecto al rem-Calidad
+            const remCalidad = document.getElementById('rem-Calidad');
+            remCalidad.textContent = 'Requiere justificación';
+            remCalidad.className = 'text-[0.7rem] sm:text-xs mt-3 text-gray-400 transition-colors px-2 text-center truncate w-full';
+
             const btnStop = document.getElementById('btn-detener-cronometro');
             btnStop.disabled = false;
-            btnStop.innerHTML = '<i class="ph ph-stop-circle text-2xl"></i> Terminar Descanso';
+            btnStop.innerHTML = '<i class="ph ph-pause-circle text-2xl"></i> Pausar Descanso';
+            
+            actualizarDisplaysInactivos(); 
         }
 
         window.detenerCronometro = async function() {
@@ -728,44 +1038,57 @@
             if(intervaloCronometro) clearInterval(intervaloCronometro);
             const btn = document.getElementById('btn-detener-cronometro');
             btn.disabled = true; 
-            btn.innerHTML = '<i class="ph ph-spinner animate-spin text-3xl"></i> Guardando...';
+            btn.innerHTML = '<i class="ph ph-spinner animate-spin text-3xl"></i> Pausando...';
             
             const fin = Date.now();
-            const duracionSegundos = Math.floor((fin - sesionActivaActual.inicio) / 1000);
-            const limiteMinutos = sesionActivaActual.tipo === 'Baño' ? limitesGlobales.bano : limitesGlobales.comida;
-            const limiteSegundos = limiteMinutos * 60;
-            
+            const transcurridoSegmento = Math.floor((fin - sesionActivaActual.inicio) / 1000);
+            const tipoActivo = sesionActivaActual.tipo;
+            const nuevoAcumulado = (tiempoAcumuladoActual[tipoActivo] || 0) + transcurridoSegmento;
+
+            // Calcular el estado final para el registro
+            const limiteMin = obtenerLimiteActual(tipoActivo);
+            let estado = "A tiempo";
+            if (tipoActivo !== 'Calidad' && nuevoAcumulado > (limiteMin * 60)) {
+                estado = "Excedido";
+            } else if (tipoActivo === 'Calidad') {
+                estado = "Registrado";
+            }
+
             const registroFinal = {
                 pin: sesionActivaActual.pin,
                 nombre: sesionActivaActual.nombre,
-                tipo: sesionActivaActual.tipo,
+                tipo: tipoActivo,
+                justificacion: sesionActivaActual.justificacion || '',
                 inicio: sesionActivaActual.inicio,
                 fin: fin,
-                duracionSegundos: duracionSegundos,
-                duracionStr: formatearTiempo(duracionSegundos),
-                estado: duracionSegundos > limiteSegundos ? 'Excedido' : 'A tiempo'
+                fechaISO: obtenerFechaHoy(), // Para poder filtrar en admin
+                duracionSegundos: transcurridoSegmento,
+                duracionStr: formatearTiempo(transcurridoSegmento),
+                estado: estado
             };
 
             try {
+                // 1. Guardar en Historial
                 await addDoc(collection(db, 'registros'), registroFinal);
+                
+                // 2. Guardar acumulado con fecha local para reset
+                await setDoc(doc(db, 'tiempos_acumulados', empleadoActual.pin), {
+                    [tipoActivo]: nuevoAcumulado,
+                    fecha: obtenerFechaHoy(),
+                    ultimaActualizacion: fin
+                }, { merge: true });
+                
+                // 3. Borrar sesión activa
                 await deleteDoc(doc(db, 'sesiones_activas', empleadoActual.pin));
                 
-                const restanteSegundos = limiteSegundos - duracionSegundos;
-                let mensajeExito = `Tomaste ${formatearTiempo(duracionSegundos)}. `;
-                if (restanteSegundos > 0) {
-                    mensajeExito += `Te sobraron ${formatearTiempo(restanteSegundos)} min.`;
-                } else if (restanteSegundos < 0) {
-                    mensajeExito += `Te pasaste por ${formatearTiempo(Math.abs(restanteSegundos))} min.`;
-                }
-                
-                mostrarNotificacion(mensajeExito);
+                mostrarNotificacion(`Agregaste ${formatearTiempo(transcurridoSegmento)} a tu cuenta.`);
             } catch(e) {
-                mostrarNotificacion('Error al guardar: ' + e.message, 'error');
+                mostrarNotificacion('Error al pausar: Verifica conexión.', 'error');
                 btn.disabled = false;
-                btn.innerHTML = '<i class="ph ph-stop-circle text-3xl"></i> Terminar Descanso';
+                btn.innerHTML = '<i class="ph ph-pause-circle text-2xl"></i> Pausar Descanso';
                 intervaloCronometro = setInterval(() => {
-                    const transcurrido = Math.floor((Date.now() - sesionActivaActual.inicio) / 1000);
-                    document.getElementById('display-tiempo').textContent = formatearTiempo(transcurrido);
+                    const trans = Math.floor((Date.now() - sesionActivaActual.inicio) / 1000) + (tiempoAcumuladoActual[tipoActivo]||0);
+                    document.getElementById('disp-' + tipoActivo).textContent = formatearTiempo(trans);
                 }, 1000);
             }
         };
