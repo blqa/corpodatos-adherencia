@@ -458,14 +458,26 @@
             return Date.now() + timeOffset;
         }
 
-        // Ciclo visual del reloj en tiempo real
+        // Ciclo visual del reloj en tiempo real Y timers del admin
         setInterval(() => {
-            const ahora = new Date(getHoraReal());
+            const ahoraMs = getHoraReal();
+            const ahora = new Date(ahoraMs);
             const horaStr = ahora.toLocaleTimeString('es-ES', { hour12: false });
             const empDisplay = document.getElementById('reloj-display-empleado');
             const admDisplay = document.getElementById('reloj-display-admin');
             if(empDisplay) empDisplay.textContent = horaStr;
             if(admDisplay) admDisplay.textContent = horaStr;
+
+            // Actualizar cronómetros en vivo en el panel Admin
+            if (adminActivasArray && adminActivasArray.length > 0) {
+                adminActivasArray.forEach(act => {
+                    const el = document.getElementById(`timer-admin-${act.pin}`);
+                    if (el) {
+                        const transcurrido = Math.floor((ahoraMs - act.inicio) / 1000);
+                        el.textContent = formatearTiempo(transcurrido);
+                    }
+                });
+            }
         }, 1000);
 
         // Llamar a la sincronización al iniciar
@@ -488,6 +500,7 @@
         let idColaboradorAEliminar = null;
         let pinEditando = null;
         let idDocEditando = null;
+        let adminActivasArray = []; // Para el monitor en vivo
         
         let unsubConfig = null, unsubColaboradores = null, unsubRegistros = null, unsubActivas = null, unsubMiSesion = null, unsubAcumulados = null, unsubAcumuladosAdmin = null, unsubMisDatos = null;
 
@@ -637,6 +650,7 @@
             if(unsubAcumuladosAdmin) unsubAcumuladosAdmin();
             if(unsubMisDatos) unsubMisDatos();
             
+            adminActivasArray = [];
             empleadoActual = null;
             await signOut(auth);
         };
@@ -702,26 +716,30 @@
 
                 const contenedor = document.getElementById('lista-activos');
                 contenedor.innerHTML = '';
+                adminActivasArray = []; // Reset local array for real-time tracking
+                
                 if(snap.empty) {
                     contenedor.innerHTML = '<p class="text-sm text-slate-400 col-span-full py-4 text-center italic">Nadie en descanso en este momento.</p>';
                     return;
                 }
                 snap.forEach(d => {
                     const act = d.data();
+                    adminActivasArray.push(act); // Register active session
+
                     let icon = '<i class="ph ph-star text-purple-500"></i>';
                     let bg = 'purple';
                     if(act.tipo === 'Baño') { icon = '<i class="ph ph-toilet text-blue-500"></i>'; bg = 'blue'; }
                     else if(act.tipo === 'Comida') { icon = '<i class="ph ph-fork-knife text-orange-500"></i>'; bg = 'orange'; }
                     
-                    // Calculado con la hora Real sincronizada
-                    const minutos = Math.floor((getHoraReal() - act.inicio) / 60000);
+                    const transcurrido = Math.floor((getHoraReal() - act.inicio) / 1000);
+                    
                     contenedor.innerHTML += `
                         <div class="bg-white border border-slate-200 rounded-xl p-3 flex items-center gap-3 shadow-sm relative overflow-hidden group hover:border-${bg}-300 transition-colors">
                             <div class="absolute top-0 right-0 w-1.5 h-full bg-${bg}-400 animate-pulse"></div>
                             <div class="p-2 bg-${bg}-50 rounded-lg text-2xl">${icon}</div>
                             <div>
                                 <p class="font-bold text-slate-800 text-sm leading-tight">${act.nombre}</p>
-                                <p class="text-[11px] text-slate-500 font-medium">En ${act.tipo} hace <span class="text-${bg}-600 font-bold">${minutos}m</span></p>
+                                <p class="text-[11px] text-slate-500 font-medium">En ${act.tipo}: <span id="timer-admin-${act.pin}" class="text-${bg}-600 font-bold font-mono text-xs">${formatearTiempo(transcurrido)}</span></p>
                             </div>
                         </div>
                     `;
