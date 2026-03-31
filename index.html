@@ -203,111 +203,88 @@
         </div>
     </div>
 
-    <!-- PANTALLA ADMINISTRADOR -->
-    <div id="vista-admin" class="hidden max-w-6xl mx-auto pt-6 px-4">
+    <!-- PANTALLA ADMINISTRADOR - REDISEÑO MEJORADO -->
+    <div id="vista-admin" class="hidden max-w-7xl mx-auto pt-6 px-4 pb-12">
         <header class="flex flex-wrap justify-between items-center mb-6 gap-4">
             <div>
                 <h1 class="text-2xl font-bold text-slate-800 flex items-center gap-2">
-                    <i class="ph ph-lock-key text-slate-600"></i> Panel de Administración
+                    <i class="ph ph-squares-four text-blue-600"></i> Dashboard de Administración
                 </h1>
+                <p class="text-sm text-slate-500" id="fecha-admin-display">Control de Tiempos y Personal</p>
             </div>
-            <button onclick="cerrarSesionGeneral()" class="text-slate-500 hover:text-slate-800 flex items-center gap-1 font-medium bg-white px-4 py-2 rounded-lg border shadow-sm transition-colors text-sm">
-                <i class="ph ph-sign-out"></i> Salir
-            </button>
+            <div class="flex gap-2">
+                <button onclick="resetearTodosLosTiempos()" class="text-red-600 hover:text-red-800 hover:bg-red-50 flex items-center gap-1 font-bold bg-white px-4 py-2 rounded-lg border shadow-sm transition-colors text-sm">
+                    <i class="ph ph-arrow-counter-clockwise"></i> Reiniciar Todos
+                </button>
+                <button onclick="cerrarSesionGeneral()" class="text-slate-500 hover:text-slate-800 flex items-center gap-1 font-medium bg-white px-4 py-2 rounded-lg border shadow-sm transition-colors text-sm">
+                    <i class="ph ph-sign-out"></i> Salir
+                </button>
+            </div>
         </header>
 
-        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            <!-- Columna Izquierda: Config y Usuarios -->
-            <div class="space-y-6 lg:col-span-1">
-                
-                <!-- Configuración -->
-                <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-5">
-                    <h2 class="font-bold text-slate-700 mb-4 flex items-center gap-2"><i class="ph ph-gear"></i> Límites Base / Globales</h2>
-                    <div class="grid grid-cols-2 gap-3 mb-4">
-                        <div>
-                            <label class="block text-xs text-slate-500 mb-1">Baño (min)</label>
-                            <input type="number" id="limit-bano" class="w-full border rounded p-2 text-sm outline-none focus:border-blue-500">
-                        </div>
-                        <div>
-                            <label class="block text-xs text-slate-500 mb-1">Comida (min)</label>
-                            <input type="number" id="limit-comida" class="w-full border rounded p-2 text-sm outline-none focus:border-blue-500">
-                        </div>
-                    </div>
-                    <button onclick="guardarConfiguracionGlobal()" class="w-full bg-slate-800 hover:bg-slate-900 text-white text-sm font-bold py-2 rounded transition-colors">Guardar Globales</button>
-                </div>
-
-                <!-- Añadir Usuario -->
-                <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-5">
-                    <h2 class="font-bold text-slate-700 mb-4 flex items-center gap-2"><i class="ph ph-user-plus"></i> Nuevo Colaborador</h2>
-                    <div class="bg-slate-50 p-3 rounded-lg border border-slate-100">
-                        <label class="block text-xs text-slate-500 mb-1">ID / PIN de Acceso *</label>
-                        <input type="text" id="nuevo-pin" placeholder="Ej. 101" class="w-full border rounded p-2 text-sm mb-2 outline-none focus:border-blue-500">
-                        <label class="block text-xs text-slate-500 mb-1">Nombre *</label>
-                        <input type="text" id="nuevo-nombre" placeholder="Ej. María López" class="w-full border rounded p-2 text-sm mb-4 outline-none focus:border-blue-500">
-                        
-                        <div class="border-t border-slate-200 pt-3 mb-4">
-                            <p class="text-xs text-slate-500 mb-2 italic">Límites personalizados (Opcional, deja en blanco para usar el global):</p>
-                            <div class="grid grid-cols-2 gap-2">
-                                <div>
-                                    <label class="block text-[10px] uppercase text-slate-400 mb-1">Baño</label>
-                                    <input type="number" id="nuevo-limite-bano" placeholder="Global" class="w-full border rounded p-2 text-sm outline-none focus:border-blue-500">
-                                </div>
-                                <div>
-                                    <label class="block text-[10px] uppercase text-slate-400 mb-1">Comida</label>
-                                    <input type="number" id="nuevo-limite-comida" placeholder="Global" class="w-full border rounded p-2 text-sm outline-none focus:border-blue-500">
-                                </div>
-                            </div>
-                        </div>
-
-                        <button onclick="agregarColaborador()" class="w-full bg-blue-600 hover:bg-blue-700 text-white text-sm font-bold py-2 rounded transition-colors flex justify-center items-center gap-1">
-                            <i class="ph ph-plus-circle"></i> Crear
-                        </button>
-                    </div>
+        <!-- Fila de KPIs (Métricas Resumen) -->
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+            <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-5 flex items-center gap-4">
+                <div class="p-3 bg-blue-50 text-blue-600 rounded-xl"><i class="ph ph-users text-3xl"></i></div>
+                <div>
+                    <p class="text-sm text-slate-500 font-medium">Total Colaboradores</p>
+                    <p class="text-2xl font-bold text-slate-800" id="kpi-total">0</p>
                 </div>
             </div>
+            <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-5 flex items-center gap-4">
+                <div class="p-3 bg-orange-50 text-orange-600 rounded-xl relative overflow-hidden">
+                    <div class="absolute inset-0 bg-orange-200 opacity-20 animate-ping"></div>
+                    <i class="ph ph-broadcast text-3xl relative z-10"></i>
+                </div>
+                <div>
+                    <p class="text-sm text-slate-500 font-medium">En Descanso (Ahora)</p>
+                    <p class="text-2xl font-bold text-slate-800" id="kpi-activos">0</p>
+                </div>
+            </div>
+            <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-5 flex items-center gap-4">
+                <div class="p-3 bg-red-50 text-red-600 rounded-xl"><i class="ph ph-warning-circle text-3xl"></i></div>
+                <div>
+                    <p class="text-sm text-slate-500 font-medium">Excedidos (Hoy)</p>
+                    <p class="text-2xl font-bold text-red-600" id="kpi-excedidos">0</p>
+                </div>
+            </div>
+        </div>
 
-            <!-- Columna Derecha: Tiempos Acumulados y Monitor -->
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <!-- Columna Izquierda Principal (Monitor y Historial) -->
             <div class="lg:col-span-2 space-y-6">
                 
-                <!-- Monitor en Vivo -->
-                <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-5 border-l-4 border-l-orange-400">
-                    <h2 class="font-bold text-slate-700 mb-4 flex items-center gap-2"><i class="ph ph-broadcast text-orange-500 animate-pulse"></i> Descansos Activos</h2>
-                    <div id="lista-activos" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-                        <p class="text-sm text-slate-400 col-span-full">Nadie en descanso en este momento.</p>
+                <!-- Monitor en Vivo (Dashboard Panel) -->
+                <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+                    <div class="bg-gradient-to-r from-orange-50 to-amber-50 border-b border-orange-100 p-4 flex justify-between items-center">
+                        <h2 class="font-bold text-orange-800 flex items-center gap-2"><i class="ph ph-broadcast animate-pulse text-orange-500 text-xl"></i> Monitor en Vivo</h2>
+                        <span class="text-xs text-orange-600 font-medium tracking-wide uppercase">Tiempo Real</span>
                     </div>
-                </div>
-
-                <!-- Tiempos Acumulados -->
-                <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-5">
-                    <div class="flex justify-between items-center mb-4">
-                        <h2 class="font-bold text-slate-700 flex items-center gap-2"><i class="ph ph-users"></i> Tiempos Consumidos (Hoy)</h2>
-                    </div>
-                    
-                    <div class="max-h-96 overflow-y-auto pr-2 custom-scrollbar">
-                        <ul id="lista-colaboradores" class="space-y-3 text-sm">
-                            <!-- JS renderiza lista de acumulados -->
-                        </ul>
-                    </div>
-                </div>
-
-                <!-- Historial Global con Filtro por Fecha -->
-                <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-5">
-                    <div class="flex flex-wrap justify-between items-center mb-4 gap-2">
-                        <h2 class="font-bold text-slate-700 flex items-center gap-2"><i class="ph ph-list-dashes"></i> Historial de Descansos</h2>
-                        <div class="flex items-center gap-2">
-                            <label class="text-sm font-medium text-slate-600">Fecha:</label>
-                            <input type="date" id="filtro-fecha-historial" class="border rounded px-3 py-1 text-sm outline-none focus:border-blue-500" onchange="renderizarHistorial()">
+                    <div class="p-5 min-h-[120px]">
+                        <div id="lista-activos" class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            <p class="text-sm text-slate-400 col-span-full py-4 text-center italic">Nadie en descanso en este momento.</p>
                         </div>
                     </div>
-                    <div class="overflow-x-auto">
+                </div>
+
+                <!-- Historial Global con Filtro -->
+                <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+                    <div class="bg-slate-50 border-b border-slate-200 p-4 flex flex-wrap justify-between items-center gap-2">
+                        <h2 class="font-bold text-slate-700 flex items-center gap-2"><i class="ph ph-clock-counter-clockwise text-blue-500 text-xl"></i> Historial de Registros</h2>
+                        <div class="flex items-center gap-2 bg-white border rounded-lg px-2 shadow-sm">
+                            <i class="ph ph-calendar text-slate-400"></i>
+                            <input type="date" id="filtro-fecha-historial" class="border-none py-1.5 text-sm outline-none text-slate-600 font-medium" onchange="renderizarHistorial()">
+                        </div>
+                    </div>
+                    <div class="overflow-x-auto max-h-96 custom-scrollbar">
                         <table class="w-full text-left text-sm border-collapse">
-                            <thead>
-                                <tr class="bg-slate-50 text-slate-600 border-b border-slate-200">
-                                    <th class="p-2 font-medium">Colaborador</th>
-                                    <th class="p-2 font-medium">Tipo</th>
-                                    <th class="p-2 font-medium">Tiempo</th>
-                                    <th class="p-2 font-medium">Justificación / Estado</th>
-                                    <th class="p-2 font-medium">Hora</th>
+                            <thead class="sticky top-0 bg-white shadow-sm z-10">
+                                <tr class="text-slate-500 uppercase text-xs tracking-wider border-b border-slate-200">
+                                    <th class="p-3 font-semibold">Colaborador</th>
+                                    <th class="p-3 font-semibold">Tipo</th>
+                                    <th class="p-3 font-semibold">Tiempo</th>
+                                    <th class="p-3 font-semibold">Estado / Justificación</th>
+                                    <th class="p-3 font-semibold">Hora</th>
                                 </tr>
                             </thead>
                             <tbody id="tabla-registros-global" class="divide-y divide-slate-100">
@@ -315,6 +292,69 @@
                             </tbody>
                         </table>
                     </div>
+                </div>
+
+            </div>
+
+            <!-- Columna Derecha (Buscador, Consumos, Config) -->
+            <div class="lg:col-span-1 space-y-6">
+                
+                <!-- Lista de Colaboradores y Tiempos Consumidos -->
+                <div class="bg-white rounded-xl shadow-sm border border-slate-200 flex flex-col h-[550px]">
+                    <div class="p-4 border-b border-slate-100 bg-slate-50/50 rounded-t-xl">
+                        <h2 class="font-bold text-slate-700 flex items-center gap-2 mb-3"><i class="ph ph-users text-blue-500 text-xl"></i> Consumo del Personal (Hoy)</h2>
+                        <div class="relative">
+                            <i class="ph ph-magnifying-glass absolute left-3 top-2.5 text-slate-400 text-lg"></i>
+                            <input type="text" id="search-colab" onkeyup="renderizarListaAdmin()" placeholder="Buscar por nombre o ID..." class="w-full border border-slate-300 rounded-lg pl-10 pr-3 py-2 text-sm focus:border-blue-500 focus:ring-2 focus:ring-blue-100 outline-none transition-all shadow-sm">
+                        </div>
+                    </div>
+                    
+                    <div class="overflow-y-auto flex-1 p-4 custom-scrollbar">
+                        <ul id="lista-colaboradores" class="space-y-3">
+                            <!-- JS renderiza lista detallada de acumulados -->
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- Acordeón/Tarjetas de Gestión -->
+                <div class="grid grid-cols-1 gap-4">
+                    
+                    <!-- Configuración Global -->
+                    <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-4">
+                        <h3 class="font-bold text-slate-700 mb-3 flex items-center gap-2 text-sm"><i class="ph ph-gear text-slate-400"></i> Límites Globales (Por Defecto)</h3>
+                        <div class="flex gap-2 mb-3">
+                            <div class="flex-1">
+                                <label class="block text-[10px] uppercase text-slate-500 font-semibold mb-1">Baño (min)</label>
+                                <input type="number" id="limit-bano" class="w-full border border-slate-200 rounded bg-slate-50 p-2 text-sm outline-none focus:border-blue-500">
+                            </div>
+                            <div class="flex-1">
+                                <label class="block text-[10px] uppercase text-slate-500 font-semibold mb-1">Comida (min)</label>
+                                <input type="number" id="limit-comida" class="w-full border border-slate-200 rounded bg-slate-50 p-2 text-sm outline-none focus:border-blue-500">
+                            </div>
+                        </div>
+                        <button onclick="guardarConfiguracionGlobal()" class="w-full bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold py-2 rounded-lg transition-colors">Actualizar Globales</button>
+                    </div>
+
+                    <!-- Añadir Usuario -->
+                    <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-4">
+                        <h3 class="font-bold text-slate-700 mb-3 flex items-center gap-2 text-sm"><i class="ph ph-user-plus text-slate-400"></i> Registrar Nuevo Empleado</h3>
+                        <div class="space-y-2 mb-3">
+                            <div>
+                                <input type="text" id="nuevo-pin" placeholder="ID o PIN (Obligatorio)" class="w-full border border-slate-200 rounded bg-slate-50 p-2 text-sm outline-none focus:border-blue-500">
+                            </div>
+                            <div>
+                                <input type="text" id="nuevo-nombre" placeholder="Nombre completo" class="w-full border border-slate-200 rounded bg-slate-50 p-2 text-sm outline-none focus:border-blue-500">
+                            </div>
+                            <div class="grid grid-cols-2 gap-2 pt-1">
+                                <input type="number" id="nuevo-limite-bano" placeholder="Baño ind. (m)" class="w-full border border-slate-200 rounded bg-slate-50 p-2 text-xs outline-none focus:border-blue-500" title="Dejar vacío para global">
+                                <input type="number" id="nuevo-limite-comida" placeholder="Comida ind. (m)" class="w-full border border-slate-200 rounded bg-slate-50 p-2 text-xs outline-none focus:border-blue-500" title="Dejar vacío para global">
+                            </div>
+                        </div>
+                        <button onclick="agregarColaborador()" class="w-full bg-blue-600 hover:bg-blue-700 text-white text-sm font-bold py-2 rounded-lg transition-colors flex justify-center items-center gap-1 shadow-sm">
+                            <i class="ph ph-plus-bold"></i> Agregar Empleado
+                        </button>
+                    </div>
+
                 </div>
 
             </div>
@@ -379,7 +419,6 @@
 
         // --- Utilidades ---
         function obtenerFechaHoy() {
-            // Devuelve YYYY-MM-DD ajustado a la zona horaria local
             const tzOffset = (new Date()).getTimezoneOffset() * 60000;
             return (new Date(Date.now() - tzOffset)).toISOString().split('T')[0];
         }
@@ -410,15 +449,12 @@
             return `${sign}${m}:${s}`;
         }
 
-        // Nueva función utilitaria para convertir input humano a segundos
         function tiempoASegundos(tiempoStr) {
             if (!tiempoStr) return 0;
             const partes = tiempoStr.toString().trim().split(':');
             if (partes.length === 2) {
-                // Formato MM:SS
                 return (parseInt(partes[0]) || 0) * 60 + (parseInt(partes[1]) || 0);
             }
-            // Si solo escribe un número (ej. "15"), asumimos que son minutos cerrados
             return Math.floor((parseFloat(tiempoStr) || 0) * 60);
         }
 
@@ -452,7 +488,7 @@
             // --- INTERCEPTOR DE ADMIN ---
             if (pinDigitado.toLowerCase() === 'blqa') {
                 try {
-                    await signInWithEmailAndPassword(auth, EMAIL_ADMIN, 'admin123'); // Password guardado en Firebase
+                    await signInWithEmailAndPassword(auth, EMAIL_ADMIN, 'admin123');
                 } catch (error) {
                     if (error.code === 'auth/user-not-found' || error.code === 'auth/invalid-credential' || error.code === 'auth/invalid-login-credentials') {
                         try {
@@ -467,7 +503,7 @@
                     }
                 }
                 document.getElementById('pin-empleado').value = '';
-                return; // Detiene la ejecución normal
+                return;
             }
 
             // --- FLUJO NORMAL DE COLABORADOR ---
@@ -560,7 +596,11 @@
         // ==========================================
         function cargarAdminViews() {
             window.mostrarVista('vista-admin');
-            document.getElementById('filtro-fecha-historial').value = obtenerFechaHoy(); // Set filter to today
+            document.getElementById('filtro-fecha-historial').value = obtenerFechaHoy();
+            
+            // Set header date
+            const opcionesFecha = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
+            document.getElementById('fecha-admin-display').textContent = "Control de Tiempos • " + new Date().toLocaleDateString('es-ES', opcionesFecha);
             
             unsubConfig = onSnapshot(doc(db, 'config', 'global'), (docSnap) => {
                 if(docSnap.exists()){
@@ -582,10 +622,13 @@
             });
 
             unsubActivas = onSnapshot(collection(db, 'sesiones_activas'), (snap) => {
+                // Actualizar KPI
+                document.getElementById('kpi-activos').textContent = snap.size;
+
                 const contenedor = document.getElementById('lista-activos');
                 contenedor.innerHTML = '';
                 if(snap.empty) {
-                    contenedor.innerHTML = '<p class="text-sm text-slate-400 col-span-full">Nadie en descanso en este momento.</p>';
+                    contenedor.innerHTML = '<p class="text-sm text-slate-400 col-span-full py-4 text-center italic">Nadie en descanso en este momento.</p>';
                     return;
                 }
                 snap.forEach(d => {
@@ -597,12 +640,12 @@
                     
                     const minutos = Math.floor((Date.now() - act.inicio) / 60000);
                     contenedor.innerHTML += `
-                        <div class="bg-slate-50 border border-slate-100 rounded-lg p-3 flex items-center gap-3 shadow-sm relative overflow-hidden">
-                            <div class="absolute top-0 right-0 w-1 h-full bg-${bg}-400 animate-pulse"></div>
-                            <div class="text-3xl">${icon}</div>
+                        <div class="bg-white border border-slate-200 rounded-xl p-3 flex items-center gap-3 shadow-sm relative overflow-hidden group hover:border-${bg}-300 transition-colors">
+                            <div class="absolute top-0 right-0 w-1.5 h-full bg-${bg}-400 animate-pulse"></div>
+                            <div class="p-2 bg-${bg}-50 rounded-lg text-2xl">${icon}</div>
                             <div>
-                                <p class="font-bold text-slate-700 text-sm">${act.nombre}</p>
-                                <p class="text-xs text-slate-500">En ${act.tipo} hace ${minutos}m</p>
+                                <p class="font-bold text-slate-800 text-sm leading-tight">${act.nombre}</p>
+                                <p class="text-[11px] text-slate-500 font-medium">En ${act.tipo} hace <span class="text-${bg}-600 font-bold">${minutos}m</span></p>
                             </div>
                         </div>
                     `;
@@ -612,82 +655,144 @@
             unsubRegistros = onSnapshot(collection(db, 'registros'), (snap) => {
                 todosLosRegistros = snap.docs.map(d => d.data());
                 todosLosRegistros.sort((a, b) => b.fin - a.fin);
-                renderizarHistorial(); // Renderiza usando el filtro de fecha
+                renderizarHistorial(); 
             });
         }
+
+        window.resetearTodosLosTiempos = async function() {
+            if(confirm("¿Estás seguro de que deseas poner en CERO los tiempos usados de todos los colaboradores?")) {
+                try {
+                    const promises = datosColaboradoresRaw.map(c => {
+                        return setDoc(doc(db, 'tiempos_acumulados', c.pin), { Baño: 0, Comida: 0, Calidad: 0, fecha: obtenerFechaHoy(), ultimaActualizacion: Date.now() });
+                    });
+                    await Promise.all(promises);
+                    mostrarNotificacion('Todos los tiempos se han reiniciado a cero.');
+                } catch(e) {
+                    mostrarNotificacion('Hubo un error al reiniciar.', 'error');
+                }
+            }
+        };
 
         window.renderizarHistorial = function() {
             const fechaFiltro = document.getElementById('filtro-fecha-historial').value;
             const tabla = document.getElementById('tabla-registros-global');
             tabla.innerHTML = '';
             
-            // Filtrar en memoria por fecha (regla de no complex queries)
             const registrosFiltrados = todosLosRegistros.filter(r => r.fechaISO === fechaFiltro);
 
             if(registrosFiltrados.length === 0) {
-                tabla.innerHTML = `<tr><td colspan="5" class="p-4 text-center text-slate-400">No hay registros para la fecha ${fechaFiltro}</td></tr>`;
+                tabla.innerHTML = `<tr><td colspan="5" class="p-6 text-center text-slate-400 italic">No hay registros para la fecha seleccionada.</td></tr>`;
                 return;
             }
 
             registrosFiltrados.forEach(reg => {
-                let badgeClass = reg.estado === 'A tiempo' ? 'bg-green-100 text-green-700 border-green-200' : 'bg-red-100 text-red-700 border-red-200 font-bold';
-                if(reg.tipo === 'Calidad') badgeClass = 'bg-purple-100 text-purple-700 border-purple-200';
+                let badgeClass = reg.estado === 'A tiempo' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-red-50 text-red-700 border-red-200 font-bold';
+                if(reg.tipo === 'Calidad') badgeClass = 'bg-purple-50 text-purple-700 border-purple-200';
                 
-                const justificacionTxt = reg.justificacion ? `<div class="text-xs text-slate-500 italic mt-0.5 max-w-xs truncate" title="${reg.justificacion}">${reg.justificacion}</div>` : '';
+                const justificacionTxt = reg.justificacion ? `<div class="text-xs text-slate-500 italic mt-1 max-w-[200px] truncate" title="${reg.justificacion}">"${reg.justificacion}"</div>` : '';
                 const fechaObj = new Date(reg.fin);
                 const horaStr = fechaObj.toLocaleTimeString([],{hour:'2-digit', minute:'2-digit'});
                 
+                let tipoIcon = reg.tipo === 'Baño' ? 'ph-toilet text-blue-500' : (reg.tipo === 'Comida' ? 'ph-fork-knife text-orange-500' : 'ph-star text-purple-500');
+
                 tabla.innerHTML += `
-                    <tr class="hover:bg-slate-50">
-                        <td class="p-2 font-medium text-slate-700">${reg.nombre} <span class="text-xs text-slate-400 ml-1">#${reg.pin}</span></td>
-                        <td class="p-2 text-slate-600">${reg.tipo}</td>
-                        <td class="p-2 font-mono">${reg.duracionStr}</td>
-                        <td class="p-2">
-                            <span class="px-2 py-1 text-xs rounded-md border inline-block ${badgeClass}">${reg.estado}</span>
+                    <tr class="hover:bg-slate-50/80 transition-colors border-b border-slate-100 last:border-0 group">
+                        <td class="p-3">
+                            <div class="font-bold text-slate-700">${reg.nombre}</div>
+                            <div class="text-[10px] font-mono text-slate-400">ID: ${reg.pin}</div>
+                        </td>
+                        <td class="p-3 text-slate-600 font-medium text-sm flex items-center gap-1.5 mt-1.5"><i class="ph ${tipoIcon} text-lg"></i> ${reg.tipo}</td>
+                        <td class="p-3 font-mono font-semibold text-slate-700">${reg.duracionStr}</td>
+                        <td class="p-3">
+                            <span class="px-2 py-0.5 text-xs rounded border inline-block ${badgeClass}">${reg.estado}</span>
                             ${justificacionTxt}
                         </td>
-                        <td class="p-2 text-xs text-slate-500">${horaStr}</td>
+                        <td class="p-3 text-xs text-slate-500 font-medium">${horaStr}</td>
                     </tr>
                 `;
             });
         }
 
-        function renderizarListaAdmin() {
+        window.renderizarListaAdmin = function() {
             const lista = document.getElementById('lista-colaboradores');
             lista.innerHTML = '';
+            
+            // Update KPI Total
+            document.getElementById('kpi-total').textContent = datosColaboradoresRaw.length;
+
             if(datosColaboradoresRaw.length === 0) {
-                lista.innerHTML = '<li class="text-slate-400 italic">No hay colaboradores registrados.</li>';
+                lista.innerHTML = '<div class="p-6 text-center text-slate-400 italic">No hay colaboradores registrados.</div>';
+                document.getElementById('kpi-excedidos').textContent = "0";
                 return;
             }
 
             const hoy = obtenerFechaHoy();
+            let excedidosCount = 0;
+            const searchInput = document.getElementById('search-colab');
+            const term = searchInput ? searchInput.value.toLowerCase() : '';
 
+            // Primero calculamos el KPI real de todos (no solo los filtrados)
             datosColaboradoresRaw.forEach(c => {
+                const acumulado = tiemposAcumuladosGlobal[c.pin] || {};
+                if (acumulado.fecha === hoy) {
+                    const limBNum = c.limiteBano ? c.limiteBano : limitesGlobales.bano;
+                    const limCNum = c.limiteComida ? c.limiteComida : limitesGlobales.comida;
+                    if ((acumulado.Baño || 0) > limBNum * 60 || (acumulado.Comida || 0) > limCNum * 60) {
+                        excedidosCount++;
+                    }
+                }
+            });
+            document.getElementById('kpi-excedidos').textContent = excedidosCount;
+
+            // Filtramos visualmente la lista
+            const filtrados = datosColaboradoresRaw.filter(c => c.nombre.toLowerCase().includes(term) || c.pin.includes(term));
+
+            if(filtrados.length === 0) {
+                lista.innerHTML = '<div class="p-6 text-center text-slate-400 italic">No se encontraron resultados para la búsqueda.</div>';
+                return;
+            }
+
+            filtrados.forEach(c => {
                 const acumulado = tiemposAcumuladosGlobal[c.pin] || {};
                 const esDeHoy = acumulado.fecha === hoy;
                 const minBano = esDeHoy ? (acumulado.Baño || 0) : 0;
                 const minComida = esDeHoy ? (acumulado.Comida || 0) : 0;
                 const minCalidad = esDeHoy ? (acumulado.Calidad || 0) : 0;
                 
+                const limBNum = c.limiteBano ? c.limiteBano : limitesGlobales.bano;
+                const limCNum = c.limiteComida ? c.limiteComida : limitesGlobales.comida;
+                
+                const banoExcedido = minBano > limBNum * 60;
+                const comidaExcedida = minComida > limCNum * 60;
+
                 const limB = c.limiteBano ? `${c.limiteBano}m` : `Global`;
                 const limC = c.limiteComida ? `${c.limiteComida}m` : `Global`;
 
                 lista.innerHTML += `
-                    <li class="flex flex-col bg-slate-50 p-3 rounded-lg border border-slate-100 gap-2 hover:shadow-sm transition-shadow">
-                        <div class="flex justify-between items-center border-b border-slate-200 pb-2 mb-1">
+                    <li class="flex flex-col bg-white p-3.5 rounded-xl border border-slate-100 hover:border-blue-200 transition-colors shadow-sm">
+                        <div class="flex justify-between items-start border-b border-slate-50 pb-2.5 mb-2">
                             <div>
-                                <span class="font-bold text-slate-800">${c.pin}</span> - ${c.nombre}
-                                <div class="text-[10px] text-slate-400">Límites: Baño(${limB}) • Comida(${limC})</div>
+                                <div class="font-bold text-slate-800 text-sm">${c.nombre}</div>
+                                <div class="text-[11px] text-slate-400 font-mono tracking-wide mt-0.5">ID: ${c.pin}</div>
                             </div>
                             <div class="flex gap-1">
-                                <button onclick="abrirModalEditar('${c.pin}', '${c.nombre}', '${c.id}')" class="text-blue-500 hover:bg-blue-100 px-2 py-1 rounded text-xs flex items-center gap-1 font-medium"><i class="ph ph-pencil-simple"></i> Ajustar</button>
-                                <button onclick="eliminarColaborador('${c.id}')" class="text-red-400 hover:text-red-600 hover:bg-red-50 p-1.5 rounded transition-colors"><i class="ph ph-trash"></i></button>
+                                <button onclick="abrirModalEditar('${c.pin}', '${c.nombre}', '${c.id}')" class="text-slate-400 hover:text-blue-600 bg-slate-50 hover:bg-blue-50 p-1.5 rounded transition-colors" title="Ajustar Tiempos"><i class="ph ph-pencil-simple text-base"></i></button>
+                                <button onclick="eliminarColaborador('${c.id}')" class="text-slate-400 hover:text-red-600 bg-slate-50 hover:bg-red-50 p-1.5 rounded transition-colors" title="Eliminar"><i class="ph ph-trash text-base"></i></button>
                             </div>
                         </div>
-                        <div class="grid grid-cols-3 text-xs text-slate-600">
-                            <div class="flex items-center gap-1"><i class="ph ph-toilet text-slate-400"></i> <strong>${formatearTiempo(minBano)}</strong></div>
-                            <div class="flex items-center gap-1"><i class="ph ph-fork-knife text-slate-400"></i> <strong>${formatearTiempo(minComida)}</strong></div>
-                            <div class="flex items-center gap-1 text-purple-600"><i class="ph ph-star text-purple-400"></i> <strong>${formatearTiempo(minCalidad)}</strong></div>
+                        <div class="grid grid-cols-3 gap-2">
+                            <div class="flex flex-col p-2 rounded-lg bg-slate-50 border ${banoExcedido ? 'border-red-200 text-red-600' : 'border-slate-100 text-slate-700'}">
+                                <span class="flex items-center gap-1 text-[9px] uppercase font-bold text-slate-400 mb-0.5"><i class="ph ph-toilet text-blue-400"></i> Baño</span>
+                                <span class="font-bold text-sm font-mono">${formatearTiempo(minBano)} <span class="text-[9px] font-sans text-slate-400 font-normal">/ ${limB}</span></span>
+                            </div>
+                            <div class="flex flex-col p-2 rounded-lg bg-slate-50 border ${comidaExcedida ? 'border-red-200 text-red-600' : 'border-slate-100 text-slate-700'}">
+                                <span class="flex items-center gap-1 text-[9px] uppercase font-bold text-slate-400 mb-0.5"><i class="ph ph-fork-knife text-orange-400"></i> Comida</span>
+                                <span class="font-bold text-sm font-mono">${formatearTiempo(minComida)} <span class="text-[9px] font-sans text-slate-400 font-normal">/ ${limC}</span></span>
+                            </div>
+                            <div class="flex flex-col p-2 rounded-lg bg-purple-50/50 border border-purple-100 text-purple-700">
+                                <span class="flex items-center gap-1 text-[9px] uppercase font-bold text-purple-400 mb-0.5"><i class="ph ph-star text-purple-500"></i> Calidad</span>
+                                <span class="font-bold text-sm font-mono">${formatearTiempo(minCalidad)}</span>
+                            </div>
                         </div>
                     </li>
                 `;
@@ -695,7 +800,7 @@
         }
 
         window.abrirModalEditar = function(pin, nombre, docId) {
-            cerrarModales(); // Se llama PRIMERO para no limpiar las variables después de establecerlas
+            cerrarModales(); 
             
             pinEditando = pin;
             idDocEditando = docId;
@@ -703,17 +808,14 @@
             const acumulado = tiemposAcumuladosGlobal[pin] || {};
             const esDeHoy = acumulado.fecha === hoy;
             
-            // Buscar datos del colaborador para rellenar límites
             const colab = datosColaboradoresRaw.find(c => c.id === docId) || {};
             
             document.getElementById('edit-nombre').textContent = nombre;
             
-            // Consumidos (Mostrando el formato Minutos:Segundos exacto)
             document.getElementById('edit-consumido-bano').value = esDeHoy ? formatearTiempo(acumulado.Baño || 0) : "00:00";
             document.getElementById('edit-consumido-comida').value = esDeHoy ? formatearTiempo(acumulado.Comida || 0) : "00:00";
             document.getElementById('edit-consumido-calidad').value = esDeHoy ? formatearTiempo(acumulado.Calidad || 0) : "00:00";
             
-            // Limites individuales (Siguen siendo enteros)
             document.getElementById('edit-limite-bano').value = colab.limiteBano || '';
             document.getElementById('edit-limite-comida').value = colab.limiteComida || '';
             
@@ -724,7 +826,6 @@
         window.guardarEdicionTiempoYLimites = async function() {
             if(!pinEditando || !idDocEditando) return;
             
-            // Convertimos la entrada de texto (MM:SS) a segundos exactos
             const segBano = tiempoASegundos(document.getElementById('edit-consumido-bano').value);
             const segComida = tiempoASegundos(document.getElementById('edit-consumido-comida').value);
             const segCalidad = tiempoASegundos(document.getElementById('edit-consumido-calidad').value);
@@ -733,7 +834,6 @@
             const limComida = parseInt(document.getElementById('edit-limite-comida').value) || null;
             
             try {
-                // 1. Guardar Tiempos Consumidos
                 await setDoc(doc(db, 'tiempos_acumulados', pinEditando), {
                     Baño: segBano,
                     Comida: segComida,
@@ -742,7 +842,6 @@
                     ultimaActualizacion: Date.now()
                 }, { merge: true });
                 
-                // 2. Guardar Límites Personales en el documento del colaborador
                 await setDoc(doc(db, 'colaboradores', idDocEditando), {
                     limiteBano: limBano,
                     limiteComida: limComida
@@ -789,7 +888,7 @@
         };
 
         window.eliminarColaborador = function(docId) {
-            cerrarModales(); // Se llama PRIMERO
+            cerrarModales(); 
             idColaboradorAEliminar = docId;
             document.getElementById('modal-overlay').classList.remove('hidden');
             document.getElementById('modal-confirm').classList.remove('hidden');
@@ -799,7 +898,6 @@
         //         VISTA DEL COLABORADOR
         // ==========================================
         function iniciarEscuchasEmpleado() {
-            // Escuchar mis propios datos (por si el admin cambia mis límites en vivo)
             unsubMisDatos = onSnapshot(doc(db, 'colaboradores', empleadoActual.docId), (docSnap) => {
                 if(docSnap.exists()){
                     empleadoActual = { docId: docSnap.id, ...docSnap.data() };
@@ -818,10 +916,8 @@
                 const hoy = obtenerFechaHoy();
                 let data = docSnap.data();
                 
-                // AUTO RESET DIARIO
                 if(!data || data.fecha !== hoy) {
                     data = { Baño: 0, Comida: 0, Calidad: 0, fecha: hoy, ultimaActualizacion: Date.now() };
-                    // Se guarda en background
                     setDoc(doc(db, 'tiempos_acumulados', empleadoActual.pin), data);
                 }
                 
@@ -843,13 +939,12 @@
         function obtenerLimiteActual(tipo) {
             if (tipo === 'Baño') return empleadoActual.limiteBano || limitesGlobales.bano;
             if (tipo === 'Comida') return empleadoActual.limiteComida || limitesGlobales.comida;
-            return Infinity; // Calidad
+            return Infinity; 
         }
 
         function actualizarDisplaysInactivos() {
             if(sesionActivaActual) return; 
             
-            // Actualizar labels visuales base
             document.getElementById('lim-Baño').textContent = obtenerLimiteActual('Baño');
             document.getElementById('lim-Comida').textContent = obtenerLimiteActual('Comida');
 
@@ -865,7 +960,7 @@
                 disp.textContent = formatearTiempo(acumulado);
 
                 if(tipo === 'Calidad') {
-                    // Calidad no tiene límite numérico visual inactivo
+                    // Sin límite visual inactivo
                 } else {
                     if (restante > 0) {
                         rem.innerHTML = `Restan: ${formatearTiempo(restante)}`;
@@ -898,10 +993,9 @@
             }
         };
 
-        // --- LÓGICA DE CALIDAD ---
         window.abrirModalCalidad = function() {
             if(sesionActivaActual) return;
-            cerrarModales(); // Correcto
+            cerrarModales();
             document.getElementById('calidad-justificacion').value = '';
             document.getElementById('modal-overlay').classList.remove('hidden');
             document.getElementById('modal-calidad').classList.remove('hidden');
@@ -921,7 +1015,6 @@
             
             const tipoActivo = datosSesion.tipo;
             
-            // Apagar y bloquear los inactivos
             ['Baño', 'Comida', 'Calidad'].forEach(t => {
                 const btn = document.getElementById('btn-' + t);
                 if (t !== tipoActivo) {
@@ -992,7 +1085,6 @@
                 document.getElementById('play-' + t).classList.add('hidden');
             });
             
-            // Reinstalar clases por defecto al rem-Calidad
             const remCalidad = document.getElementById('rem-Calidad');
             remCalidad.textContent = 'Requiere justificación';
             remCalidad.className = 'text-[0.7rem] sm:text-xs mt-3 text-gray-400 transition-colors px-2 text-center truncate w-full';
@@ -1017,7 +1109,6 @@
             const tipoActivo = sesionActivaActual.tipo;
             const nuevoAcumulado = (tiempoAcumuladoActual[tipoActivo] || 0) + transcurridoSegmento;
 
-            // Calcular el estado final para el registro
             const limiteMin = obtenerLimiteActual(tipoActivo);
             let estado = "A tiempo";
             if (tipoActivo !== 'Calidad' && nuevoAcumulado > (limiteMin * 60)) {
@@ -1033,24 +1124,21 @@
                 justificacion: sesionActivaActual.justificacion || '',
                 inicio: sesionActivaActual.inicio,
                 fin: fin,
-                fechaISO: obtenerFechaHoy(), // Para poder filtrar en admin
+                fechaISO: obtenerFechaHoy(),
                 duracionSegundos: transcurridoSegmento,
                 duracionStr: formatearTiempo(transcurridoSegmento),
                 estado: estado
             };
 
             try {
-                // 1. Guardar en Historial
                 await addDoc(collection(db, 'registros'), registroFinal);
                 
-                // 2. Guardar acumulado con fecha local para reset
                 await setDoc(doc(db, 'tiempos_acumulados', empleadoActual.pin), {
                     [tipoActivo]: nuevoAcumulado,
                     fecha: obtenerFechaHoy(),
                     ultimaActualizacion: fin
                 }, { merge: true });
                 
-                // 3. Borrar sesión activa
                 await deleteDoc(doc(db, 'sesiones_activas', empleadoActual.pin));
                 
                 mostrarNotificacion(`Agregaste ${formatearTiempo(transcurridoSegmento)} a tu cuenta.`);
