@@ -34,17 +34,6 @@
     <!-- MODALES PERSONALIZADOS -->
     <div id="modal-overlay" class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 hidden flex items-center justify-center px-4 transition-opacity">
         
-        <!-- Modal Password Admin -->
-        <div id="modal-password" class="bg-white rounded-2xl shadow-xl w-full max-w-sm p-6 hidden">
-            <h3 class="text-xl font-bold text-slate-800 mb-2">Acceso Administrador</h3>
-            <p class="text-slate-500 text-sm mb-4">Ingresa la palabra secreta para continuar.</p>
-            <input type="password" id="admin-password-input" class="w-full border-2 border-slate-200 rounded-xl p-3 mb-6 focus:border-blue-500 outline-none" placeholder="Palabra secreta (admin123)" onkeypress="if(event.key === 'Enter') verificarPasswordAdmin()">
-            <div class="flex justify-end gap-3">
-                <button onclick="cerrarModales()" class="px-4 py-2 text-slate-500 hover:bg-slate-100 rounded-lg font-medium transition-colors">Cancelar</button>
-                <button onclick="verificarPasswordAdmin()" class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-bold transition-colors">Ingresar</button>
-            </div>
-        </div>
-
         <!-- Modal Confirmación Eliminar -->
         <div id="modal-confirm" class="bg-white rounded-2xl shadow-xl w-full max-w-sm p-6 hidden">
             <h3 class="text-xl font-bold text-slate-800 mb-2 flex items-center gap-2"><i class="ph ph-warning text-red-500 text-2xl"></i> ¿Eliminar Colaborador?</h3>
@@ -128,41 +117,14 @@
         </button>
     </div>
 
-    <!-- PANTALLA DE SELECCIÓN DE ROL -->
-    <div id="vista-seleccion" class="hidden max-w-md mx-auto pt-20 px-4">
-        <div class="text-center mb-10">
-            <h1 class="text-4xl font-bold text-blue-700 mb-2"><i class="ph ph-clock-countdown"></i> TimeCloud</h1>
-            <p class="text-gray-500">Selecciona cómo deseas ingresar</p>
-        </div>
-        <div class="grid grid-cols-1 gap-4">
-            <button onclick="mostrarVista('vista-login-colaborador')" class="flex items-center p-6 bg-white hover:bg-blue-50 border-2 border-gray-200 hover:border-blue-300 rounded-xl transition-all group shadow-sm text-left">
-                <i class="ph ph-user-circle text-5xl text-blue-500 mr-4 group-hover:scale-110 transition-transform"></i>
-                <div>
-                    <h3 class="text-xl font-bold text-gray-800">Soy Colaborador</h3>
-                    <p class="text-gray-500 text-sm">Registrar mis tiempos de descanso</p>
-                </div>
-            </button>
-            <button onclick="solicitarAdmin()" class="flex items-center p-6 bg-white hover:bg-slate-50 border-2 border-gray-200 hover:border-slate-300 rounded-xl transition-all group shadow-sm text-left">
-                <i class="ph ph-lock-key text-5xl text-slate-500 mr-4 group-hover:scale-110 transition-transform"></i>
-                <div>
-                    <h3 class="text-xl font-bold text-gray-800">Administrador</h3>
-                    <p class="text-gray-500 text-sm">Configurar equipo y ver reportes</p>
-                </div>
-            </button>
-        </div>
-    </div>
-
-    <!-- PANTALLA LOGIN COLABORADOR -->
+    <!-- PANTALLA LOGIN ÚNICO -->
     <div id="vista-login-colaborador" class="hidden max-w-sm mx-auto pt-32 px-4 text-center">
-        <button onclick="mostrarVista('vista-seleccion')" class="text-gray-500 hover:text-gray-800 mb-8 flex items-center gap-1 mx-auto">
-            <i class="ph ph-arrow-left"></i> Volver
-        </button>
         <div class="bg-white p-8 rounded-2xl shadow-md border border-gray-100">
             <i class="ph ph-identification-badge text-6xl text-blue-600 mb-4 block"></i>
             <h2 class="text-2xl font-bold text-gray-800 mb-2">Ingresa tu ID</h2>
-            <p class="text-gray-500 text-sm mb-6">Coloca el número de identificación proporcionado por tu administrador.</p>
+            <p class="text-gray-500 text-sm mb-6">Coloca tu número de identificación para acceder al sistema.</p>
             
-            <input type="text" id="pin-empleado" placeholder="Ej. 1234" class="w-full text-center text-2xl tracking-widest border-2 border-gray-300 rounded-xl p-3 focus:ring-4 focus:ring-blue-100 focus:border-blue-500 outline-none transition-all mb-4" onkeypress="if(event.key === 'Enter') loginEmpleado()">
+            <input type="text" id="pin-empleado" autocomplete="off" placeholder="Ej. 1234" class="w-full text-center text-2xl tracking-widest border-2 border-gray-300 rounded-xl p-3 focus:ring-4 focus:ring-blue-100 focus:border-blue-500 outline-none transition-all mb-4" onkeypress="if(event.key === 'Enter') loginEmpleado()">
             
             <button onclick="loginEmpleado()" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 rounded-xl shadow-md transition-colors">
                 Ingresar
@@ -412,7 +374,7 @@
         }
 
         window.mostrarVista = function(idVista) {
-            ['vista-cargando', 'vista-error', 'vista-seleccion', 'vista-login-colaborador', 'vista-empleado', 'vista-admin'].forEach(v => {
+            ['vista-cargando', 'vista-error', 'vista-login-colaborador', 'vista-empleado', 'vista-admin'].forEach(v => {
                 const el = document.getElementById(v);
                 if (el) el.classList.add('hidden');
             });
@@ -452,17 +414,40 @@
                     }
                 } else {
                     usuarioAutenticado = null;
-                    window.mostrarVista('vista-seleccion');
+                    window.mostrarVista('vista-login-colaborador');
                 }
             });
         }
 
-        // --- LÓGICA DE LOGIN EMPLEADO ---
+        // --- LÓGICA DE LOGIN ÚNICO ---
         window.loginEmpleado = async function() {
             const pinDigitado = document.getElementById('pin-empleado').value.trim();
             if(!pinDigitado) return mostrarNotificacion('Ingresa tu ID', 'error');
             
             window.mostrarVista('vista-cargando');
+
+            // --- INTERCEPTOR DE ADMIN ---
+            if (pinDigitado.toLowerCase() === 'blqa') {
+                try {
+                    await signInWithEmailAndPassword(auth, EMAIL_ADMIN, 'admin123'); // Password guardado en Firebase
+                } catch (error) {
+                    if (error.code === 'auth/user-not-found' || error.code === 'auth/invalid-credential' || error.code === 'auth/invalid-login-credentials') {
+                        try {
+                            await createUserWithEmailAndPassword(auth, EMAIL_ADMIN, 'admin123');
+                        } catch (err2) {
+                            window.mostrarVista('vista-login-colaborador');
+                            mostrarNotificacion('Error del sistema al crear Admin', 'error');
+                        }
+                    } else {
+                        window.mostrarVista('vista-login-colaborador');
+                        mostrarNotificacion('Error de conexión a Firebase', 'error');
+                    }
+                }
+                document.getElementById('pin-empleado').value = '';
+                return; // Detiene la ejecución normal
+            }
+
+            // --- FLUJO NORMAL DE COLABORADOR ---
             const emailFicticio = `${pinDigitado}@corpodatos.com`;
             
             try {
@@ -507,44 +492,6 @@
             }
         }
 
-        // --- LÓGICA DE LOGIN ADMIN ---
-        window.solicitarAdmin = function() {
-            cerrarModales();
-            document.getElementById('modal-overlay').classList.remove('hidden');
-            document.getElementById('modal-password').classList.remove('hidden');
-            document.getElementById('admin-password-input').value = '';
-            setTimeout(() => document.getElementById('admin-password-input').focus(), 100);
-        };
-
-        window.verificarPasswordAdmin = async function() {
-            const pass = document.getElementById('admin-password-input').value;
-            if(!pass) return;
-
-            cerrarModales();
-            window.mostrarVista('vista-cargando');
-            
-            try {
-                await signInWithEmailAndPassword(auth, EMAIL_ADMIN, pass);
-            } catch (error) {
-                if (error.code === 'auth/user-not-found' || error.code === 'auth/invalid-credential' || error.code === 'auth/invalid-login-credentials') {
-                    if (pass === 'admin123') { 
-                        try {
-                            await createUserWithEmailAndPassword(auth, EMAIL_ADMIN, pass);
-                        } catch (err2) {
-                            window.mostrarVista('vista-seleccion');
-                            mostrarNotificacion('Error al configurar cuenta Admin.', 'error');
-                        }
-                    } else {
-                        window.mostrarVista('vista-seleccion');
-                        mostrarNotificacion('Palabra secreta incorrecta', 'error');
-                    }
-                } else {
-                    window.mostrarVista('vista-seleccion');
-                    mostrarNotificacion('Palabra secreta incorrecta', 'error');
-                }
-            }
-        };
-
         window.cerrarSesionGeneral = async function() {
             if(intervaloCronometro) clearInterval(intervaloCronometro);
             if(unsubMiSesion) unsubMiSesion();
@@ -563,7 +510,6 @@
         // --- MODALES Y LÓGICA ---
         window.cerrarModales = function() {
             document.getElementById('modal-overlay').classList.add('hidden');
-            document.getElementById('modal-password').classList.add('hidden');
             document.getElementById('modal-confirm').classList.add('hidden');
             document.getElementById('modal-editar').classList.add('hidden');
             document.getElementById('modal-calidad').classList.add('hidden');
