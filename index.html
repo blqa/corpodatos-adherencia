@@ -1,0 +1,570 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Control de Tiempos - Nube</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+    <style>
+        @keyframes pulse-red {
+            0%, 100% { background-color: #fee2e2; color: #991b1b; border-color: #ef4444; }
+            50% { background-color: #fca5a5; color: #7f1d1d; border-color: #dc2626; }
+        }
+        .overtime-alert {
+            animation: pulse-red 2s infinite;
+        }
+        /* Loader simple */
+        .loader {
+            border: 4px solid #f3f3f3; border-top: 4px solid #3b82f6; border-radius: 50%;
+            width: 40px; height: 40px; animation: spin 1s linear infinite;
+        }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+    </style>
+</head>
+<body class="bg-gray-50 min-h-screen font-sans text-gray-800 pb-10">
+
+    <!-- Mensajes de Notificación Globales -->
+    <div id="notificacion" class="fixed top-4 left-1/2 transform -translate-x-1/2 z-50 hidden max-w-sm w-full bg-white shadow-lg rounded-lg border-l-4 p-4 transition-all duration-300">
+        <p class="font-bold flex items-center gap-2" id="notificacion-texto"></p>
+    </div>
+
+    <!-- PANTALLA DE CARGA INICIAL -->
+    <div id="vista-cargando" class="flex flex-col items-center justify-center min-h-screen">
+        <div class="loader mb-4"></div>
+        <p class="text-gray-500 font-medium animate-pulse">Conectando a la nube...</p>
+    </div>
+
+    <!-- PANTALLA ERROR DE ENTORNO -->
+    <div id="vista-error" class="hidden flex flex-col items-center justify-center min-h-screen px-4 text-center">
+        <i class="ph ph-cloud-slash text-6xl text-red-500 mb-4"></i>
+        <h2 class="text-2xl font-bold text-gray-800 mb-2">Error de Conexión</h2>
+        <p class="text-gray-600 max-w-md">Esta aplicación requiere ejecutarse dentro de la plataforma para conectar con la base de datos. No funcionará si abres el archivo localmente sin un servidor.</p>
+    </div>
+
+    <!-- PANTALLA DE SELECCIÓN DE ROL -->
+    <div id="vista-seleccion" class="hidden max-w-md mx-auto pt-20 px-4">
+        <div class="text-center mb-10">
+            <h1 class="text-4xl font-bold text-blue-700 mb-2"><i class="ph ph-clock-countdown"></i> TimeCloud</h1>
+            <p class="text-gray-500">Selecciona cómo deseas ingresar</p>
+        </div>
+        <div class="grid grid-cols-1 gap-4">
+            <button onclick="mostrarVista('vista-login-colaborador')" class="flex items-center p-6 bg-white hover:bg-blue-50 border-2 border-gray-200 hover:border-blue-300 rounded-xl transition-all group shadow-sm text-left">
+                <i class="ph ph-user-circle text-5xl text-blue-500 mr-4 group-hover:scale-110 transition-transform"></i>
+                <div>
+                    <h3 class="text-xl font-bold text-gray-800">Soy Colaborador</h3>
+                    <p class="text-gray-500 text-sm">Registrar mis tiempos de descanso</p>
+                </div>
+            </button>
+            <button onclick="iniciarAdmin()" class="flex items-center p-6 bg-white hover:bg-slate-50 border-2 border-gray-200 hover:border-slate-300 rounded-xl transition-all group shadow-sm text-left">
+                <i class="ph ph-lock-key text-5xl text-slate-500 mr-4 group-hover:scale-110 transition-transform"></i>
+                <div>
+                    <h3 class="text-xl font-bold text-gray-800">Administrador</h3>
+                    <p class="text-gray-500 text-sm">Configurar equipo y ver reportes</p>
+                </div>
+            </button>
+        </div>
+    </div>
+
+    <!-- PANTALLA LOGIN COLABORADOR -->
+    <div id="vista-login-colaborador" class="hidden max-w-sm mx-auto pt-32 px-4 text-center">
+        <button onclick="mostrarVista('vista-seleccion')" class="text-gray-500 hover:text-gray-800 mb-8 flex items-center gap-1 mx-auto">
+            <i class="ph ph-arrow-left"></i> Volver
+        </button>
+        <div class="bg-white p-8 rounded-2xl shadow-md border border-gray-100">
+            <i class="ph ph-identification-badge text-6xl text-blue-600 mb-4 block"></i>
+            <h2 class="text-2xl font-bold text-gray-800 mb-2">Ingresa tu ID</h2>
+            <p class="text-gray-500 text-sm mb-6">Coloca el número de identificación proporcionado por tu administrador.</p>
+            
+            <input type="text" id="pin-empleado" placeholder="Ej. 1234" class="w-full text-center text-2xl tracking-widest border-2 border-gray-300 rounded-xl p-3 focus:ring-4 focus:ring-blue-100 focus:border-blue-500 outline-none transition-all mb-4" onkeypress="if(event.key === 'Enter') loginEmpleado()">
+            
+            <button onclick="loginEmpleado()" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 rounded-xl shadow-md transition-colors">
+                Ingresar
+            </button>
+        </div>
+    </div>
+
+    <!-- PANTALLA PRINCIPAL COLABORADOR (BOTONES / CRONÓMETRO) -->
+    <div id="vista-empleado" class="hidden max-w-2xl mx-auto pt-8 px-4">
+        <header class="flex justify-between items-center mb-8 bg-white p-4 rounded-xl shadow-sm border border-gray-100">
+            <div>
+                <h1 class="text-2xl font-bold text-gray-800">Hola, <span id="nombre-empleado-display" class="text-blue-600"></span></h1>
+                <p class="text-sm text-gray-500">ID: <span id="id-empleado-display"></span></p>
+            </div>
+            <button onclick="cerrarSesionEmpleado()" class="text-red-500 hover:text-red-700 flex flex-col items-center text-sm font-medium">
+                <i class="ph ph-sign-out text-2xl"></i> Salir
+            </button>
+        </header>
+
+        <!-- Botones de Acción -->
+        <div id="panel-acciones" class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <button onclick="iniciarCronometro('Baño')" class="flex flex-col items-center justify-center p-8 bg-blue-50 hover:bg-blue-100 text-blue-700 rounded-2xl border-2 border-blue-200 transition-all active:scale-95 group shadow-sm">
+                <i class="ph ph-toilet text-6xl mb-4 group-hover:scale-110 transition-transform"></i>
+                <span class="text-2xl font-bold">Ir al Baño</span>
+            </button>
+            <button onclick="iniciarCronometro('Comida')" class="flex flex-col items-center justify-center p-8 bg-orange-50 hover:bg-orange-100 text-orange-700 rounded-2xl border-2 border-orange-200 transition-all active:scale-95 group shadow-sm">
+                <i class="ph ph-fork-knife text-6xl mb-4 group-hover:scale-110 transition-transform"></i>
+                <span class="text-2xl font-bold">Ir a Comer</span>
+            </button>
+        </div>
+
+        <!-- Panel del Cronómetro Activo -->
+        <div id="panel-cronometro" class="hidden bg-white rounded-2xl shadow-lg border border-gray-100 p-8 text-center">
+            <h2 class="text-3xl font-bold text-gray-800 mb-2" id="cronometro-titulo">Descanso</h2>
+            <div id="display-tiempo" class="text-7xl font-mono font-bold text-gray-800 my-8 py-10 rounded-2xl bg-gray-50 border-4 border-gray-100 transition-colors duration-300">
+                00:00
+            </div>
+            <button onclick="detenerCronometro()" class="w-full sm:w-auto px-12 py-5 bg-red-600 hover:bg-red-700 text-white font-bold rounded-xl shadow-md transition-all active:scale-95 flex items-center justify-center gap-2 mx-auto text-xl">
+                <i class="ph ph-stop-circle text-3xl"></i>
+                Terminar Descanso
+            </button>
+        </div>
+    </div>
+
+    <!-- PANTALLA ADMINISTRADOR -->
+    <div id="vista-admin" class="hidden max-w-4xl mx-auto pt-6 px-4">
+        <header class="flex flex-wrap justify-between items-center mb-6 gap-4">
+            <div>
+                <h1 class="text-2xl font-bold text-slate-800 flex items-center gap-2">
+                    <i class="ph ph-lock-key text-slate-600"></i> Panel de Administración
+                </h1>
+            </div>
+            <button onclick="mostrarVista('vista-seleccion')" class="text-slate-500 hover:text-slate-800 flex items-center gap-1 font-medium bg-white px-4 py-2 rounded-lg border shadow-sm">
+                <i class="ph ph-sign-out"></i> Salir
+            </button>
+        </header>
+
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <!-- Columna Izquierda: Config y Usuarios -->
+            <div class="space-y-6">
+                
+                <!-- Configuración -->
+                <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-5">
+                    <h2 class="font-bold text-slate-700 mb-4 flex items-center gap-2"><i class="ph ph-gear"></i> Límites (minutos)</h2>
+                    <div class="grid grid-cols-2 gap-3 mb-4">
+                        <div>
+                            <label class="block text-xs text-slate-500 mb-1">Baño</label>
+                            <input type="number" id="limit-bano" class="w-full border rounded p-2 text-sm outline-none focus:border-blue-500">
+                        </div>
+                        <div>
+                            <label class="block text-xs text-slate-500 mb-1">Comida</label>
+                            <input type="number" id="limit-comida" class="w-full border rounded p-2 text-sm outline-none focus:border-blue-500">
+                        </div>
+                    </div>
+                    <button onclick="guardarConfiguracionGlobal()" class="w-full bg-slate-800 hover:bg-slate-900 text-white text-sm font-bold py-2 rounded transition-colors">Guardar Límites</button>
+                </div>
+
+                <!-- Gestión de Usuarios -->
+                <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-5">
+                    <h2 class="font-bold text-slate-700 mb-4 flex items-center gap-2"><i class="ph ph-users"></i> Colaboradores</h2>
+                    
+                    <div class="mb-4 bg-slate-50 p-3 rounded-lg border border-slate-100">
+                        <label class="block text-xs text-slate-500 mb-1">Nuevo ID / PIN</label>
+                        <input type="text" id="nuevo-pin" placeholder="Ej. 101" class="w-full border rounded p-2 text-sm mb-2 outline-none focus:border-blue-500">
+                        <label class="block text-xs text-slate-500 mb-1">Nombre</label>
+                        <input type="text" id="nuevo-nombre" placeholder="Ej. María López" class="w-full border rounded p-2 text-sm mb-3 outline-none focus:border-blue-500">
+                        <button onclick="agregarColaborador()" class="w-full bg-blue-600 hover:bg-blue-700 text-white text-sm font-bold py-2 rounded transition-colors flex justify-center items-center gap-1">
+                            <i class="ph ph-plus-circle"></i> Agregar
+                        </button>
+                    </div>
+
+                    <div class="max-h-48 overflow-y-auto pr-2 custom-scrollbar">
+                        <ul id="lista-colaboradores" class="space-y-2 text-sm">
+                            <!-- JS renderiza lista -->
+                        </ul>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Columna Derecha: Monitoreo y Registros -->
+            <div class="lg:col-span-2 space-y-6">
+                
+                <!-- Monitor en Vivo -->
+                <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-5 border-l-4 border-l-orange-400">
+                    <h2 class="font-bold text-slate-700 mb-4 flex items-center gap-2"><i class="ph ph-broadcast text-orange-500 animate-pulse"></i> Descansos en Curso</h2>
+                    <div id="lista-activos" class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <p class="text-sm text-slate-400 col-span-full">Nadie en descanso en este momento.</p>
+                    </div>
+                </div>
+
+                <!-- Historial Global -->
+                <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-5">
+                    <h2 class="font-bold text-slate-700 mb-4 flex items-center gap-2"><i class="ph ph-list-dashes"></i> Historial General</h2>
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-left text-sm border-collapse">
+                            <thead>
+                                <tr class="bg-slate-50 text-slate-600 border-b border-slate-200">
+                                    <th class="p-2 font-medium">Colaborador</th>
+                                    <th class="p-2 font-medium">Tipo</th>
+                                    <th class="p-2 font-medium">Tiempo</th>
+                                    <th class="p-2 font-medium">Estado</th>
+                                    <th class="p-2 font-medium">Fecha/Hora</th>
+                                </tr>
+                            </thead>
+                            <tbody id="tabla-registros-global" class="divide-y divide-slate-100">
+                                <!-- JS renderiza registros -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+    </div>
+
+    <!-- SCRIPT PRINCIPAL (Firebase y Lógica) -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, collection, doc, setDoc, getDoc, addDoc, onSnapshot, deleteDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        // --- Configuración e Inicialización de Firebase ---
+        let app, auth, db;
+        let conectado = false;
+
+        try {
+            // Tu configuración de Firebase
+            const firebaseConfig = {
+                apiKey: "AIzaSyDT7iPaeRjlt-WIWWzwBh3deN2z_E-b2JA",
+                authDomain: "corpodatos-935f9.firebaseapp.com",
+                projectId: "corpodatos-935f9",
+                storageBucket: "corpodatos-935f9.firebasestorage.app",
+                messagingSenderId: "634601793039",
+                appId: "1:634601793039:web:4412da30d31ff6f6e5657a"
+            };
+            app = initializeApp(firebaseConfig);
+            auth = getAuth(app);
+            db = getFirestore(app);
+            conectado = true;
+        } catch (error) {
+            console.error("No se pudo iniciar Firebase:", error);
+            mostrarVista('vista-error');
+        }
+
+        // --- Variables de Estado ---
+        let usuarioAutenticado = null;
+        let todosLosColaboradores = []; 
+        let limitesGlobales = { bano: 15, comida: 30 };
+        
+        // Estado local del Colaborador
+        let empleadoActual = null; 
+        let sesionActivaActual = null;
+        let intervaloCronometro = null;
+        
+        // Desuscriptores de Firebase para limpieza
+        let unsubConfig = null;
+        let unsubColaboradores = null;
+        let unsubRegistros = null;
+        let unsubActivas = null;
+        let unsubMiSesion = null;
+
+        // --- Autenticación Inicial Mandatoria ---
+        if (conectado) {
+            const initAuth = async () => {
+                try {
+                    await signInAnonymously(auth);
+                } catch (error) {
+                    console.error("Error auth:", error);
+                    mostrarVista('vista-error');
+                }
+            };
+
+            initAuth();
+
+            onAuthStateChanged(auth, (user) => {
+                if (user) {
+                    usuarioAutenticado = user;
+                    // Cargar lista de colaboradores para el login inicial
+                    cargarColaboradoresBasico();
+                    mostrarVista('vista-seleccion');
+                }
+            });
+        }
+
+        // --- Utilidades de Interfaz ---
+        window.mostrarVista = function(idVista) {
+            ['vista-cargando', 'vista-error', 'vista-seleccion', 'vista-login-colaborador', 'vista-empleado', 'vista-admin'].forEach(v => {
+                document.getElementById(v).classList.add('hidden');
+            });
+            document.getElementById(idVista).classList.remove('hidden');
+        };
+
+        function mostrarNotificacion(mensaje, tipo = 'exito') {
+            const noti = document.getElementById('notificacion');
+            const texto = document.getElementById('notificacion-texto');
+            texto.innerHTML = tipo === 'error' ? `<i class="ph ph-warning-circle text-xl"></i> ${mensaje}` : `<i class="ph ph-check-circle text-xl"></i> ${mensaje}`;
+            
+            noti.className = `fixed top-4 left-1/2 transform -translate-x-1/2 z-50 max-w-sm w-full shadow-lg rounded-lg border-l-4 p-4 transition-all duration-300 ${
+                tipo === 'error' ? 'bg-red-50 border-red-500 text-red-700' : 'bg-green-50 border-green-500 text-green-700'
+            }`;
+            
+            noti.classList.remove('hidden');
+            setTimeout(() => noti.classList.add('hidden'), 3500);
+        }
+
+        function formatearTiempo(segundos) {
+            const m = Math.floor(segundos / 60).toString().padStart(2, '0');
+            const s = (segundos % 60).toString().padStart(2, '0');
+            return `${m}:${s}`;
+        }
+
+        // --- LÓGICA COMPARTIDA ---
+        function cargarColaboradoresBasico() {
+            const colRef = collection(db, 'colaboradores');
+            onSnapshot(colRef, (snap) => {
+                todosLosColaboradores = snap.docs.map(d => ({ docId: d.id, ...d.data() }));
+            });
+        }
+
+        // ==========================================
+        //         LÓGICA DEL ADMINISTRADOR
+        // ==========================================
+        window.iniciarAdmin = function() {
+            mostrarVista('vista-admin');
+            
+            // 1. Escuchar Configuración
+            unsubConfig = onSnapshot(doc(db, 'config', 'global'), (docSnap) => {
+                if(docSnap.exists()){
+                    limitesGlobales = docSnap.data();
+                    document.getElementById('limit-bano').value = limitesGlobales.bano;
+                    document.getElementById('limit-comida').value = limitesGlobales.comida;
+                }
+            });
+
+            // 2. Escuchar Colaboradores (renderizar lista)
+            unsubColaboradores = onSnapshot(collection(db, 'colaboradores'), (snap) => {
+                const lista = document.getElementById('lista-colaboradores');
+                lista.innerHTML = '';
+                if(snap.empty) {
+                    lista.innerHTML = '<li class="text-slate-400 italic">No hay colaboradores.</li>';
+                    return;
+                }
+                snap.forEach(d => {
+                    const c = d.data();
+                    lista.innerHTML += `
+                        <li class="flex justify-between items-center bg-slate-50 p-2 rounded border border-slate-100">
+                            <div><span class="font-bold text-slate-700">${c.pin}</span> - ${c.nombre}</div>
+                            <button onclick="eliminarColaborador('${d.id}')" class="text-red-400 hover:text-red-600"><i class="ph ph-trash"></i></button>
+                        </li>
+                    `;
+                });
+            });
+
+            // 3. Escuchar Sesiones Activas (Monitor en vivo)
+            unsubActivas = onSnapshot(collection(db, 'sesiones_activas'), (snap) => {
+                const contenedor = document.getElementById('lista-activos');
+                contenedor.innerHTML = '';
+                if(snap.empty) {
+                    contenedor.innerHTML = '<p class="text-sm text-slate-400 col-span-full">Nadie en descanso en este momento.</p>';
+                    return;
+                }
+                snap.forEach(d => {
+                    const act = d.data();
+                    const icon = act.tipo === 'Baño' ? '<i class="ph ph-toilet text-blue-500"></i>' : '<i class="ph ph-fork-knife text-orange-500"></i>';
+                    const minutos = Math.floor((Date.now() - act.inicio) / 60000);
+                    contenedor.innerHTML += `
+                        <div class="bg-slate-50 border border-slate-100 rounded-lg p-3 flex items-center gap-3 shadow-sm">
+                            <div class="text-2xl">${icon}</div>
+                            <div>
+                                <p class="font-bold text-slate-700 text-sm">${act.nombre}</p>
+                                <p class="text-xs text-slate-500">${act.tipo} • hace ${minutos} min</p>
+                            </div>
+                        </div>
+                    `;
+                });
+            });
+
+            // 4. Escuchar Historial Global
+            unsubRegistros = onSnapshot(collection(db, 'registros'), (snap) => {
+                let registros = snap.docs.map(d => d.data());
+                // Ordenar en memoria
+                registros.sort((a, b) => b.fin - a.fin);
+                
+                const tabla = document.getElementById('tabla-registros-global');
+                tabla.innerHTML = '';
+                if(registros.length === 0) {
+                    tabla.innerHTML = '<tr><td colspan="5" class="p-3 text-center text-slate-400">Sin registros recientes</td></tr>';
+                    return;
+                }
+
+                registros.slice(0, 50).forEach(reg => { // Mostrar últimos 50
+                    const badgeClass = reg.estado === 'A tiempo' ? 'bg-green-100 text-green-700 border-green-200' : 'bg-red-100 text-red-700 border-red-200 font-bold';
+                    const fechaObj = new Date(reg.fin);
+                    const fechaStr = `${fechaObj.toLocaleDateString()} ${fechaObj.toLocaleTimeString([],{hour:'2-digit', minute:'2-digit'})}`;
+                    
+                    tabla.innerHTML += `
+                        <tr class="hover:bg-slate-50">
+                            <td class="p-2 font-medium text-slate-700">${reg.nombre} <span class="text-xs text-slate-400 ml-1">#${reg.pin}</span></td>
+                            <td class="p-2 text-slate-600">${reg.tipo}</td>
+                            <td class="p-2 font-mono">${reg.duracionStr}</td>
+                            <td class="p-2"><span class="px-2 py-1 text-xs rounded-md border ${badgeClass}">${reg.estado}</span></td>
+                            <td class="p-2 text-xs text-slate-500">${fechaStr}</td>
+                        </tr>
+                    `;
+                });
+            });
+        };
+
+        window.guardarConfiguracionGlobal = async function() {
+            const bano = parseInt(document.getElementById('limit-bano').value) || 15;
+            const comida = parseInt(document.getElementById('limit-comida').value) || 30;
+            try {
+                await setDoc(doc(db, 'config', 'global'), { bano, comida });
+                mostrarNotificacion('Límites actualizados en toda la red.');
+            } catch(e) { mostrarNotificacion('Error al guardar', 'error'); }
+        };
+
+        window.agregarColaborador = async function() {
+            const pin = document.getElementById('nuevo-pin').value.trim();
+            const nombre = document.getElementById('nuevo-nombre').value.trim();
+            if(!pin || !nombre) return mostrarNotificacion('Llena ambos campos', 'error');
+            
+            if(todosLosColaboradores.some(c => c.pin === pin)) {
+                return mostrarNotificacion('Ese ID ya está registrado', 'error');
+            }
+
+            try {
+                await addDoc(collection(db, 'colaboradores'), { pin, nombre });
+                document.getElementById('nuevo-pin').value = '';
+                document.getElementById('nuevo-nombre').value = '';
+                mostrarNotificacion('Colaborador agregado');
+            } catch(e) { mostrarNotificacion('Error al guardar', 'error'); }
+        };
+
+        window.eliminarColaborador = async function(docId) {
+            if(confirm('¿Eliminar este colaborador?')) {
+                await deleteDoc(doc(db, 'colaboradores', docId));
+            }
+        };
+
+        // ==========================================
+        //         LÓGICA DEL COLABORADOR
+        // ==========================================
+        window.loginEmpleado = function() {
+            const pinDigitado = document.getElementById('pin-empleado').value.trim();
+            empleadoActual = todosLosColaboradores.find(c => c.pin === pinDigitado);
+            
+            if(!empleadoActual) {
+                return mostrarNotificacion('ID no encontrado. Verifica con tu administrador.', 'error');
+            }
+
+            document.getElementById('nombre-empleado-display').textContent = empleadoActual.nombre;
+            document.getElementById('id-empleado-display').textContent = empleadoActual.pin;
+            document.getElementById('pin-empleado').value = ''; // limpiar input
+            
+            mostrarVista('vista-empleado');
+            iniciarEscuchasEmpleado();
+        };
+
+        window.cerrarSesionEmpleado = function() {
+            if(unsubMiSesion) unsubMiSesion();
+            empleadoActual = null;
+            if(intervaloCronometro) clearInterval(intervaloCronometro);
+            mostrarVista('vista-seleccion');
+        };
+
+        function iniciarEscuchasEmpleado() {
+            // Escuchar si sus límites cambian globalmente
+            unsubConfig = onSnapshot(doc(db, 'config', 'global'), (docSnap) => {
+                if(docSnap.exists()) limitesGlobales = docSnap.data();
+            });
+
+            // Escuchar su propia sesión (por si cerró el navegador, el timer se restaura)
+            unsubMiSesion = onSnapshot(doc(db, 'sesiones_activas', empleadoActual.pin), (docSnap) => {
+                if(docSnap.exists()) {
+                    sesionActivaActual = docSnap.data();
+                    activarInterfazCronometro(sesionActivaActual);
+                } else {
+                    sesionActivaActual = null;
+                    desactivarInterfazCronometro();
+                }
+            });
+        }
+
+        window.iniciarCronometro = async function(tipo) {
+            if(!empleadoActual) return;
+            
+            const nuevaSesion = {
+                pin: empleadoActual.pin,
+                nombre: empleadoActual.nombre,
+                tipo: tipo,
+                inicio: Date.now()
+            };
+
+            try {
+                await setDoc(doc(db, 'sesiones_activas', empleadoActual.pin), nuevaSesion);
+            } catch(e) {
+                mostrarNotificacion('Error de red al iniciar.', 'error');
+            }
+        };
+
+        function activarInterfazCronometro(datosSesion) {
+            document.getElementById('panel-acciones').classList.add('hidden');
+            document.getElementById('panel-cronometro').classList.remove('hidden');
+            
+            const icon = datosSesion.tipo === 'Baño' ? '<i class="ph ph-toilet"></i>' : '<i class="ph ph-fork-knife"></i>';
+            document.getElementById('cronometro-titulo').innerHTML = `${icon} En ${datosSesion.tipo}`;
+            
+            const limiteMinutos = datosSesion.tipo === 'Baño' ? limitesGlobales.bano : limitesGlobales.comida;
+            const limiteSegundos = limiteMinutos * 60;
+            const display = document.getElementById('display-tiempo');
+
+            if(intervaloCronometro) clearInterval(intervaloCronometro);
+            
+            const tick = () => {
+                const transcurrido = Math.floor((Date.now() - datosSesion.inicio) / 1000);
+                display.textContent = formatearTiempo(transcurrido);
+                
+                if (transcurrido > limiteSegundos) {
+                    if (!display.classList.contains('overtime-alert')) {
+                        display.className = "text-7xl font-mono font-bold my-8 py-10 rounded-2xl border-4 overtime-alert transition-colors duration-300";
+                    }
+                } else {
+                    display.className = "text-7xl font-mono font-bold text-gray-800 my-8 py-10 rounded-2xl bg-gray-50 border-4 border-gray-100 transition-colors duration-300";
+                }
+            };
+            
+            tick(); // ejecutar inmediato
+            intervaloCronometro = setInterval(tick, 1000);
+        }
+
+        function desactivarInterfazCronometro() {
+            if(intervaloCronometro) clearInterval(intervaloCronometro);
+            document.getElementById('panel-cronometro').classList.add('hidden');
+            document.getElementById('panel-acciones').classList.remove('hidden');
+        }
+
+        window.detenerCronometro = async function() {
+            if(!sesionActivaActual) return;
+            
+            const fin = Date.now();
+            const duracionSegundos = Math.floor((fin - sesionActivaActual.inicio) / 1000);
+            const limiteMinutos = sesionActivaActual.tipo === 'Baño' ? limitesGlobales.bano : limitesGlobales.comida;
+            const limiteSegundos = limiteMinutos * 60;
+            
+            const registroFinal = {
+                pin: sesionActivaActual.pin,
+                nombre: sesionActivaActual.nombre,
+                tipo: sesionActivaActual.tipo,
+                inicio: sesionActivaActual.inicio,
+                fin: fin,
+                duracionSegundos: duracionSegundos,
+                duracionStr: formatearTiempo(duracionSegundos),
+                estado: duracionSegundos > limiteSegundos ? 'Excedido' : 'A tiempo'
+            };
+
+            try {
+                // 1. Guardar historial
+                await addDoc(collection(db, 'registros'), registroFinal);
+                // 2. Borrar sesión activa (esto dispara el snapshot y oculta el timer automáticamente)
+                await deleteDoc(doc(db, 'sesiones_activas', empleadoActual.pin));
+                
+                mostrarNotificacion('Descanso registrado correctamente.');
+            } catch(e) {
+                mostrarNotificacion('Error al guardar el registro.', 'error');
+            }
+        };
+
+    </script>
+</body>
+</html>
