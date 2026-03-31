@@ -276,7 +276,13 @@
         } catch (error) {
             console.error("No se pudo iniciar Firebase:", error);
             document.getElementById('texto-error-detalle').innerHTML = `<strong>Error de Configuración:</strong> ${error.message}`;
-            mostrarVista('vista-error');
+            // mostrarVista se define más abajo, se llamará directamente manipulando clases en este caso crítico
+            ['vista-cargando', 'vista-seleccion', 'vista-login-colaborador', 'vista-empleado', 'vista-admin'].forEach(v => {
+                const el = document.getElementById(v);
+                if(el) el.classList.add('hidden');
+            });
+            const errorView = document.getElementById('vista-error');
+            if(errorView) errorView.classList.remove('hidden');
         }
 
         // --- Variables de Estado ---
@@ -291,34 +297,14 @@
         
         let unsubConfig = null, unsubColaboradores = null, unsubRegistros = null, unsubActivas = null, unsubMiSesion = null;
 
-        // --- ROUTER DE AUTENTICACIÓN ---
-        if (conectado) {
-            mostrarVista('vista-cargando'); // Esperamos a ver si ya había sesión guardada
-
-            onAuthStateChanged(auth, (user) => {
-                if (user) {
-                    usuarioAutenticado = user;
-                    // Redirigir según el tipo de correo ficticio
-                    if (user.email === EMAIL_ADMIN) {
-                        cargarAdminViews();
-                    } else {
-                        // Es un empleado. Extraemos su PIN del correo (ej. 1234@corpodatos.com -> 1234)
-                        const pin = user.email.split('@')[0];
-                        validarEmpleadoYMostrar(pin);
-                    }
-                } else {
-                    usuarioAutenticado = null;
-                    mostrarVista('vista-seleccion');
-                }
-            });
-        }
-
-        // --- Utilidades de Interfaz ---
+        // --- Utilidades de Interfaz (Movidas al inicio para evitar ReferenceError) ---
         window.mostrarVista = function(idVista) {
             ['vista-cargando', 'vista-error', 'vista-seleccion', 'vista-login-colaborador', 'vista-empleado', 'vista-admin'].forEach(v => {
-                document.getElementById(v).classList.add('hidden');
+                const el = document.getElementById(v);
+                if (el) el.classList.add('hidden');
             });
-            document.getElementById(idVista).classList.remove('hidden');
+            const target = document.getElementById(idVista);
+            if (target) target.classList.remove('hidden');
         };
 
         function mostrarNotificacion(mensaje, tipo = 'exito') {
@@ -336,12 +322,34 @@
             return `${m}:${s}`;
         }
 
+        // --- ROUTER DE AUTENTICACIÓN ---
+        if (conectado) {
+            window.mostrarVista('vista-cargando'); // Ahora sí puede ejecutarse sin error
+
+            onAuthStateChanged(auth, (user) => {
+                if (user) {
+                    usuarioAutenticado = user;
+                    // Redirigir según el tipo de correo ficticio
+                    if (user.email === EMAIL_ADMIN) {
+                        cargarAdminViews();
+                    } else {
+                        // Es un empleado. Extraemos su PIN del correo (ej. 1234@corpodatos.com -> 1234)
+                        const pin = user.email.split('@')[0];
+                        validarEmpleadoYMostrar(pin);
+                    }
+                } else {
+                    usuarioAutenticado = null;
+                    window.mostrarVista('vista-seleccion');
+                }
+            });
+        }
+
         // --- LÓGICA DE LOGIN EMPLEADO ---
         window.loginEmpleado = async function() {
             const pinDigitado = document.getElementById('pin-empleado').value.trim();
             if(!pinDigitado) return mostrarNotificacion('Ingresa tu ID', 'error');
             
-            mostrarVista('vista-cargando');
+            window.mostrarVista('vista-cargando');
             // Aquí armamos el correo ficticio por sistema
             const emailFicticio = `${pinDigitado}@corpodatos.com`;
             
@@ -356,11 +364,11 @@
                         await createUserWithEmailAndPassword(auth, emailFicticio, PASSWORD_DEFAULT);
                         // El onAuthStateChanged redirigirá automáticamente
                     } catch (err2) {
-                        mostrarVista('vista-login-colaborador');
+                        window.mostrarVista('vista-login-colaborador');
                         mostrarNotificacion('Error del sistema al crear ID: ' + err2.message, 'error');
                     }
                 } else {
-                    mostrarVista('vista-login-colaborador');
+                    window.mostrarVista('vista-login-colaborador');
                     mostrarNotificacion('Error de conexión a Firebase', 'error');
                 }
             }
@@ -387,7 +395,7 @@
                 document.getElementById('id-empleado-display').textContent = empleadoActual.pin;
                 document.getElementById('pin-empleado').value = ''; 
                 
-                mostrarVista('vista-empleado');
+                window.mostrarVista('vista-empleado');
                 iniciarEscuchasEmpleado();
             } catch (error) {
                 console.error("Error validando:", error);
@@ -410,7 +418,7 @@
             if(!pass) return;
 
             cerrarModales();
-            mostrarVista('vista-cargando');
+            window.mostrarVista('vista-cargando');
             
             try {
                 // Iniciar sesión como Admin
@@ -422,15 +430,15 @@
                         try {
                             await createUserWithEmailAndPassword(auth, EMAIL_ADMIN, pass);
                         } catch (err2) {
-                            mostrarVista('vista-seleccion');
+                            window.mostrarVista('vista-seleccion');
                             mostrarNotificacion('Error al configurar cuenta de Administrador.', 'error');
                         }
                     } else {
-                        mostrarVista('vista-seleccion');
+                        window.mostrarVista('vista-seleccion');
                         mostrarNotificacion('Palabra secreta incorrecta', 'error');
                     }
                 } else {
-                    mostrarVista('vista-seleccion');
+                    window.mostrarVista('vista-seleccion');
                     mostrarNotificacion('Palabra secreta incorrecta', 'error');
                 }
             }
@@ -476,7 +484,7 @@
         //         VISTA DEL ADMINISTRADOR
         // ==========================================
         function cargarAdminViews() {
-            mostrarVista('vista-admin');
+            window.mostrarVista('vista-admin');
             
             unsubConfig = onSnapshot(doc(db, 'config', 'global'), (docSnap) => {
                 if(docSnap.exists()){
