@@ -150,9 +150,19 @@
                 <h1 class="text-2xl font-bold text-gray-800">Hola, <span id="nombre-empleado-display" class="text-blue-600"></span></h1>
                 <p class="text-sm text-gray-500">ID: <span id="id-empleado-display"></span></p>
             </div>
-            <button onclick="cerrarSesionGeneral()" class="text-red-500 hover:text-red-700 flex flex-col items-center text-sm font-medium">
-                <i class="ph ph-sign-out text-2xl"></i> Salir
-            </button>
+            <div class="flex items-center gap-4">
+                <!-- RELOJ EN TIEMPO REAL (SYNC) -->
+                <div class="flex flex-col items-end px-3 py-1 border-r border-slate-200 shrink-0">
+                    <div class="flex text-[0.6rem] text-slate-400 font-black tracking-wider leading-none mb-0.5 items-center gap-1 justify-end uppercase">
+                          <span id="syncDot" class="w-1.5 h-1.5 rounded-full bg-amber-500 inline-block animate-pulse"></span> Hora Real
+                    </div>
+                    <div id="reloj-display-empleado" class="font-mono text-sm font-bold text-slate-700">--:--:--</div>
+                </div>
+                
+                <button onclick="cerrarSesionGeneral()" class="text-red-500 hover:text-red-700 flex flex-col items-center text-sm font-medium">
+                    <i class="ph ph-sign-out text-2xl"></i> Salir
+                </button>
+            </div>
         </header>
 
         <!-- Panel Principal Unificado -->
@@ -212,13 +222,23 @@
                 </h1>
                 <p class="text-sm text-slate-500" id="fecha-admin-display">Control de Tiempos y Personal</p>
             </div>
-            <div class="flex gap-2">
-                <button onclick="resetearTodosLosTiempos()" class="text-red-600 hover:text-red-800 hover:bg-red-50 flex items-center gap-1 font-bold bg-white px-4 py-2 rounded-lg border shadow-sm transition-colors text-sm">
-                    <i class="ph ph-arrow-counter-clockwise"></i> Reiniciar Todos
-                </button>
-                <button onclick="cerrarSesionGeneral()" class="text-slate-500 hover:text-slate-800 flex items-center gap-1 font-medium bg-white px-4 py-2 rounded-lg border shadow-sm transition-colors text-sm">
-                    <i class="ph ph-sign-out"></i> Salir
-                </button>
+            <div class="flex items-center gap-4">
+                <!-- RELOJ EN TIEMPO REAL (SYNC) -->
+                <div class="flex flex-col items-end px-3 py-1 border-r border-slate-200 shrink-0">
+                    <div class="flex text-[0.6rem] text-slate-400 font-black tracking-wider leading-none mb-0.5 items-center gap-1 justify-end uppercase">
+                          <span id="syncDotAdmin" class="w-1.5 h-1.5 rounded-full bg-amber-500 inline-block animate-pulse"></span> Hora Real
+                    </div>
+                    <div id="reloj-display-admin" class="font-mono text-sm font-bold text-slate-700">--:--:--</div>
+                </div>
+
+                <div class="flex gap-2">
+                    <button onclick="resetearTodosLosTiempos()" class="text-red-600 hover:text-red-800 hover:bg-red-50 flex items-center gap-1 font-bold bg-white px-4 py-2 rounded-lg border shadow-sm transition-colors text-sm">
+                        <i class="ph ph-arrow-counter-clockwise"></i> Reiniciar Todos
+                    </button>
+                    <button onclick="cerrarSesionGeneral()" class="text-slate-500 hover:text-slate-800 flex items-center gap-1 font-medium bg-white px-4 py-2 rounded-lg border shadow-sm transition-colors text-sm">
+                        <i class="ph ph-sign-out"></i> Salir
+                    </button>
+                </div>
             </div>
         </header>
 
@@ -398,6 +418,60 @@
             if(errorView) errorView.classList.remove('hidden');
         }
 
+        // --- CORE: SINCRONIZACIÓN DE HORA REAL ---
+        let timeOffset = 0; // Diferencia en ms entre la hora local y la hora real global
+        
+        async function sincronizarHoraReal() {
+            try {
+                const start = Date.now();
+                // Usamos la cabecera HTTP del documento actual para no depender de APIs externas
+                const res = await fetch(window.location.href, { method: 'HEAD', cache: 'no-cache' });
+                const dateHeader = res.headers.get('Date');
+                
+                if (dateHeader) {
+                    const serverTime = new Date(dateHeader).getTime();
+                    const end = Date.now();
+                    const latencia = (end - start) / 2;
+                    timeOffset = serverTime + latencia - end;
+                    
+                    // Actualizar UI: Puntos a verde
+                    ['syncDot', 'syncDotAdmin'].forEach(id => {
+                        const el = document.getElementById(id);
+                        if (el) {
+                            el.classList.replace('bg-amber-500', 'bg-green-500');
+                            el.classList.remove('animate-pulse');
+                        }
+                    });
+                    console.log("Hora sincronizada. Offset (ms):", timeOffset);
+                }
+            } catch (e) {
+                console.warn("Error al sincronizar la hora real. Usando reloj local.", e);
+                ['syncDot', 'syncDotAdmin'].forEach(id => {
+                    const el = document.getElementById(id);
+                    if (el) el.classList.replace('bg-amber-500', 'bg-red-500');
+                });
+            }
+        }
+
+        // Función base que reemplaza TODOS los usos de Date.now()
+        function getHoraReal() {
+            return Date.now() + timeOffset;
+        }
+
+        // Ciclo visual del reloj en tiempo real
+        setInterval(() => {
+            const ahora = new Date(getHoraReal());
+            const horaStr = ahora.toLocaleTimeString('es-ES', { hour12: false });
+            const empDisplay = document.getElementById('reloj-display-empleado');
+            const admDisplay = document.getElementById('reloj-display-admin');
+            if(empDisplay) empDisplay.textContent = horaStr;
+            if(admDisplay) admDisplay.textContent = horaStr;
+        }, 1000);
+
+        // Llamar a la sincronización al iniciar
+        sincronizarHoraReal();
+        // ------------------------------------------
+
         // --- Variables de Estado ---
         let usuarioAutenticado = null;
         let limitesGlobales = { bano: 15, comida: 30 };
@@ -419,8 +493,9 @@
 
         // --- Utilidades ---
         function obtenerFechaHoy() {
+            // Usa Hora Real para determinar el día
             const tzOffset = (new Date()).getTimezoneOffset() * 60000;
-            return (new Date(Date.now() - tzOffset)).toISOString().split('T')[0];
+            return (new Date(getHoraReal() - tzOffset)).toISOString().split('T')[0];
         }
 
         window.mostrarVista = function(idVista) {
@@ -600,7 +675,7 @@
             
             // Set header date
             const opcionesFecha = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
-            document.getElementById('fecha-admin-display').textContent = "Control de Tiempos • " + new Date().toLocaleDateString('es-ES', opcionesFecha);
+            document.getElementById('fecha-admin-display').textContent = "Control de Tiempos • " + new Date(getHoraReal()).toLocaleDateString('es-ES', opcionesFecha);
             
             unsubConfig = onSnapshot(doc(db, 'config', 'global'), (docSnap) => {
                 if(docSnap.exists()){
@@ -638,7 +713,8 @@
                     if(act.tipo === 'Baño') { icon = '<i class="ph ph-toilet text-blue-500"></i>'; bg = 'blue'; }
                     else if(act.tipo === 'Comida') { icon = '<i class="ph ph-fork-knife text-orange-500"></i>'; bg = 'orange'; }
                     
-                    const minutos = Math.floor((Date.now() - act.inicio) / 60000);
+                    // Calculado con la hora Real sincronizada
+                    const minutos = Math.floor((getHoraReal() - act.inicio) / 60000);
                     contenedor.innerHTML += `
                         <div class="bg-white border border-slate-200 rounded-xl p-3 flex items-center gap-3 shadow-sm relative overflow-hidden group hover:border-${bg}-300 transition-colors">
                             <div class="absolute top-0 right-0 w-1.5 h-full bg-${bg}-400 animate-pulse"></div>
@@ -663,7 +739,7 @@
             if(confirm("¿Estás seguro de que deseas poner en CERO los tiempos usados de todos los colaboradores?")) {
                 try {
                     const promises = datosColaboradoresRaw.map(c => {
-                        return setDoc(doc(db, 'tiempos_acumulados', c.pin), { Baño: 0, Comida: 0, Calidad: 0, fecha: obtenerFechaHoy(), ultimaActualizacion: Date.now() });
+                        return setDoc(doc(db, 'tiempos_acumulados', c.pin), { Baño: 0, Comida: 0, Calidad: 0, fecha: obtenerFechaHoy(), ultimaActualizacion: getHoraReal() });
                     });
                     await Promise.all(promises);
                     mostrarNotificacion('Todos los tiempos se han reiniciado a cero.');
@@ -839,7 +915,7 @@
                     Comida: segComida,
                     Calidad: segCalidad,
                     fecha: obtenerFechaHoy(),
-                    ultimaActualizacion: Date.now()
+                    ultimaActualizacion: getHoraReal()
                 }, { merge: true });
                 
                 await setDoc(doc(db, 'colaboradores', idDocEditando), {
@@ -917,7 +993,7 @@
                 let data = docSnap.data();
                 
                 if(!data || data.fecha !== hoy) {
-                    data = { Baño: 0, Comida: 0, Calidad: 0, fecha: hoy, ultimaActualizacion: Date.now() };
+                    data = { Baño: 0, Comida: 0, Calidad: 0, fecha: hoy, ultimaActualizacion: getHoraReal() };
                     setDoc(doc(db, 'tiempos_acumulados', empleadoActual.pin), data);
                 }
                 
@@ -983,7 +1059,8 @@
                 nombre: empleadoActual.nombre,
                 tipo: tipo,
                 justificacion: justificacion,
-                inicio: Date.now()
+                // Usar hora real sincronizada en vez de local
+                inicio: getHoraReal()
             };
 
             try {
@@ -1037,7 +1114,8 @@
             
             const tick = () => {
                 const acumuladoBase = tiempoAcumuladoActual[tipoActivo] || 0;
-                const transcurridoSegmento = Math.floor((Date.now() - datosSesion.inicio) / 1000);
+                // Calcular usando HORA REAL sincronizada
+                const transcurridoSegmento = Math.floor((getHoraReal() - datosSesion.inicio) / 1000);
                 const transcurridoTotal = acumuladoBase + transcurridoSegmento;
                 
                 display.textContent = formatearTiempo(transcurridoTotal);
@@ -1104,7 +1182,8 @@
             btn.disabled = true; 
             btn.innerHTML = '<i class="ph ph-spinner animate-spin text-3xl"></i> Pausando...';
             
-            const fin = Date.now();
+            // Usar hora real para cálculos precisos de parada
+            const fin = getHoraReal();
             const transcurridoSegmento = Math.floor((fin - sesionActivaActual.inicio) / 1000);
             const tipoActivo = sesionActivaActual.tipo;
             const nuevoAcumulado = (tiempoAcumuladoActual[tipoActivo] || 0) + transcurridoSegmento;
@@ -1146,8 +1225,9 @@
                 mostrarNotificacion('Error al pausar: Verifica conexión.', 'error');
                 btn.disabled = false;
                 btn.innerHTML = '<i class="ph ph-pause-circle text-2xl"></i> Pausar Descanso';
+                // Si falla, usar fallback visual también con hora real
                 intervaloCronometro = setInterval(() => {
-                    const trans = Math.floor((Date.now() - sesionActivaActual.inicio) / 1000) + (tiempoAcumuladoActual[tipoActivo]||0);
+                    const trans = Math.floor((getHoraReal() - sesionActivaActual.inicio) / 1000) + (tiempoAcumuladoActual[tipoActivo]||0);
                     document.getElementById('disp-' + tipoActivo).textContent = formatearTiempo(trans);
                 }, 1000);
             }
