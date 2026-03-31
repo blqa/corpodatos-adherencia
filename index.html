@@ -61,19 +61,19 @@
             <p class="text-slate-500 text-sm mb-4">Modifica los tiempos de HOY o establece límites personalizados (déjalos en 0 para usar los globales).</p>
             
             <div class="bg-slate-50 p-4 rounded-xl border border-slate-200 mb-4">
-                <h4 class="font-bold text-sm text-slate-700 mb-3 border-b pb-2">Minutos Consumidos HOY</h4>
+                <h4 class="font-bold text-sm text-slate-700 mb-3 border-b pb-2">Tiempo Consumido HOY</h4>
                 <div class="grid grid-cols-3 gap-3">
                     <div>
-                        <label class="block text-xs text-slate-500 mb-1">Baño</label>
-                        <input type="number" id="edit-consumido-bano" class="w-full border-2 border-slate-200 rounded-lg p-2 text-sm focus:border-blue-500 outline-none" min="0">
+                        <label class="block text-xs text-slate-500 mb-1">Baño (mm:ss)</label>
+                        <input type="text" id="edit-consumido-bano" placeholder="00:00" class="w-full border-2 border-slate-200 rounded-lg p-2 text-sm focus:border-blue-500 outline-none">
                     </div>
                     <div>
-                        <label class="block text-xs text-slate-500 mb-1">Comida</label>
-                        <input type="number" id="edit-consumido-comida" class="w-full border-2 border-slate-200 rounded-lg p-2 text-sm focus:border-blue-500 outline-none" min="0">
+                        <label class="block text-xs text-slate-500 mb-1">Comida (mm:ss)</label>
+                        <input type="text" id="edit-consumido-comida" placeholder="00:00" class="w-full border-2 border-slate-200 rounded-lg p-2 text-sm focus:border-blue-500 outline-none">
                     </div>
                     <div>
-                        <label class="block text-xs text-slate-500 mb-1">Calidad</label>
-                        <input type="number" id="edit-consumido-calidad" class="w-full border-2 border-slate-200 rounded-lg p-2 text-sm focus:border-purple-500 outline-none" min="0">
+                        <label class="block text-xs text-slate-500 mb-1">Calidad (mm:ss)</label>
+                        <input type="text" id="edit-consumido-calidad" placeholder="00:00" class="w-full border-2 border-slate-200 rounded-lg p-2 text-sm focus:border-purple-500 outline-none">
                     </div>
                 </div>
             </div>
@@ -410,6 +410,18 @@
             return `${sign}${m}:${s}`;
         }
 
+        // Nueva función utilitaria para convertir input humano a segundos
+        function tiempoASegundos(tiempoStr) {
+            if (!tiempoStr) return 0;
+            const partes = tiempoStr.toString().trim().split(':');
+            if (partes.length === 2) {
+                // Formato MM:SS
+                return (parseInt(partes[0]) || 0) * 60 + (parseInt(partes[1]) || 0);
+            }
+            // Si solo escribe un número (ej. "15"), asumimos que son minutos cerrados
+            return Math.floor((parseFloat(tiempoStr) || 0) * 60);
+        }
+
         // --- ROUTER DE AUTENTICACIÓN ---
         if (conectado) {
             window.mostrarVista('vista-cargando');
@@ -696,12 +708,12 @@
             
             document.getElementById('edit-nombre').textContent = nombre;
             
-            // Consumidos
-            document.getElementById('edit-consumido-bano').value = esDeHoy ? Math.floor((acumulado.Baño || 0) / 60) : 0;
-            document.getElementById('edit-consumido-comida').value = esDeHoy ? Math.floor((acumulado.Comida || 0) / 60) : 0;
-            document.getElementById('edit-consumido-calidad').value = esDeHoy ? Math.floor((acumulado.Calidad || 0) / 60) : 0;
+            // Consumidos (Mostrando el formato Minutos:Segundos exacto)
+            document.getElementById('edit-consumido-bano').value = esDeHoy ? formatearTiempo(acumulado.Baño || 0) : "00:00";
+            document.getElementById('edit-consumido-comida').value = esDeHoy ? formatearTiempo(acumulado.Comida || 0) : "00:00";
+            document.getElementById('edit-consumido-calidad').value = esDeHoy ? formatearTiempo(acumulado.Calidad || 0) : "00:00";
             
-            // Limites individuales
+            // Limites individuales (Siguen siendo enteros)
             document.getElementById('edit-limite-bano').value = colab.limiteBano || '';
             document.getElementById('edit-limite-comida').value = colab.limiteComida || '';
             
@@ -712,9 +724,10 @@
         window.guardarEdicionTiempoYLimites = async function() {
             if(!pinEditando || !idDocEditando) return;
             
-            const minBano = parseInt(document.getElementById('edit-consumido-bano').value) || 0;
-            const minComida = parseInt(document.getElementById('edit-consumido-comida').value) || 0;
-            const minCalidad = parseInt(document.getElementById('edit-consumido-calidad').value) || 0;
+            // Convertimos la entrada de texto (MM:SS) a segundos exactos
+            const segBano = tiempoASegundos(document.getElementById('edit-consumido-bano').value);
+            const segComida = tiempoASegundos(document.getElementById('edit-consumido-comida').value);
+            const segCalidad = tiempoASegundos(document.getElementById('edit-consumido-calidad').value);
             
             const limBano = parseInt(document.getElementById('edit-limite-bano').value) || null;
             const limComida = parseInt(document.getElementById('edit-limite-comida').value) || null;
@@ -722,9 +735,9 @@
             try {
                 // 1. Guardar Tiempos Consumidos
                 await setDoc(doc(db, 'tiempos_acumulados', pinEditando), {
-                    Baño: minBano * 60,
-                    Comida: minComida * 60,
-                    Calidad: minCalidad * 60,
+                    Baño: segBano,
+                    Comida: segComida,
+                    Calidad: segCalidad,
                     fecha: obtenerFechaHoy(),
                     ultimaActualizacion: Date.now()
                 }, { merge: true });
