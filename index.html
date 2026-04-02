@@ -468,13 +468,36 @@
             if(empDisplay) empDisplay.textContent = horaStr;
             if(admDisplay) admDisplay.textContent = horaStr;
 
-            // Actualizar cronómetros en vivo en el panel Admin
+            // Actualizar cronómetros en vivo en el panel Admin (con Total Diario)
             if (adminActivasArray && adminActivasArray.length > 0) {
                 adminActivasArray.forEach(act => {
-                    const el = document.getElementById(`timer-admin-${act.pin}`);
-                    if (el) {
+                    const elTimer = document.getElementById(`timer-admin-${act.pin}`);
+                    const elTotal = document.getElementById(`total-admin-${act.pin}`);
+                    const elProg = document.getElementById(`prog-admin-${act.pin}`);
+
+                    if (elTimer) {
                         const transcurrido = Math.floor((ahoraMs - act.inicio) / 1000);
-                        el.textContent = formatearTiempo(transcurrido);
+                        elTimer.textContent = formatearTiempo(transcurrido);
+                        
+                        // Actualizar total y barra de progreso si existen los elementos
+                        if (elTotal) {
+                            const totalActual = (act.baseAcum || 0) + transcurrido;
+                            elTotal.textContent = formatearTiempo(totalActual);
+
+                            if (elProg && act.limiteSeg && act.limiteSeg !== Infinity) {
+                                let pct = (totalActual / act.limiteSeg) * 100;
+                                if (pct > 100) pct = 100;
+                                elProg.style.width = `${pct}%`;
+
+                                // Si se excede, cambiar estilos a rojo
+                                if (totalActual > act.limiteSeg) {
+                                    elTotal.classList.add('text-red-600');
+                                    elTotal.classList.remove('text-slate-700');
+                                    elProg.classList.add('bg-red-500');
+                                    elProg.classList.remove('bg-blue-500', 'bg-orange-500', 'bg-purple-500');
+                                }
+                            }
+                        }
                     }
                 });
             }
@@ -722,24 +745,68 @@
                     contenedor.innerHTML = '<p class="text-sm text-slate-400 col-span-full py-4 text-center italic">Nadie en descanso en este momento.</p>';
                     return;
                 }
+                
+                const hoy = obtenerFechaHoy();
+
                 snap.forEach(d => {
                     const act = d.data();
-                    adminActivasArray.push(act); // Register active session
+                    
+                    // Extraer Límite Individual o Global
+                    const colab = datosColaboradoresRaw.find(c => c.pin === act.pin) || {};
+                    let limiteMin = Infinity;
+                    if(act.tipo === 'Baño') limiteMin = colab.limiteBano || limitesGlobales.bano;
+                    else if(act.tipo === 'Comida') limiteMin = colab.limiteComida || limitesGlobales.comida;
+                    
+                    const limiteSeg = limiteMin * 60;
+                    const limiteTxt = limiteMin === Infinity ? '∞' : `${limiteMin}m`;
 
+                    // Extraer Base Acumulada
+                    const acumData = tiemposAcumuladosGlobal[act.pin] || {};
+                    const baseAcum = acumData.fecha === hoy ? (acumData[act.tipo] || 0) : 0;
+                    
+                    // Guardar propiedades para que setInterval pueda calcular Totales y Progreso
+                    act.baseAcum = baseAcum;
+                    act.limiteSeg = limiteSeg;
+                    adminActivasArray.push(act); 
+
+                    // Configurar UI
                     let icon = '<i class="ph ph-star text-purple-500"></i>';
                     let bg = 'purple';
                     if(act.tipo === 'Baño') { icon = '<i class="ph ph-toilet text-blue-500"></i>'; bg = 'blue'; }
                     else if(act.tipo === 'Comida') { icon = '<i class="ph ph-fork-knife text-orange-500"></i>'; bg = 'orange'; }
                     
+                    // Calcular Estado Inicial para Pintar
                     const transcurrido = Math.floor((getHoraReal() - act.inicio) / 1000);
+                    const totalInicial = baseAcum + transcurrido;
+                    
+                    let pct = act.limiteSeg !== Infinity ? Math.min((totalInicial / act.limiteSeg) * 100, 100) : 0;
+                    let colorTotal = totalInicial > act.limiteSeg ? 'text-red-600' : 'text-slate-700';
+                    let bgProgreso = totalInicial > act.limiteSeg ? 'bg-red-500' : `bg-${bg}-500`;
                     
                     contenedor.innerHTML += `
-                        <div class="bg-white border border-slate-200 rounded-xl p-3 flex items-center gap-3 shadow-sm relative overflow-hidden group hover:border-${bg}-300 transition-colors">
+                        <div class="bg-white border border-slate-200 rounded-xl p-3 flex items-start gap-3 shadow-sm relative overflow-hidden group hover:border-${bg}-300 transition-colors">
                             <div class="absolute top-0 right-0 w-1.5 h-full bg-${bg}-400 animate-pulse"></div>
-                            <div class="p-2 bg-${bg}-50 rounded-lg text-2xl">${icon}</div>
-                            <div>
-                                <p class="font-bold text-slate-800 text-sm leading-tight">${act.nombre}</p>
-                                <p class="text-[11px] text-slate-500 font-medium">En ${act.tipo}: <span id="timer-admin-${act.pin}" class="text-${bg}-600 font-bold font-mono text-xs">${formatearTiempo(transcurrido)}</span></p>
+                            <div class="p-2 bg-${bg}-50 rounded-lg text-2xl shrink-0 mt-0.5">${icon}</div>
+                            <div class="flex-1 min-w-0 pr-2">
+                                <p class="font-bold text-slate-800 text-sm leading-tight truncate mb-1" title="${act.nombre}">${act.nombre}</p>
+                                <p class="text-[11px] text-slate-500 font-medium mb-1.5">
+                                    Sesión: <span id="timer-admin-${act.pin}" class="text-${bg}-600 font-bold font-mono text-xs">${formatearTiempo(transcurrido)}</span>
+                                </p>
+                                
+                                ${act.tipo !== 'Calidad' ? `
+                                <div class="bg-slate-100 rounded-full h-1.5 w-full mb-1 overflow-hidden">
+                                     <div id="prog-admin-${act.pin}" class="h-full ${bgProgreso} transition-all duration-1000" style="width: ${pct}%"></div>
+                                </div>
+                                <p class="text-[10px] text-slate-500 flex justify-between">
+                                    <span>Lleva: <strong id="total-admin-${act.pin}" class="${colorTotal} font-mono">${formatearTiempo(totalInicial)}</strong></span>
+                                    <span>Disp: <strong>${limiteTxt}</strong></span>
+                                </p>
+                                ` : `
+                                <p class="text-[10px] text-slate-500 flex justify-between mt-2 pt-1 border-t border-slate-50">
+                                    <span>Lleva Hoy: <strong id="total-admin-${act.pin}" class="${colorTotal} font-mono">${formatearTiempo(totalInicial)}</strong></span>
+                                    <span>Disp: <strong>∞</strong></span>
+                                </p>
+                                `}
                             </div>
                         </div>
                     `;
