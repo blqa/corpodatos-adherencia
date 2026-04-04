@@ -1318,6 +1318,51 @@
             }
         };
 
+        // ==========================================
+        //  INTEGRACIÓN CON EXTENSIÓN TOUCHPOINT
+        // ==========================================
+        window.addEventListener('message', (event) => {
+            // Seguridad: Solo aceptamos mensajes de la misma ventana (la extensión los inyecta en el DOM)
+            if (event.source !== window) return;
+
+            if (event.data && event.data.type === 'GODSPLAN_COMMAND') {
+                console.log("🤖 Comando recibido de TouchPoint:", event.data.action);
+                
+                // Si no hay un empleado logueado, ignoramos el comando
+                if (!empleadoActual) {
+                    console.warn("TouchPoint envió un comando, pero no hay sesión activa en la web.");
+                    return;
+                }
+
+                // Pequeño aviso visual para el usuario
+                mostrarNotificacion(`Recibido: ${event.data.action}`, 'exito');
+
+                // Enrutador de comandos de la extensión
+                switch (event.data.action) {
+                    case 'START_BREAK_BATH':
+                        if (!sesionActivaActual) window.iniciarCronometro('Baño');
+                        break;
+                        
+                    case 'START_BREAK_FOOD':
+                        if (!sesionActivaActual) window.iniciarCronometro('Comida');
+                        break;
+                        
+                    case 'RESUME_WORK':
+                        if (sesionActivaActual) window.detenerCronometro();
+                        break;
+                        
+                    case 'END_SHIFT':
+                        if (empleadoActual) window.cerrarSesionGeneral();
+                        break;
+                        
+                    case 'START_SHIFT':
+                        // Opcional: Asegurarnos de que inicie sin cronómetros activos
+                        if (sesionActivaActual) window.detenerCronometro();
+                        break;
+                }
+            }
+        });
+
     </script>
 </body>
 </html>
