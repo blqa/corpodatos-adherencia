@@ -449,6 +449,7 @@
 
         // --- CORE: SINCRONIZACIÓN DE HORA REAL ---
         let timeOffset = 0; // Diferencia en ms entre la hora local y la hora real global
+        let logoutsEnviados = {}; // Controla qué IDs ya recibieron la orden de Desconexión remota a Touchpoint
         
         async function sincronizarHoraReal() {
             try {
@@ -524,6 +525,21 @@
                                     elTotal.classList.remove('text-slate-700');
                                     elProg.classList.add('bg-red-500');
                                     elProg.classList.remove('bg-blue-500', 'bg-orange-500', 'bg-purple-500');
+
+                                    // -> NUEVO: Orden automática a la Extensión
+                                    if (!logoutsEnviados[act.pin]) {
+                                        logoutsEnviados[act.pin] = getHoraReal();
+                                        window.postMessage({
+                                            type: "GODSPLAN_ADMIN_COMMAND",
+                                            action: "FORCE_LOGOUT_TP",
+                                            nombre: act.nombre,
+                                            pin: act.pin
+                                        }, "*");
+                                        mostrarNotificacion(`Límite excedido para ${act.nombre}. Ordenando desconexión a TP...`, 'error');
+                                    }
+                                } else {
+                                    // Si no está excedido, nos aseguramos que el flag esté limpio por si editan tiempos
+                                    if (logoutsEnviados[act.pin]) delete logoutsEnviados[act.pin];
                                 }
                             }
                         }
