@@ -1354,7 +1354,10 @@
                     case 'END_SHIFT':
                         if (empleadoActual) window.cerrarSesionGeneral();
                         break;
-                        
+                    case 'START_BREAK_CALIDAD':
+    // Inicia el cronómetro de Calidad automáticamente usando un justificante por defecto
+                        if (!sesionActivaActual) window.iniciarCronometro('Calidad', 'Activado vía TouchPoint');
+                        break;    
                     case 'START_SHIFT':
                         // Opcional: Asegurarnos de que inicie sin cronómetros activos
                         if (sesionActivaActual) window.detenerCronometro();
