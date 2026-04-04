@@ -212,7 +212,7 @@
             </div>
         </div>
 
-        <!-- Historial del Empleado (NUEVA SECCIÓN) -->
+        <!-- Historial del Empleado -->
         <div id="panel-historial-empleado" class="bg-white rounded-2xl shadow-lg border border-gray-100 p-6">
             <div class="flex flex-wrap justify-between items-center mb-4 gap-4">
                 <h2 class="text-xl font-bold text-gray-800 flex items-center gap-2">
@@ -448,13 +448,12 @@
         }
 
         // --- CORE: SINCRONIZACIÓN DE HORA REAL ---
-        let timeOffset = 0; // Diferencia en ms entre la hora local y la hora real global
-        let logoutsEnviados = {}; // Controla qué IDs ya recibieron la orden de Desconexión remota a Touchpoint
+        let timeOffset = 0; 
+        let logoutsEnviados = {}; // Controla qué IDs ya recibieron la orden para no repetir infinitamente
         
         async function sincronizarHoraReal() {
             try {
                 const start = Date.now();
-                // Usamos la cabecera HTTP del documento actual para no depender de APIs externas
                 const res = await fetch(window.location.href, { method: 'HEAD', cache: 'no-cache' });
                 const dateHeader = res.headers.get('Date');
                 
@@ -464,7 +463,6 @@
                     const latencia = (end - start) / 2;
                     timeOffset = serverTime + latencia - end;
                     
-                    // Actualizar UI: Puntos a verde
                     ['syncDot', 'syncDotAdmin'].forEach(id => {
                         const el = document.getElementById(id);
                         if (el) {
@@ -472,7 +470,6 @@
                             el.classList.remove('animate-pulse');
                         }
                     });
-                    console.log("Hora sincronizada. Offset (ms):", timeOffset);
                 }
             } catch (e) {
                 console.warn("Error al sincronizar la hora real. Usando reloj local.", e);
@@ -483,10 +480,45 @@
             }
         }
 
-        // Función base que reemplaza TODOS los usos de Date.now()
         function getHoraReal() {
             return Date.now() + timeOffset;
         }
+
+        // NUEVO: Función para expulsar implacablemente
+        window.forzarCierreSesionExpulsado = async function(act, transcurridoTotal) {
+            const fin = getHoraReal();
+            const transcurridoSegmento = Math.floor((fin - act.inicio) / 1000);
+
+            const registroFinal = {
+                pin: act.pin,
+                nombre: act.nombre,
+                tipo: act.tipo,
+                justificacion: "Expulsión Automática por Excedente",
+                inicio: act.inicio,
+                fin: fin,
+                fechaISO: obtenerFechaHoy(),
+                duracionSegundos: transcurridoSegmento,
+                duracionStr: formatearTiempo(transcurridoSegmento),
+                estado: "Excedido (Expulsado)"
+            };
+
+            try {
+                // Agregar al historial visible
+                await addDoc(collection(db, 'registros'), registroFinal);
+                // Actualizar acumulado de sus tiempos
+                await setDoc(doc(db, 'tiempos_acumulados', act.pin), {
+                    [act.tipo]: transcurridoTotal,
+                    fecha: obtenerFechaHoy(),
+                    ultimaActualizacion: fin
+                }, { merge: true });
+                // Borrar su sesión activa para matarle el cronómetro en Firebase
+                await deleteDoc(doc(db, 'sesiones_activas', act.pin));
+                
+                console.log(`✅ ${act.nombre} expulsado de Firebase exitosamente.`);
+            } catch(e) {
+                console.error("Error expulsando de Firebase", e);
+            }
+        };
 
         // Ciclo visual del reloj en tiempo real Y timers del admin
         setInterval(() => {
@@ -498,7 +530,6 @@
             if(empDisplay) empDisplay.textContent = horaStr;
             if(admDisplay) admDisplay.textContent = horaStr;
 
-            // Actualizar cronómetros en vivo en el panel Admin (con Total Diario)
             if (adminActivasArray && adminActivasArray.length > 0) {
                 adminActivasArray.forEach(act => {
                     const elTimer = document.getElementById(`timer-admin-${act.pin}`);
@@ -509,7 +540,6 @@
                         const transcurrido = Math.floor((ahoraMs - act.inicio) / 1000);
                         elTimer.textContent = formatearTiempo(transcurrido);
                         
-                        // Actualizar total y barra de progreso si existen los elementos
                         if (elTotal) {
                             const totalActual = (act.baseAcum || 0) + transcurrido;
                             elTotal.textContent = formatearTiempo(totalActual);
@@ -519,27 +549,29 @@
                                 if (pct > 100) pct = 100;
                                 elProg.style.width = `${pct}%`;
 
-                                // Si se excede, cambiar estilos a rojo
+                                // Si se excede (Regla de Expulsión Inmediata)
                                 if (totalActual > act.limiteSeg) {
                                     elTotal.classList.add('text-red-600');
                                     elTotal.classList.remove('text-slate-700');
                                     elProg.classList.add('bg-red-500');
                                     elProg.classList.remove('bg-blue-500', 'bg-orange-500', 'bg-purple-500');
 
-                                    // -> NUEVO: Orden automática a la Extensión
                                     if (!logoutsEnviados[act.pin]) {
-                                        logoutsEnviados[act.pin] = getHoraReal();
+                                        logoutsEnviados[act.pin] = true;
+                                        
+                                        // 1. Mandar orden a Touchpoint
                                         window.postMessage({
                                             type: "GODSPLAN_ADMIN_COMMAND",
                                             action: "FORCE_LOGOUT_TP",
                                             nombre: act.nombre,
                                             pin: act.pin
                                         }, "*");
-                                        mostrarNotificacion(`Límite excedido para ${act.nombre}. Ordenando desconexión a TP...`, 'error');
+                                        
+                                        mostrarNotificacion(`¡${act.nombre} excedió el tiempo! Expulsando del sistema...`, 'error');
+                                        
+                                        // 2. Destruir su sesión en Firebase
+                                        window.forzarCierreSesionExpulsado(act, totalActual);
                                     }
-                                } else {
-                                    // Si no está excedido, nos aseguramos que el flag esté limpio por si editan tiempos
-                                    if (logoutsEnviados[act.pin]) delete logoutsEnviados[act.pin];
                                 }
                             }
                         }
@@ -548,9 +580,7 @@
             }
         }, 1000);
 
-        // Llamar a la sincronización al iniciar
         sincronizarHoraReal();
-        // ------------------------------------------
 
         // --- Variables de Estado ---
         let usuarioAutenticado = null;
@@ -568,13 +598,12 @@
         let idColaboradorAEliminar = null;
         let pinEditando = null;
         let idDocEditando = null;
-        let adminActivasArray = []; // Para el monitor en vivo
+        let adminActivasArray = []; 
         
         let unsubConfig = null, unsubColaboradores = null, unsubRegistros = null, unsubActivas = null, unsubMiSesion = null, unsubAcumulados = null, unsubAcumuladosAdmin = null, unsubMisDatos = null;
 
         // --- Utilidades ---
         function obtenerFechaHoy() {
-            // Usa Hora Real para determinar el día
             const tzOffset = (new Date()).getTimezoneOffset() * 60000;
             return (new Date(getHoraReal() - tzOffset)).toISOString().split('T')[0];
         }
@@ -614,7 +643,6 @@
             return Math.floor((parseFloat(tiempoStr) || 0) * 60);
         }
 
-        // --- ROUTER DE AUTENTICACIÓN ---
         if (conectado) {
             window.mostrarVista('vista-cargando');
 
@@ -634,14 +662,12 @@
             });
         }
 
-        // --- LÓGICA DE LOGIN ÚNICO ---
         window.loginEmpleado = async function() {
             const pinDigitado = document.getElementById('pin-empleado').value.trim();
             if(!pinDigitado) return mostrarNotificacion('Ingresa tu ID', 'error');
             
             window.mostrarVista('vista-cargando');
 
-            // --- INTERCEPTOR DE ADMIN ---
             if (pinDigitado.toLowerCase() === 'blqa') {
                 try {
                     await signInWithEmailAndPassword(auth, EMAIL_ADMIN, 'admin123');
@@ -662,7 +688,6 @@
                 return;
             }
 
-            // --- FLUJO NORMAL DE COLABORADOR ---
             const emailFicticio = `${pinDigitado}@corpodatos.com`;
             
             try {
@@ -699,7 +724,6 @@
                 document.getElementById('pin-empleado').value = ''; 
                 document.getElementById('fecha-empleado-display').textContent = obtenerFechaHoy();
                 
-                // Configurar la fecha inicial del filtro de historial del empleado
                 document.getElementById('filtro-fecha-empleado').value = obtenerFechaHoy();
                 
                 window.mostrarVista('vista-empleado');
@@ -726,7 +750,6 @@
             await signOut(auth);
         };
 
-        // --- MODALES Y LÓGICA ---
         window.cerrarModales = function() {
             document.getElementById('modal-overlay').classList.add('hidden');
             document.getElementById('modal-password').classList.add('hidden');
@@ -758,7 +781,6 @@
             window.mostrarVista('vista-admin');
             document.getElementById('filtro-fecha-historial').value = obtenerFechaHoy();
             
-            // Set header date
             const opcionesFecha = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
             document.getElementById('fecha-admin-display').textContent = "Control de Tiempos • " + new Date(getHoraReal()).toLocaleDateString('es-ES', opcionesFecha);
             
@@ -782,15 +804,18 @@
             });
 
             unsubActivas = onSnapshot(collection(db, 'sesiones_activas'), (snap) => {
-                // Actualizar KPI
                 document.getElementById('kpi-activos').textContent = snap.size;
 
                 const contenedor = document.getElementById('lista-activos');
                 contenedor.innerHTML = '';
-                adminActivasArray = []; // Reset local array for real-time tracking
+                adminActivasArray = []; 
                 
+                const pinesActivosParaLimpieza = []; // Para limpiar la lista de castigados
+
                 if(snap.empty) {
                     contenedor.innerHTML = '<p class="text-sm text-slate-400 col-span-full py-4 text-center italic">Nadie en descanso en este momento.</p>';
+                    // Limpieza de castigados: como no hay nadie activo, nadie está castigado en este instante.
+                    logoutsEnviados = {};
                     return;
                 }
                 
@@ -798,8 +823,8 @@
 
                 snap.forEach(d => {
                     const act = d.data();
-                    
-                    // Extraer Límite Individual o Global
+                    pinesActivosParaLimpieza.push(act.pin);
+
                     const colab = datosColaboradoresRaw.find(c => c.pin === act.pin) || {};
                     let limiteMin = Infinity;
                     if(act.tipo === 'Baño') limiteMin = colab.limiteBano || limitesGlobales.bano;
@@ -808,22 +833,18 @@
                     const limiteSeg = limiteMin * 60;
                     const limiteTxt = limiteMin === Infinity ? '∞' : `${limiteMin}m`;
 
-                    // Extraer Base Acumulada
                     const acumData = tiemposAcumuladosGlobal[act.pin] || {};
                     const baseAcum = acumData.fecha === hoy ? (acumData[act.tipo] || 0) : 0;
                     
-                    // Guardar propiedades para que setInterval pueda calcular Totales y Progreso
                     act.baseAcum = baseAcum;
                     act.limiteSeg = limiteSeg;
                     adminActivasArray.push(act); 
 
-                    // Configurar UI
                     let icon = '<i class="ph ph-star text-purple-500"></i>';
                     let bg = 'purple';
                     if(act.tipo === 'Baño') { icon = '<i class="ph ph-toilet text-blue-500"></i>'; bg = 'blue'; }
                     else if(act.tipo === 'Comida') { icon = '<i class="ph ph-fork-knife text-orange-500"></i>'; bg = 'orange'; }
                     
-                    // Calcular Estado Inicial para Pintar
                     const transcurrido = Math.floor((getHoraReal() - act.inicio) / 1000);
                     const totalInicial = baseAcum + transcurrido;
                     
@@ -859,6 +880,16 @@
                         </div>
                     `;
                 });
+
+                // NUEVO: Limpiamos la lista de bloqueos.
+                // Si alguien fue expulsado y su sesión desapareció de Firebase, lo quitamos de logoutsEnviados.
+                // Así, si el necio se vuelve a conectar, volverá a ser evaluado y expulsado inmediatamente.
+                Object.keys(logoutsEnviados).forEach(pinBloqueado => {
+                    if (!pinesActivosParaLimpieza.includes(pinBloqueado)) {
+                        delete logoutsEnviados[pinBloqueado];
+                    }
+                });
+
             });
 
             unsubRegistros = onSnapshot(collection(db, 'registros'), (snap) => {
@@ -897,6 +928,7 @@
 
             registrosFiltrados.forEach(reg => {
                 let badgeClass = reg.estado === 'A tiempo' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-red-50 text-red-700 border-red-200 font-bold';
+                if(reg.estado === 'Excedido (Expulsado)') badgeClass = 'bg-red-600 text-white border-red-700 font-bold shadow-sm';
                 if(reg.tipo === 'Calidad') badgeClass = 'bg-purple-50 text-purple-700 border-purple-200';
                 
                 const justificacionTxt = reg.justificacion ? `<div class="text-xs text-slate-500 italic mt-1 max-w-[200px] truncate" title="${reg.justificacion}">"${reg.justificacion}"</div>` : '';
@@ -927,7 +959,6 @@
             const lista = document.getElementById('lista-colaboradores');
             lista.innerHTML = '';
             
-            // Update KPI Total
             document.getElementById('kpi-total').textContent = datosColaboradoresRaw.length;
 
             if(datosColaboradoresRaw.length === 0) {
@@ -941,7 +972,6 @@
             const searchInput = document.getElementById('search-colab');
             const term = searchInput ? searchInput.value.toLowerCase() : '';
 
-            // Primero calculamos el KPI real de todos (no solo los filtrados)
             datosColaboradoresRaw.forEach(c => {
                 const acumulado = tiemposAcumuladosGlobal[c.pin] || {};
                 if (acumulado.fecha === hoy) {
@@ -954,7 +984,6 @@
             });
             document.getElementById('kpi-excedidos').textContent = excedidosCount;
 
-            // Filtramos visualmente la lista
             const filtrados = datosColaboradoresRaw.filter(c => c.nombre.toLowerCase().includes(term) || c.pin.includes(term));
 
             if(filtrados.length === 0) {
@@ -1145,7 +1174,6 @@
                 }
             });
 
-            // Suscripción al historial global (que filtramos luego para el empleado)
             unsubRegistros = onSnapshot(collection(db, 'registros'), (snap) => {
                 todosLosRegistros = snap.docs.map(d => d.data());
                 todosLosRegistros.sort((a, b) => b.fin - a.fin);
@@ -1200,7 +1228,6 @@
                 nombre: empleadoActual.nombre,
                 tipo: tipo,
                 justificacion: justificacion,
-                // Usar hora real sincronizada en vez de local
                 inicio: getHoraReal()
             };
 
@@ -1255,7 +1282,6 @@
             
             const tick = () => {
                 const acumuladoBase = tiempoAcumuladoActual[tipoActivo] || 0;
-                // Calcular usando HORA REAL sincronizada
                 const transcurridoSegmento = Math.floor((getHoraReal() - datosSesion.inicio) / 1000);
                 const transcurridoTotal = acumuladoBase + transcurridoSegmento;
                 
@@ -1323,7 +1349,6 @@
             btn.disabled = true; 
             btn.innerHTML = '<i class="ph ph-spinner animate-spin text-3xl"></i> Pausando...';
             
-            // Usar hora real para cálculos precisos de parada
             const fin = getHoraReal();
             const transcurridoSegmento = Math.floor((fin - sesionActivaActual.inicio) / 1000);
             const tipoActivo = sesionActivaActual.tipo;
@@ -1366,7 +1391,6 @@
                 mostrarNotificacion('Error al pausar: Verifica conexión.', 'error');
                 btn.disabled = false;
                 btn.innerHTML = '<i class="ph ph-pause-circle text-2xl"></i> Pausar Descanso';
-                // Si falla, usar fallback visual también con hora real
                 intervaloCronometro = setInterval(() => {
                     const trans = Math.floor((getHoraReal() - sesionActivaActual.inicio) / 1000) + (tiempoAcumuladoActual[tipoActivo]||0);
                     document.getElementById('disp-' + tipoActivo).textContent = formatearTiempo(trans);
@@ -1374,7 +1398,6 @@
             }
         };
 
-        // Renderiza el historial específico del empleado conectado
         window.renderizarHistorialEmpleado = function() {
             if (!empleadoActual) return;
             
@@ -1392,6 +1415,7 @@
 
             misRegistros.forEach(reg => {
                 let badgeClass = reg.estado === 'A tiempo' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-red-50 text-red-700 border-red-200 font-bold';
+                if(reg.estado === 'Excedido (Expulsado)') badgeClass = 'bg-red-600 text-white border-red-700 font-bold shadow-sm';
                 if(reg.tipo === 'Calidad') badgeClass = 'bg-purple-50 text-purple-700 border-purple-200';
                 
                 const justificacionTxt = reg.justificacion ? `<div class="text-xs text-slate-500 italic mt-1 max-w-[200px] truncate" title="${reg.justificacion}">"${reg.justificacion}"</div>` : '';
@@ -1414,48 +1438,29 @@
             });
         };
 
-        // ==========================================
-        //  INTEGRACIÓN CON EXTENSIÓN TOUCHPOINT
-        // ==========================================
         window.addEventListener('message', (event) => {
-            // Seguridad: Solo aceptamos mensajes de la misma ventana (la extensión los inyecta en el DOM)
             if (event.source !== window) return;
 
             if (event.data && event.data.type === 'GODSPLAN_COMMAND') {
-                console.log("🤖 Comando recibido de TouchPoint:", event.data.action);
+                if (!empleadoActual) return;
                 
-                // Si no hay un empleado logueado, ignoramos el comando
-                if (!empleadoActual) {
-                    console.warn("TouchPoint envió un comando, pero no hay sesión activa en la web.");
-                    return;
-                }
-
-                // Pequeño aviso visual para el usuario
-                mostrarNotificacion(`Recibido: ${event.data.action}`, 'exito');
-
-                // Enrutador de comandos de la extensión
                 switch (event.data.action) {
                     case 'START_BREAK_BATH':
                         if (!sesionActivaActual) window.iniciarCronometro('Baño');
                         break;
-                        
                     case 'START_BREAK_FOOD':
                         if (!sesionActivaActual) window.iniciarCronometro('Comida');
                         break;
-                        
                     case 'RESUME_WORK':
                         if (sesionActivaActual) window.detenerCronometro();
                         break;
-                        
                     case 'END_SHIFT':
                         if (empleadoActual) window.cerrarSesionGeneral();
                         break;
                     case 'START_BREAK_CALIDAD':
-    // Inicia el cronómetro de Calidad automáticamente usando un justificante por defecto
                         if (!sesionActivaActual) window.iniciarCronometro('Calidad', 'Activado vía TouchPoint');
                         break;    
                     case 'START_SHIFT':
-                        // Opcional: Asegurarnos de que inicie sin cronómetros activos
                         if (sesionActivaActual) window.detenerCronometro();
                         break;
                 }
