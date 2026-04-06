@@ -189,6 +189,23 @@
 
             <div class="flex-1 overflow-y-auto p-5 space-y-6 custom-scrollbar bg-slate-50/30 dark:bg-slate-900/30">
                 
+                <!-- Expulsión Automática -->
+                <div class="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 p-5">
+                    <h3 class="font-bold text-slate-800 dark:text-white mb-4 flex items-center gap-2 text-sm border-b border-slate-100 dark:border-slate-700/50 pb-2">
+                        <i class="ph ph-robot text-purple-500"></i> Asistente Automático
+                    </h3>
+                    <div class="flex items-center justify-between">
+                        <div class="pr-4">
+                            <p class="text-sm font-bold text-slate-800 dark:text-white">Botar Automático</p>
+                            <p class="text-[10px] text-slate-500 dark:text-slate-400 mt-1 leading-tight">Expulsa al asesor automáticamente de su receso cuando el tiempo llega al límite.</p>
+                        </div>
+                        <label class="relative inline-flex items-center cursor-pointer shrink-0">
+                            <input type="checkbox" id="toggle-auto-expulsion" class="sr-only peer" onchange="guardarAutoExpulsion()">
+                            <div class="w-11 h-6 bg-slate-200 peer-focus:outline-none rounded-full peer dark:bg-slate-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-purple-600"></div>
+                        </label>
+                    </div>
+                </div>
+
                 <!-- Límites Globales -->
                 <div class="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 p-5">
                     <h3 class="font-bold text-slate-800 dark:text-white mb-4 flex items-center gap-2 text-sm border-b border-slate-100 dark:border-slate-700/50 pb-2">
@@ -605,11 +622,14 @@
                                     elProg.classList.add('bg-red-500');
                                     elProg.classList.remove('bg-blue-500', 'bg-orange-500', 'bg-purple-500');
 
-                                    if (!logoutsEnviados[act.pin]) {
-                                        logoutsEnviados[act.pin] = true;
-                                        window.postMessage({ type: "GODSPLAN_ADMIN_COMMAND", action: "FORCE_LOGOUT_TP", nombre: act.nombre, pin: act.pin }, "*");
-                                        mostrarNotificacion(`¡${act.nombre} excedió el tiempo! Expulsando del sistema.`, 'error');
-                                        window.forzarCierreSesionExpulsado(act, totalActual);
+                                    // AQUÍ RESPETAMOS SI EL TOGGLE ESTÁ ACTIVO O NO
+                                    if (limitesGlobales.autoExpulsion !== false) { 
+                                        if (!logoutsEnviados[act.pin]) {
+                                            logoutsEnviados[act.pin] = true;
+                                            window.postMessage({ type: "GODSPLAN_ADMIN_COMMAND", action: "FORCE_LOGOUT_TP", nombre: act.nombre, pin: act.pin }, "*");
+                                            mostrarNotificacion(`¡${act.nombre} excedió el tiempo! Expulsando del sistema.`, 'error');
+                                            window.forzarCierreSesionExpulsado(act, totalActual);
+                                        }
                                     }
                                 }
                             }
@@ -622,7 +642,7 @@
         sincronizarHoraReal();
 
         // Variables de Estado
-        let limitesGlobales = { bano: 15, comida: 30 };
+        let limitesGlobales = { bano: 15, comida: 30, autoExpulsion: true }; // Ajustado aquí por defecto
         let datosColaboradoresRaw = [];
         let tiemposAcumuladosGlobal = {};
         let todosLosRegistros = [];
@@ -766,9 +786,13 @@
             
             unsubConfig = onSnapshot(doc(db, 'config', 'global'), (docSnap) => {
                 if(docSnap.exists()){
-                    limitesGlobales = docSnap.data();
+                    // Integra también el valor de autoExpulsion
+                    limitesGlobales = { autoExpulsion: true, ...docSnap.data() }; 
                     document.getElementById('limit-bano').value = limitesGlobales.bano;
                     document.getElementById('limit-comida').value = limitesGlobales.comida;
+                    
+                    const toggleAuto = document.getElementById('toggle-auto-expulsion');
+                    if(toggleAuto) toggleAuto.checked = limitesGlobales.autoExpulsion;
                 }
             });
 
@@ -1070,9 +1094,10 @@
                 
                 const justificacionTxt = reg.justificacion ? `<div class="text-[11px] text-slate-500 dark:text-slate-400 italic mt-1 max-w-[200px] truncate" title="${reg.justificacion}"><i class="ph ph-chat-circle text-slate-400"></i> "${reg.justificacion}"</div>` : '';
                 
-                // Nuevas variables para Hora de Inicio y Hora Fin
-                const horaInicioStr = new Date(reg.inicio).toLocaleTimeString([],{hour:'2-digit', minute:'2-digit'});
-                const horaFinStr = new Date(reg.fin).toLocaleTimeString([],{hour:'2-digit', minute:'2-digit'});
+                // Formato que incluye los segundos exactos
+                const opcionesHora = { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true };
+                const horaInicioStr = new Date(reg.inicio).toLocaleTimeString('es-MX', opcionesHora);
+                const horaFinStr = new Date(reg.fin).toLocaleTimeString('es-MX', opcionesHora);
                 
                 let tipoIcon = reg.tipo === 'Baño' ? 'ph-toilet text-blue-500 bg-blue-50 dark:bg-blue-500/20 dark:text-blue-400' : (reg.tipo === 'Comida' ? 'ph-fork-knife text-orange-500 bg-orange-50 dark:bg-orange-500/20 dark:text-orange-400' : 'ph-star text-purple-500 bg-purple-50 dark:bg-purple-500/20 dark:text-purple-400');
 
@@ -1092,8 +1117,8 @@
                             <span class="px-2 py-0.5 text-[11px] rounded border inline-block ${badgeClass}">${reg.estado}</span>
                             ${justificacionTxt}
                         </td>
-                        <td class="px-5 py-3 text-xs text-slate-500 dark:text-slate-400 font-medium">${horaInicioStr}</td>
-                        <td class="px-5 py-3 text-xs text-slate-500 dark:text-slate-400 font-medium">${horaFinStr}</td>
+                        <td class="px-5 py-3 text-[11px] text-slate-500 dark:text-slate-400 font-medium whitespace-nowrap">${horaInicioStr}</td>
+                        <td class="px-5 py-3 text-[11px] text-slate-500 dark:text-slate-400 font-medium whitespace-nowrap">${horaFinStr}</td>
                     </tr>
                 `;
             });
@@ -1193,6 +1218,18 @@
             });
         }
 
+        window.guardarAutoExpulsion = async function() {
+            const toggle = document.getElementById('toggle-auto-expulsion');
+            const autoExpulsion = toggle.checked;
+            try {
+                await setDoc(doc(db, 'config', 'global'), { autoExpulsion }, { merge: true });
+                mostrarNotificacion(autoExpulsion ? 'Asistente Automático: ACTIVADO' : 'Asistente Automático: DESACTIVADO', 'info');
+            } catch(e) {
+                mostrarNotificacion('Error al cambiar ajuste.', 'error');
+                toggle.checked = !autoExpulsion; // revertir
+            }
+        };
+
         window.guardarEdicionTiempoYLimites = async function() {
             if(!pinEditando || !idDocEditando) return;
             const segBano = tiempoASegundos(document.getElementById('edit-consumido-bano').value);
@@ -1213,7 +1250,8 @@
             const bano = parseInt(document.getElementById('limit-bano').value) || 15;
             const comida = parseInt(document.getElementById('limit-comida').value) || 30;
             try {
-                await setDoc(doc(db, 'config', 'global'), { bano, comida });
+                // Actualiza solo bano y comida sin sobrescribir autoExpulsion usando merge
+                await setDoc(doc(db, 'config', 'global'), { bano, comida }, { merge: true });
                 mostrarNotificacion('Políticas globales de tiempo actualizadas.');
             } catch(e) { mostrarNotificacion('Error al guardar configuración global', 'error'); }
         };
