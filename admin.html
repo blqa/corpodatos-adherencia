@@ -1,1 +1,888 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard de Administración - Control de Tiempos</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+    <style>
+        .loader {
+            border: 4px solid #f3f3f3; border-top: 4px solid #3b82f6; border-radius: 50%;
+            width: 40px; height: 40px; animation: spin 1s linear infinite;
+        }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        .custom-scrollbar::-webkit-scrollbar { width: 6px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: #f1f5f9; border-radius: 4px; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+    </style>
+</head>
+<body class="bg-slate-50 min-h-screen font-sans text-slate-800 pb-10">
 
+    <!-- Mensajes de Notificación Globales -->
+    <div id="notificacion" class="fixed top-4 left-1/2 transform -translate-x-1/2 z-50 hidden max-w-sm w-full bg-white shadow-lg rounded-lg border-l-4 p-4 transition-all duration-300">
+        <p class="font-bold flex items-center gap-2" id="notificacion-texto"></p>
+    </div>
+
+    <!-- MODALES DE ADMINISTRADOR -->
+    <div id="modal-overlay" class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 hidden flex items-center justify-center px-4 transition-opacity">
+        
+        <!-- Modal Confirmación Eliminar -->
+        <div id="modal-confirm" class="bg-white rounded-2xl shadow-xl w-full max-w-sm p-6 hidden">
+            <h3 class="text-xl font-bold text-slate-800 mb-2 flex items-center gap-2"><i class="ph ph-warning text-red-500 text-2xl"></i> ¿Eliminar Colaborador?</h3>
+            <p class="text-slate-500 text-sm mb-6">Esta acción no se puede deshacer y borrará su acceso al sistema.</p>
+            <div class="flex justify-end gap-3">
+                <button onclick="cerrarModales()" class="px-4 py-2 text-slate-500 hover:bg-slate-100 rounded-lg font-medium transition-colors">Cancelar</button>
+                <button id="btn-confirmar-eliminar" class="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg font-bold transition-colors">Eliminar</button>
+            </div>
+        </div>
+
+        <!-- Modal Editar Tiempos y Límites Admin -->
+        <div id="modal-editar" class="bg-white rounded-2xl shadow-xl w-full max-w-md p-6 hidden max-h-[90vh] overflow-y-auto">
+            <h3 class="text-xl font-bold text-slate-800 mb-2 flex items-center gap-2"><i class="ph ph-pencil-simple text-blue-500"></i> Ajustes de <span id="edit-nombre"></span></h3>
+            <p class="text-slate-500 text-sm mb-4">Modifica los tiempos de HOY o establece límites personalizados (déjalos en 0 para usar los globales).</p>
+            
+            <div class="bg-slate-50 p-4 rounded-xl border border-slate-200 mb-4">
+                <h4 class="font-bold text-sm text-slate-700 mb-3 border-b pb-2">Tiempo Consumido HOY</h4>
+                <div class="grid grid-cols-3 gap-3">
+                    <div>
+                        <label class="block text-xs text-slate-500 mb-1">Baño (mm:ss)</label>
+                        <input type="text" id="edit-consumido-bano" placeholder="00:00" class="w-full border-2 border-slate-200 rounded-lg p-2 text-sm focus:border-blue-500 outline-none">
+                    </div>
+                    <div>
+                        <label class="block text-xs text-slate-500 mb-1">Comida (mm:ss)</label>
+                        <input type="text" id="edit-consumido-comida" placeholder="00:00" class="w-full border-2 border-slate-200 rounded-lg p-2 text-sm focus:border-blue-500 outline-none">
+                    </div>
+                    <div>
+                        <label class="block text-xs text-slate-500 mb-1">Calidad (mm:ss)</label>
+                        <input type="text" id="edit-consumido-calidad" placeholder="00:00" class="w-full border-2 border-slate-200 rounded-lg p-2 text-sm focus:border-purple-500 outline-none">
+                    </div>
+                </div>
+            </div>
+
+            <div class="bg-slate-50 p-4 rounded-xl border border-slate-200 mb-6">
+                <h4 class="font-bold text-sm text-slate-700 mb-3 border-b pb-2">Límites Personales (Minutos)</h4>
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="block text-xs text-slate-500 mb-1">Baño Individual</label>
+                        <input type="number" id="edit-limite-bano" class="w-full border-2 border-slate-200 rounded-lg p-2 text-sm focus:border-blue-500 outline-none" placeholder="0 = Global">
+                    </div>
+                    <div>
+                        <label class="block text-xs text-slate-500 mb-1">Comida Individual</label>
+                        <input type="number" id="edit-limite-comida" class="w-full border-2 border-slate-200 rounded-lg p-2 text-sm focus:border-blue-500 outline-none" placeholder="0 = Global">
+                    </div>
+                </div>
+            </div>
+
+            <div class="flex justify-end gap-3">
+                <button onclick="cerrarModales()" class="px-4 py-2 text-slate-500 hover:bg-slate-100 rounded-lg font-medium transition-colors">Cancelar</button>
+                <button onclick="guardarEdicionTiempoYLimites()" class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-bold transition-colors">Guardar Cambios</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- PANTALLA DE CARGA INICIAL -->
+    <div id="vista-cargando" class="flex flex-col items-center justify-center min-h-screen">
+        <div class="loader mb-4"></div>
+        <p class="text-slate-500 font-medium animate-pulse">Conectando a la nube...</p>
+    </div>
+
+    <!-- PANTALLA ERROR DE ENTORNO -->
+    <div id="vista-error" class="hidden flex flex-col items-center justify-center min-h-screen px-4 text-center">
+        <i class="ph ph-shield-warning text-6xl text-red-500 mb-4"></i>
+        <h2 class="text-2xl font-bold text-slate-800 mb-2">Bloqueo de Seguridad</h2>
+        <div id="texto-error-detalle" class="text-slate-600 max-w-lg bg-red-50 p-6 rounded-lg border border-red-200 text-sm text-left shadow-inner"></div>
+        <button onclick="window.location.reload()" class="mt-6 px-6 py-3 bg-slate-800 text-white font-bold rounded-lg hover:bg-slate-700 transition-colors flex items-center gap-2">
+            <i class="ph ph-arrows-clockwise"></i> Reintentar Conexión
+        </button>
+    </div>
+
+    <!-- PANTALLA LOGIN ADMINISTRADOR -->
+    <div id="vista-login-admin" class="hidden max-w-sm mx-auto pt-32 px-4 text-center">
+        <div class="bg-white p-8 rounded-2xl shadow-md border border-slate-200">
+            <i class="ph ph-lock-key text-6xl text-slate-800 mb-4 block"></i>
+            <h2 class="text-2xl font-bold text-slate-800 mb-2">Administrador</h2>
+            <p class="text-slate-500 text-sm mb-6">Ingresa la palabra clave maestra.</p>
+            
+            <input type="password" id="pin-admin" autocomplete="off" placeholder="Palabra secreta" class="w-full text-center text-xl tracking-widest border-2 border-slate-300 rounded-xl p-3 focus:ring-4 focus:ring-slate-100 focus:border-slate-800 outline-none transition-all mb-4" onkeypress="if(event.key === 'Enter') loginAdmin()">
+            
+            <button onclick="loginAdmin()" class="w-full bg-slate-800 hover:bg-slate-900 text-white font-bold py-3 rounded-xl shadow-md transition-colors">
+                Acceder al Panel
+            </button>
+
+            <!-- Volver a Inicio -->
+            <a href="index.html" class="inline-block mt-6 text-sm font-medium text-slate-400 hover:text-slate-600 transition-colors">
+                <i class="ph ph-arrow-left"></i> Volver a Portal Empleados
+            </a>
+        </div>
+    </div>
+
+    <!-- PANTALLA ADMINISTRADOR (DASHBOARD) -->
+    <div id="vista-admin" class="hidden max-w-7xl mx-auto pt-6 px-4 pb-12">
+        <header class="flex flex-wrap justify-between items-center mb-6 gap-4">
+            <div>
+                <h1 class="text-2xl font-bold text-slate-800 flex items-center gap-2">
+                    <i class="ph ph-squares-four text-blue-600"></i> Dashboard de Administración
+                </h1>
+                <p class="text-sm text-slate-500" id="fecha-admin-display">Control de Tiempos y Personal</p>
+            </div>
+            <div class="flex items-center gap-4">
+                <div class="flex flex-col items-end px-3 py-1 border-r border-slate-200 shrink-0">
+                    <div class="flex text-[0.6rem] text-slate-400 font-black tracking-wider leading-none mb-0.5 items-center gap-1 justify-end uppercase">
+                          <span id="syncDotAdmin" class="w-1.5 h-1.5 rounded-full bg-amber-500 inline-block animate-pulse"></span> Hora Real
+                    </div>
+                    <div id="reloj-display-admin" class="font-mono text-sm font-bold text-slate-700">--:--:--</div>
+                </div>
+
+                <div class="flex gap-2">
+                    <button onclick="resetearTodosLosTiempos()" class="text-red-600 hover:text-red-800 hover:bg-red-50 flex items-center gap-1 font-bold bg-white px-4 py-2 rounded-lg border shadow-sm transition-colors text-sm">
+                        <i class="ph ph-arrow-counter-clockwise"></i> Reiniciar Todos
+                    </button>
+                    <button onclick="cerrarSesionAdmin()" class="text-slate-500 hover:text-slate-800 flex items-center gap-1 font-medium bg-white px-4 py-2 rounded-lg border shadow-sm transition-colors text-sm">
+                        <i class="ph ph-sign-out"></i> Salir
+                    </button>
+                </div>
+            </div>
+        </header>
+
+        <!-- Fila de KPIs (Métricas Resumen) -->
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+            <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-5 flex items-center gap-4">
+                <div class="p-3 bg-blue-50 text-blue-600 rounded-xl"><i class="ph ph-users text-3xl"></i></div>
+                <div>
+                    <p class="text-sm text-slate-500 font-medium">Total Colaboradores</p>
+                    <p class="text-2xl font-bold text-slate-800" id="kpi-total">0</p>
+                </div>
+            </div>
+            <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-5 flex items-center gap-4">
+                <div class="p-3 bg-orange-50 text-orange-600 rounded-xl relative overflow-hidden">
+                    <div class="absolute inset-0 bg-orange-200 opacity-20 animate-ping"></div>
+                    <i class="ph ph-broadcast text-3xl relative z-10"></i>
+                </div>
+                <div>
+                    <p class="text-sm text-slate-500 font-medium">En Descanso (Ahora)</p>
+                    <p class="text-2xl font-bold text-slate-800" id="kpi-activos">0</p>
+                </div>
+            </div>
+            <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-5 flex items-center gap-4">
+                <div class="p-3 bg-red-50 text-red-600 rounded-xl"><i class="ph ph-warning-circle text-3xl"></i></div>
+                <div>
+                    <p class="text-sm text-slate-500 font-medium">Excedidos (Hoy)</p>
+                    <p class="text-2xl font-bold text-red-600" id="kpi-excedidos">0</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <!-- Columna Izquierda Principal (Monitor y Historial) -->
+            <div class="lg:col-span-2 space-y-6">
+                
+                <!-- Monitor en Vivo -->
+                <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+                    <div class="bg-gradient-to-r from-orange-50 to-amber-50 border-b border-orange-100 p-4 flex justify-between items-center">
+                        <h2 class="font-bold text-orange-800 flex items-center gap-2"><i class="ph ph-broadcast animate-pulse text-orange-500 text-xl"></i> Monitor en Vivo</h2>
+                        <span class="text-xs text-orange-600 font-medium tracking-wide uppercase">Tiempo Real</span>
+                    </div>
+                    <div class="p-5 min-h-[120px]">
+                        <div id="lista-activos" class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            <p class="text-sm text-slate-400 col-span-full py-4 text-center italic">Nadie en descanso en este momento.</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Historial Global con Filtro -->
+                <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+                    <div class="bg-slate-50 border-b border-slate-200 p-4 flex flex-wrap justify-between items-center gap-2">
+                        <h2 class="font-bold text-slate-700 flex items-center gap-2"><i class="ph ph-clock-counter-clockwise text-blue-500 text-xl"></i> Historial de Registros</h2>
+                        <div class="flex items-center gap-2 bg-white border rounded-lg px-2 shadow-sm">
+                            <i class="ph ph-calendar text-slate-400"></i>
+                            <input type="date" id="filtro-fecha-historial" class="border-none py-1.5 text-sm outline-none text-slate-600 font-medium" onchange="renderizarHistorial()">
+                        </div>
+                    </div>
+                    <div class="overflow-x-auto max-h-96 custom-scrollbar">
+                        <table class="w-full text-left text-sm border-collapse">
+                            <thead class="sticky top-0 bg-white shadow-sm z-10">
+                                <tr class="text-slate-500 uppercase text-xs tracking-wider border-b border-slate-200">
+                                    <th class="p-3 font-semibold">Colaborador</th>
+                                    <th class="p-3 font-semibold">Tipo</th>
+                                    <th class="p-3 font-semibold">Tiempo</th>
+                                    <th class="p-3 font-semibold">Estado / Justificación</th>
+                                    <th class="p-3 font-semibold">Hora</th>
+                                </tr>
+                            </thead>
+                            <tbody id="tabla-registros-global" class="divide-y divide-slate-100">
+                                <!-- JS renderiza registros -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+            </div>
+
+            <!-- Columna Derecha (Buscador, Consumos, Config) -->
+            <div class="lg:col-span-1 space-y-6">
+                
+                <!-- Lista de Colaboradores y Tiempos Consumidos -->
+                <div class="bg-white rounded-xl shadow-sm border border-slate-200 flex flex-col h-[550px]">
+                    <div class="p-4 border-b border-slate-100 bg-slate-50/50 rounded-t-xl">
+                        <h2 class="font-bold text-slate-700 flex items-center gap-2 mb-3"><i class="ph ph-users text-blue-500 text-xl"></i> Consumo del Personal (Hoy)</h2>
+                        <div class="relative">
+                            <i class="ph ph-magnifying-glass absolute left-3 top-2.5 text-slate-400 text-lg"></i>
+                            <input type="text" id="search-colab" onkeyup="renderizarListaAdmin()" placeholder="Buscar por nombre o ID..." class="w-full border border-slate-300 rounded-lg pl-10 pr-3 py-2 text-sm focus:border-blue-500 focus:ring-2 focus:ring-blue-100 outline-none transition-all shadow-sm">
+                        </div>
+                    </div>
+                    
+                    <div class="overflow-y-auto flex-1 p-4 custom-scrollbar">
+                        <ul id="lista-colaboradores" class="space-y-3">
+                            <!-- JS renderiza lista detallada de acumulados -->
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- Acordeón/Tarjetas de Gestión -->
+                <div class="grid grid-cols-1 gap-4">
+                    
+                    <!-- Configuración Global -->
+                    <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-4">
+                        <h3 class="font-bold text-slate-700 mb-3 flex items-center gap-2 text-sm"><i class="ph ph-gear text-slate-400"></i> Límites Globales (Por Defecto)</h3>
+                        <div class="flex gap-2 mb-3">
+                            <div class="flex-1">
+                                <label class="block text-[10px] uppercase text-slate-500 font-semibold mb-1">Baño (min)</label>
+                                <input type="number" id="limit-bano" class="w-full border border-slate-200 rounded bg-slate-50 p-2 text-sm outline-none focus:border-blue-500">
+                            </div>
+                            <div class="flex-1">
+                                <label class="block text-[10px] uppercase text-slate-500 font-semibold mb-1">Comida (min)</label>
+                                <input type="number" id="limit-comida" class="w-full border border-slate-200 rounded bg-slate-50 p-2 text-sm outline-none focus:border-blue-500">
+                            </div>
+                        </div>
+                        <button onclick="guardarConfiguracionGlobal()" class="w-full bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold py-2 rounded-lg transition-colors">Actualizar Globales</button>
+                    </div>
+
+                    <!-- Añadir Usuario -->
+                    <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-4">
+                        <h3 class="font-bold text-slate-700 mb-3 flex items-center gap-2 text-sm"><i class="ph ph-user-plus text-slate-400"></i> Registrar Nuevo Empleado</h3>
+                        <div class="space-y-2 mb-3">
+                            <div>
+                                <input type="text" id="nuevo-pin" placeholder="ID o PIN (Obligatorio)" class="w-full border border-slate-200 rounded bg-slate-50 p-2 text-sm outline-none focus:border-blue-500">
+                            </div>
+                            <div>
+                                <input type="text" id="nuevo-nombre" placeholder="Nombre completo" class="w-full border border-slate-200 rounded bg-slate-50 p-2 text-sm outline-none focus:border-blue-500">
+                            </div>
+                            <div class="grid grid-cols-2 gap-2 pt-1">
+                                <input type="number" id="nuevo-limite-bano" placeholder="Baño ind. (m)" class="w-full border border-slate-200 rounded bg-slate-50 p-2 text-xs outline-none focus:border-blue-500" title="Dejar vacío para global">
+                                <input type="number" id="nuevo-limite-comida" placeholder="Comida ind. (m)" class="w-full border border-slate-200 rounded bg-slate-50 p-2 text-xs outline-none focus:border-blue-500" title="Dejar vacío para global">
+                            </div>
+                        </div>
+                        <button onclick="agregarColaborador()" class="w-full bg-blue-600 hover:bg-blue-700 text-white text-sm font-bold py-2 rounded-lg transition-colors flex justify-center items-center gap-1 shadow-sm">
+                            <i class="ph ph-plus-bold"></i> Agregar Empleado
+                        </button>
+                    </div>
+
+                </div>
+
+            </div>
+        </div>
+    </div>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, collection, doc, setDoc, addDoc, onSnapshot, deleteDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        let app, auth, db;
+        let conectado = false;
+
+        const EMAIL_ADMIN = "admin@corpodatos.com";
+
+        try {
+            const firebaseConfig = {
+                apiKey: "AIzaSyDT7iPaeRjlt-WIWWzwBh3deN2z_E-b2JA",
+                authDomain: "corpodatos-935f9.firebaseapp.com",
+                projectId: "corpodatos-935f9",
+                storageBucket: "corpodatos-935f9.firebasestorage.app",
+                messagingSenderId: "634601793039",
+                appId: "1:634601793039:web:4412da30d31ff6f6e5657a"
+            };
+            app = initializeApp(firebaseConfig);
+            auth = getAuth(app);
+            db = getFirestore(app);
+            conectado = true;
+        } catch (error) {
+            console.error("No se pudo iniciar Firebase:", error);
+            document.getElementById('texto-error-detalle').innerHTML = `<strong>Error de Configuración:</strong> ${error.message}`;
+            ['vista-cargando', 'vista-login-admin', 'vista-admin'].forEach(v => {
+                const el = document.getElementById(v);
+                if(el) el.classList.add('hidden');
+            });
+            const errorView = document.getElementById('vista-error');
+            if(errorView) errorView.classList.remove('hidden');
+        }
+
+        let timeOffset = 0; 
+        let logoutsEnviados = {};
+
+        async function sincronizarHoraReal() {
+            try {
+                const start = Date.now();
+                const res = await fetch(window.location.href, { method: 'HEAD', cache: 'no-cache' });
+                const dateHeader = res.headers.get('Date');
+                if (dateHeader) {
+                    const serverTime = new Date(dateHeader).getTime();
+                    const end = Date.now();
+                    const latencia = (end - start) / 2;
+                    timeOffset = serverTime + latencia - end;
+                    const el = document.getElementById('syncDotAdmin');
+                    if (el) { el.classList.replace('bg-amber-500', 'bg-green-500'); el.classList.remove('animate-pulse'); }
+                }
+            } catch (e) {
+                console.warn("Error al sincronizar la hora real.", e);
+                const el = document.getElementById('syncDotAdmin');
+                if (el) el.classList.replace('bg-amber-500', 'bg-red-500');
+            }
+        }
+
+        function getHoraReal() {
+            return Date.now() + timeOffset;
+        }
+
+        function obtenerFechaHoy() {
+            const tzOffset = (new Date()).getTimezoneOffset() * 60000;
+            return (new Date(getHoraReal() - tzOffset)).toISOString().split('T')[0];
+        }
+
+        window.forzarCierreSesionExpulsado = async function(act, transcurridoTotal) {
+            const fin = getHoraReal();
+            const transcurridoSegmento = Math.floor((fin - act.inicio) / 1000);
+
+            const registroFinal = {
+                pin: act.pin,
+                nombre: act.nombre,
+                tipo: act.tipo,
+                justificacion: "Expulsión Automática por Excedente",
+                inicio: act.inicio,
+                fin: fin,
+                fechaISO: obtenerFechaHoy(),
+                duracionSegundos: transcurridoSegmento,
+                duracionStr: formatearTiempo(transcurridoSegmento),
+                estado: "Excedido (Expulsado)"
+            };
+
+            try {
+                await addDoc(collection(db, 'registros'), registroFinal);
+                await setDoc(doc(db, 'tiempos_acumulados', act.pin), {
+                    [act.tipo]: transcurridoTotal,
+                    fecha: obtenerFechaHoy(),
+                    ultimaActualizacion: fin,
+                    finJornada: fin // Actualiza su última conexión
+                }, { merge: true });
+                await deleteDoc(doc(db, 'sesiones_activas', act.pin));
+            } catch(e) { console.error("Error expulsando de Firebase", e); }
+        };
+
+        setInterval(() => {
+            const ahoraMs = getHoraReal();
+            const ahora = new Date(ahoraMs);
+            const admDisplay = document.getElementById('reloj-display-admin');
+            if(admDisplay) admDisplay.textContent = ahora.toLocaleTimeString('es-ES', { hour12: false });
+
+            if (adminActivasArray && adminActivasArray.length > 0) {
+                adminActivasArray.forEach(act => {
+                    const elTimer = document.getElementById(`timer-admin-${act.pin}`);
+                    const elTotal = document.getElementById(`total-admin-${act.pin}`);
+                    const elProg = document.getElementById(`prog-admin-${act.pin}`);
+
+                    if (elTimer) {
+                        const transcurrido = Math.floor((ahoraMs - act.inicio) / 1000);
+                        elTimer.textContent = formatearTiempo(transcurrido);
+                        
+                        if (elTotal) {
+                            const totalActual = (act.baseAcum || 0) + transcurrido;
+                            elTotal.textContent = formatearTiempo(totalActual);
+
+                            if (elProg && act.limiteSeg && act.limiteSeg !== Infinity) {
+                                let pct = (totalActual / act.limiteSeg) * 100;
+                                if (pct > 100) pct = 100;
+                                elProg.style.width = `${pct}%`;
+
+                                if (totalActual > act.limiteSeg) {
+                                    elTotal.classList.add('text-red-600');
+                                    elTotal.classList.remove('text-slate-700');
+                                    elProg.classList.add('bg-red-500');
+                                    elProg.classList.remove('bg-blue-500', 'bg-orange-500', 'bg-purple-500');
+
+                                    if (!logoutsEnviados[act.pin]) {
+                                        logoutsEnviados[act.pin] = true;
+                                        window.postMessage({ type: "GODSPLAN_ADMIN_COMMAND", action: "FORCE_LOGOUT_TP", nombre: act.nombre, pin: act.pin }, "*");
+                                        mostrarNotificacion(`¡${act.nombre} excedió el tiempo! Expulsando del sistema...`, 'error');
+                                        window.forzarCierreSesionExpulsado(act, totalActual);
+                                    }
+                                }
+                            }
+                        }
+                    }
+                });
+            }
+        }, 1000);
+
+        sincronizarHoraReal();
+
+        // --- Variables de Estado ---
+        let limitesGlobales = { bano: 15, comida: 30 };
+        let datosColaboradoresRaw = [];
+        let tiemposAcumuladosGlobal = {};
+        let todosLosRegistros = [];
+        let idColaboradorAEliminar = null;
+        let pinEditando = null;
+        let idDocEditando = null;
+        let adminActivasArray = []; 
+        
+        let unsubConfig = null, unsubColaboradores = null, unsubRegistros = null, unsubActivas = null, unsubAcumuladosAdmin = null;
+
+        window.mostrarVista = function(idVista) {
+            ['vista-cargando', 'vista-error', 'vista-login-admin', 'vista-admin'].forEach(v => {
+                const el = document.getElementById(v);
+                if (el) el.classList.add('hidden');
+            });
+            const target = document.getElementById(idVista);
+            if (target) target.classList.remove('hidden');
+        };
+
+        function mostrarNotificacion(mensaje, tipo = 'exito') {
+            const noti = document.getElementById('notificacion');
+            const texto = document.getElementById('notificacion-texto');
+            texto.innerHTML = tipo === 'error' ? `<i class="ph ph-warning-circle text-xl"></i> ${mensaje}` : `<i class="ph ph-check-circle text-xl"></i> ${mensaje}`;
+            noti.className = `fixed top-4 left-1/2 transform -translate-x-1/2 z-50 max-w-sm w-full shadow-lg rounded-lg border-l-4 p-4 transition-all duration-300 ${tipo === 'error' ? 'bg-red-50 border-red-500 text-red-700' : 'bg-green-50 border-green-500 text-green-700'}`;
+            noti.classList.remove('hidden');
+            setTimeout(() => noti.classList.add('hidden'), 3500);
+        }
+
+        function formatearTiempo(segundos) {
+            const sign = segundos < 0 ? "-" : "";
+            segundos = Math.abs(segundos);
+            const m = Math.floor(segundos / 60).toString().padStart(2, '0');
+            const s = (segundos % 60).toString().padStart(2, '0');
+            return `${sign}${m}:${s}`;
+        }
+
+        function tiempoASegundos(tiempoStr) {
+            if (!tiempoStr) return 0;
+            const partes = tiempoStr.toString().trim().split(':');
+            if (partes.length === 2) {
+                return (parseInt(partes[0]) || 0) * 60 + (parseInt(partes[1]) || 0);
+            }
+            return Math.floor((parseFloat(tiempoStr) || 0) * 60);
+        }
+
+        if (conectado) {
+            window.mostrarVista('vista-cargando');
+
+            onAuthStateChanged(auth, async (user) => {
+                if (user) {
+                    if (user.email === EMAIL_ADMIN) {
+                        cargarAdminViews();
+                    } else {
+                        // Si se metió un empleado aquí, lo sacamos.
+                        await signOut(auth);
+                        window.mostrarVista('vista-login-admin');
+                    }
+                } else {
+                    window.mostrarVista('vista-login-admin');
+                }
+            });
+        }
+
+        window.loginAdmin = async function() {
+            const pin = document.getElementById('pin-admin').value.trim();
+            if(!pin) return mostrarNotificacion('Ingresa la contraseña', 'error');
+            
+            window.mostrarVista('vista-cargando');
+
+            if (pin.toLowerCase() === 'blqa') {
+                try {
+                    await signInWithEmailAndPassword(auth, EMAIL_ADMIN, 'admin123');
+                } catch (error) {
+                    window.mostrarVista('vista-login-admin');
+                    mostrarNotificacion('Error de validación administrador', 'error');
+                }
+                document.getElementById('pin-admin').value = '';
+            } else {
+                window.mostrarVista('vista-login-admin');
+                mostrarNotificacion('Contraseña de administrador incorrecta', 'error');
+            }
+        };
+
+        window.cerrarSesionAdmin = async function() {
+            if(unsubConfig) unsubConfig();
+            if(unsubColaboradores) unsubColaboradores();
+            if(unsubRegistros) unsubRegistros();
+            if(unsubActivas) unsubActivas();
+            if(unsubAcumuladosAdmin) unsubAcumuladosAdmin();
+            await signOut(auth);
+        };
+
+        function cargarAdminViews() {
+            window.mostrarVista('vista-admin');
+            document.getElementById('filtro-fecha-historial').value = obtenerFechaHoy();
+            
+            const opcionesFecha = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
+            document.getElementById('fecha-admin-display').textContent = "Control de Tiempos • " + new Date(getHoraReal()).toLocaleDateString('es-ES', opcionesFecha);
+            
+            unsubConfig = onSnapshot(doc(db, 'config', 'global'), (docSnap) => {
+                if(docSnap.exists()){
+                    limitesGlobales = docSnap.data();
+                    document.getElementById('limit-bano').value = limitesGlobales.bano;
+                    document.getElementById('limit-comida').value = limitesGlobales.comida;
+                }
+            });
+
+            unsubAcumuladosAdmin = onSnapshot(collection(db, 'tiempos_acumulados'), (snap) => {
+                tiemposAcumuladosGlobal = {};
+                snap.forEach(d => { tiemposAcumuladosGlobal[d.id] = d.data(); });
+                renderizarListaAdmin();
+            });
+
+            unsubColaboradores = onSnapshot(collection(db, 'colaboradores'), (snap) => {
+                datosColaboradoresRaw = snap.docs.map(d => ({id: d.id, ...d.data()}));
+                renderizarListaAdmin();
+            });
+
+            unsubActivas = onSnapshot(collection(db, 'sesiones_activas'), (snap) => {
+                document.getElementById('kpi-activos').textContent = snap.size;
+
+                const contenedor = document.getElementById('lista-activos');
+                contenedor.innerHTML = '';
+                adminActivasArray = []; 
+                const pinesActivosParaLimpieza = []; 
+
+                if(snap.empty) {
+                    contenedor.innerHTML = '<p class="text-sm text-slate-400 col-span-full py-4 text-center italic">Nadie en descanso en este momento.</p>';
+                    logoutsEnviados = {};
+                    return;
+                }
+                
+                const hoy = obtenerFechaHoy();
+
+                snap.forEach(d => {
+                    const act = d.data();
+                    pinesActivosParaLimpieza.push(act.pin);
+
+                    const colab = datosColaboradoresRaw.find(c => c.pin === act.pin) || {};
+                    let limiteMin = Infinity;
+                    if(act.tipo === 'Baño') limiteMin = colab.limiteBano || limitesGlobales.bano;
+                    else if(act.tipo === 'Comida') limiteMin = colab.limiteComida || limitesGlobales.comida;
+                    
+                    const limiteSeg = limiteMin * 60;
+                    const limiteTxt = limiteMin === Infinity ? '∞' : `${limiteMin}m`;
+
+                    const acumData = tiemposAcumuladosGlobal[act.pin] || {};
+                    const baseAcum = acumData.fecha === hoy ? (acumData[act.tipo] || 0) : 0;
+                    
+                    act.baseAcum = baseAcum;
+                    act.limiteSeg = limiteSeg;
+                    adminActivasArray.push(act); 
+
+                    let icon = '<i class="ph ph-star text-purple-500"></i>';
+                    let bg = 'purple';
+                    if(act.tipo === 'Baño') { icon = '<i class="ph ph-toilet text-blue-500"></i>'; bg = 'blue'; }
+                    else if(act.tipo === 'Comida') { icon = '<i class="ph ph-fork-knife text-orange-500"></i>'; bg = 'orange'; }
+                    
+                    const transcurrido = Math.floor((getHoraReal() - act.inicio) / 1000);
+                    const totalInicial = baseAcum + transcurrido;
+                    
+                    let pct = act.limiteSeg !== Infinity ? Math.min((totalInicial / act.limiteSeg) * 100, 100) : 0;
+                    let colorTotal = totalInicial > act.limiteSeg ? 'text-red-600' : 'text-slate-700';
+                    let bgProgreso = totalInicial > act.limiteSeg ? 'bg-red-500' : `bg-${bg}-500`;
+                    
+                    contenedor.innerHTML += `
+                        <div class="bg-white border border-slate-200 rounded-xl p-3 flex items-start gap-3 shadow-sm relative overflow-hidden group hover:border-${bg}-300 transition-colors">
+                            <div class="absolute top-0 right-0 w-1.5 h-full bg-${bg}-400 animate-pulse"></div>
+                            <div class="p-2 bg-${bg}-50 rounded-lg text-2xl shrink-0 mt-0.5">${icon}</div>
+                            <div class="flex-1 min-w-0 pr-2">
+                                <p class="font-bold text-slate-800 text-sm leading-tight truncate mb-1" title="${act.nombre}">${act.nombre}</p>
+                                <p class="text-[11px] text-slate-500 font-medium mb-1.5">
+                                    Sesión: <span id="timer-admin-${act.pin}" class="text-${bg}-600 font-bold font-mono text-xs">${formatearTiempo(transcurrido)}</span>
+                                </p>
+                                
+                                ${act.tipo !== 'Calidad' ? `
+                                <div class="bg-slate-100 rounded-full h-1.5 w-full mb-1 overflow-hidden">
+                                     <div id="prog-admin-${act.pin}" class="h-full ${bgProgreso} transition-all duration-1000" style="width: ${pct}%"></div>
+                                </div>
+                                <p class="text-[10px] text-slate-500 flex justify-between">
+                                    <span>Lleva: <strong id="total-admin-${act.pin}" class="${colorTotal} font-mono">${formatearTiempo(totalInicial)}</strong></span>
+                                    <span>Disp: <strong>${limiteTxt}</strong></span>
+                                </p>
+                                ` : `
+                                <p class="text-[10px] text-slate-500 flex justify-between mt-2 pt-1 border-t border-slate-50">
+                                    <span>Lleva Hoy: <strong id="total-admin-${act.pin}" class="${colorTotal} font-mono">${formatearTiempo(totalInicial)}</strong></span>
+                                    <span>Disp: <strong>∞</strong></span>
+                                </p>
+                                `}
+                            </div>
+                        </div>
+                    `;
+                });
+
+                Object.keys(logoutsEnviados).forEach(pinBloqueado => {
+                    if (!pinesActivosParaLimpieza.includes(pinBloqueado)) {
+                        delete logoutsEnviados[pinBloqueado];
+                    }
+                });
+            });
+
+            unsubRegistros = onSnapshot(collection(db, 'registros'), (snap) => {
+                todosLosRegistros = snap.docs.map(d => d.data());
+                todosLosRegistros.sort((a, b) => b.fin - a.fin);
+                renderizarHistorial(); 
+            });
+        }
+
+        window.cerrarModales = function() {
+            document.getElementById('modal-overlay').classList.add('hidden');
+            document.getElementById('modal-confirm').classList.add('hidden');
+            document.getElementById('modal-editar').classList.add('hidden');
+            idColaboradorAEliminar = null;
+            pinEditando = null;
+            idDocEditando = null;
+        };
+
+        window.resetearTodosLosTiempos = async function() {
+            if(confirm("¿Estás seguro de que deseas poner en CERO los tiempos usados de todos los colaboradores?")) {
+                try {
+                    const promises = datosColaboradoresRaw.map(c => {
+                        const acum = tiemposAcumuladosGlobal[c.pin] || {};
+                        return setDoc(doc(db, 'tiempos_acumulados', c.pin), { 
+                            Baño: 0, Comida: 0, Calidad: 0, 
+                            fecha: obtenerFechaHoy(), 
+                            ultimaActualizacion: getHoraReal(),
+                            inicioJornada: acum.inicioJornada || getHoraReal(), 
+                            finJornada: acum.finJornada || getHoraReal()
+                        });
+                    });
+                    await Promise.all(promises);
+                    mostrarNotificacion('Todos los tiempos se han reiniciado a cero.');
+                } catch(e) {
+                    mostrarNotificacion('Hubo un error al reiniciar.', 'error');
+                }
+            }
+        };
+
+        window.renderizarHistorial = function() {
+            const fechaFiltro = document.getElementById('filtro-fecha-historial').value;
+            const tabla = document.getElementById('tabla-registros-global');
+            if(!tabla) return;
+            tabla.innerHTML = '';
+            
+            const registrosFiltrados = todosLosRegistros.filter(r => r.fechaISO === fechaFiltro);
+
+            if(registrosFiltrados.length === 0) {
+                tabla.innerHTML = `<tr><td colspan="5" class="p-6 text-center text-slate-400 italic">No hay registros para la fecha seleccionada.</td></tr>`;
+                return;
+            }
+
+            registrosFiltrados.forEach(reg => {
+                let badgeClass = reg.estado === 'A tiempo' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-red-50 text-red-700 border-red-200 font-bold';
+                if(reg.estado === 'Excedido (Expulsado)') badgeClass = 'bg-red-600 text-white border-red-700 font-bold shadow-sm';
+                if(reg.tipo === 'Calidad') badgeClass = 'bg-purple-50 text-purple-700 border-purple-200';
+                
+                const justificacionTxt = reg.justificacion ? `<div class="text-xs text-slate-500 italic mt-1 max-w-[200px] truncate" title="${reg.justificacion}">"${reg.justificacion}"</div>` : '';
+                const fechaObj = new Date(reg.fin);
+                const horaStr = fechaObj.toLocaleTimeString([],{hour:'2-digit', minute:'2-digit'});
+                let tipoIcon = reg.tipo === 'Baño' ? 'ph-toilet text-blue-500' : (reg.tipo === 'Comida' ? 'ph-fork-knife text-orange-500' : 'ph-star text-purple-500');
+
+                tabla.innerHTML += `
+                    <tr class="hover:bg-slate-50/80 transition-colors border-b border-slate-100 last:border-0 group">
+                        <td class="p-3">
+                            <div class="font-bold text-slate-700">${reg.nombre}</div>
+                            <div class="text-[10px] font-mono text-slate-400">ID: ${reg.pin}</div>
+                        </td>
+                        <td class="p-3 text-slate-600 font-medium text-sm flex items-center gap-1.5 mt-1.5"><i class="ph ${tipoIcon} text-lg"></i> ${reg.tipo}</td>
+                        <td class="p-3 font-mono font-semibold text-slate-700">${reg.duracionStr}</td>
+                        <td class="p-3">
+                            <span class="px-2 py-0.5 text-xs rounded border inline-block ${badgeClass}">${reg.estado}</span>
+                            ${justificacionTxt}
+                        </td>
+                        <td class="p-3 text-xs text-slate-500 font-medium">${horaStr}</td>
+                    </tr>
+                `;
+            });
+        }
+
+        window.renderizarListaAdmin = function() {
+            const lista = document.getElementById('lista-colaboradores');
+            lista.innerHTML = '';
+            document.getElementById('kpi-total').textContent = datosColaboradoresRaw.length;
+
+            if(datosColaboradoresRaw.length === 0) {
+                lista.innerHTML = '<div class="p-6 text-center text-slate-400 italic">No hay colaboradores registrados.</div>';
+                document.getElementById('kpi-excedidos').textContent = "0";
+                return;
+            }
+
+            const hoy = obtenerFechaHoy();
+            let excedidosCount = 0;
+            const searchInput = document.getElementById('search-colab');
+            const term = searchInput ? searchInput.value.toLowerCase() : '';
+
+            datosColaboradoresRaw.forEach(c => {
+                const acumulado = tiemposAcumuladosGlobal[c.pin] || {};
+                if (acumulado.fecha === hoy) {
+                    const limBNum = c.limiteBano ? c.limiteBano : limitesGlobales.bano;
+                    const limCNum = c.limiteComida ? c.limiteComida : limitesGlobales.comida;
+                    if ((acumulado.Baño || 0) > limBNum * 60 || (acumulado.Comida || 0) > limCNum * 60) {
+                        excedidosCount++;
+                    }
+                }
+            });
+            document.getElementById('kpi-excedidos').textContent = excedidosCount;
+
+            const filtrados = datosColaboradoresRaw.filter(c => c.nombre.toLowerCase().includes(term) || c.pin.includes(term));
+
+            if(filtrados.length === 0) {
+                lista.innerHTML = '<div class="p-6 text-center text-slate-400 italic">No se encontraron resultados para la búsqueda.</div>';
+                return;
+            }
+
+            filtrados.forEach(c => {
+                const acumulado = tiemposAcumuladosGlobal[c.pin] || {};
+                const esDeHoy = acumulado.fecha === hoy;
+                const minBano = esDeHoy ? (acumulado.Baño || 0) : 0;
+                const minComida = esDeHoy ? (acumulado.Comida || 0) : 0;
+                const minCalidad = esDeHoy ? (acumulado.Calidad || 0) : 0;
+                
+                const limBNum = c.limiteBano ? c.limiteBano : limitesGlobales.bano;
+                const limCNum = c.limiteComida ? c.limiteComida : limitesGlobales.comida;
+                
+                const banoExcedido = minBano > limBNum * 60;
+                const comidaExcedida = minComida > limCNum * 60;
+
+                const limB = c.limiteBano ? `${c.limiteBano}m` : `Global`;
+                const limC = c.limiteComida ? `${c.limiteComida}m` : `Global`;
+
+                let jornadaStr = '<span class="text-slate-400 italic text-[10px]">Sin conexión hoy</span>';
+                if (esDeHoy && acumulado.inicioJornada) {
+                    const formatTime = (ts) => new Date(ts).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+                    const inicioStr = formatTime(acumulado.inicioJornada);
+                    const finStr = formatTime(acumulado.finJornada || acumulado.inicioJornada);
+                    jornadaStr = `<i class="ph ph-clock text-blue-500"></i> ${inicioStr} a ${finStr}`;
+                }
+
+                lista.innerHTML += `
+                    <li class="flex flex-col bg-white p-3.5 rounded-xl border border-slate-100 hover:border-blue-200 transition-colors shadow-sm">
+                        <div class="flex justify-between items-start border-b border-slate-50 pb-2.5 mb-2">
+                            <div>
+                                <div class="font-bold text-slate-800 text-sm">${c.nombre}</div>
+                                <div class="flex items-center gap-2 mt-0.5">
+                                    <div class="text-[11px] text-slate-500 font-mono tracking-wide bg-slate-100 px-1.5 py-0.5 rounded">ID: ${c.pin}</div>
+                                    <div class="text-[11px] font-semibold flex items-center gap-1 ${esDeHoy && acumulado.inicioJornada ? 'text-blue-700 bg-blue-50 px-1.5 py-0.5 rounded' : ''}">
+                                        ${jornadaStr}
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="flex gap-1 shrink-0">
+                                <button onclick="abrirModalEditar('${c.pin}', '${c.nombre}', '${c.id}')" class="text-slate-400 hover:text-blue-600 bg-slate-50 hover:bg-blue-50 p-1.5 rounded transition-colors" title="Ajustar Tiempos"><i class="ph ph-pencil-simple text-base"></i></button>
+                                <button onclick="eliminarColaborador('${c.id}')" class="text-slate-400 hover:text-red-600 bg-slate-50 hover:bg-red-50 p-1.5 rounded transition-colors" title="Eliminar"><i class="ph ph-trash text-base"></i></button>
+                            </div>
+                        </div>
+                        <div class="grid grid-cols-3 gap-2">
+                            <div class="flex flex-col p-2 rounded-lg bg-slate-50 border ${banoExcedido ? 'border-red-200 text-red-600' : 'border-slate-100 text-slate-700'}">
+                                <span class="flex items-center gap-1 text-[9px] uppercase font-bold text-slate-400 mb-0.5"><i class="ph ph-toilet text-blue-400"></i> Baño</span>
+                                <span class="font-bold text-sm font-mono">${formatearTiempo(minBano)} <span class="text-[9px] font-sans text-slate-400 font-normal">/ ${limB}</span></span>
+                            </div>
+                            <div class="flex flex-col p-2 rounded-lg bg-slate-50 border ${comidaExcedida ? 'border-red-200 text-red-600' : 'border-slate-100 text-slate-700'}">
+                                <span class="flex items-center gap-1 text-[9px] uppercase font-bold text-slate-400 mb-0.5"><i class="ph ph-fork-knife text-orange-400"></i> Comida</span>
+                                <span class="font-bold text-sm font-mono">${formatearTiempo(minComida)} <span class="text-[9px] font-sans text-slate-400 font-normal">/ ${limC}</span></span>
+                            </div>
+                            <div class="flex flex-col p-2 rounded-lg bg-purple-50/50 border border-purple-100 text-purple-700">
+                                <span class="flex items-center gap-1 text-[9px] uppercase font-bold text-purple-400 mb-0.5"><i class="ph ph-star text-purple-500"></i> Calidad</span>
+                                <span class="font-bold text-sm font-mono">${formatearTiempo(minCalidad)}</span>
+                            </div>
+                        </div>
+                    </li>
+                `;
+            });
+        }
+
+        window.abrirModalEditar = function(pin, nombre, docId) {
+            cerrarModales(); 
+            pinEditando = pin;
+            idDocEditando = docId;
+            const hoy = obtenerFechaHoy();
+            const acumulado = tiemposAcumuladosGlobal[pin] || {};
+            const esDeHoy = acumulado.fecha === hoy;
+            const colab = datosColaboradoresRaw.find(c => c.id === docId) || {};
+            
+            document.getElementById('edit-nombre').textContent = nombre;
+            document.getElementById('edit-consumido-bano').value = esDeHoy ? formatearTiempo(acumulado.Baño || 0) : "00:00";
+            document.getElementById('edit-consumido-comida').value = esDeHoy ? formatearTiempo(acumulado.Comida || 0) : "00:00";
+            document.getElementById('edit-consumido-calidad').value = esDeHoy ? formatearTiempo(acumulado.Calidad || 0) : "00:00";
+            document.getElementById('edit-limite-bano').value = colab.limiteBano || '';
+            document.getElementById('edit-limite-comida').value = colab.limiteComida || '';
+            
+            document.getElementById('modal-overlay').classList.remove('hidden');
+            document.getElementById('modal-editar').classList.remove('hidden');
+        };
+
+        window.guardarEdicionTiempoYLimites = async function() {
+            if(!pinEditando || !idDocEditando) return;
+            const segBano = tiempoASegundos(document.getElementById('edit-consumido-bano').value);
+            const segComida = tiempoASegundos(document.getElementById('edit-consumido-comida').value);
+            const segCalidad = tiempoASegundos(document.getElementById('edit-consumido-calidad').value);
+            const limBano = parseInt(document.getElementById('edit-limite-bano').value) || null;
+            const limComida = parseInt(document.getElementById('edit-limite-comida').value) || null;
+            
+            try {
+                await setDoc(doc(db, 'tiempos_acumulados', pinEditando), { Baño: segBano, Comida: segComida, Calidad: segCalidad, fecha: obtenerFechaHoy(), ultimaActualizacion: getHoraReal() }, { merge: true });
+                await setDoc(doc(db, 'colaboradores', idDocEditando), { limiteBano: limBano, limiteComida: limComida }, { merge: true });
+                mostrarNotificacion('Datos de colaborador actualizados.');
+                cerrarModales();
+            } catch(e) { mostrarNotificacion('Error al guardar datos.', 'error'); }
+        };
+
+        window.guardarConfiguracionGlobal = async function() {
+            const bano = parseInt(document.getElementById('limit-bano').value) || 15;
+            const comida = parseInt(document.getElementById('limit-comida').value) || 30;
+            try {
+                await setDoc(doc(db, 'config', 'global'), { bano, comida });
+                mostrarNotificacion('Límites globales actualizados.');
+            } catch(e) { mostrarNotificacion('Error al guardar configuración', 'error'); }
+        };
+
+        window.agregarColaborador = async function() {
+            const pin = document.getElementById('nuevo-pin').value.trim();
+            const nombre = document.getElementById('nuevo-nombre').value.trim();
+            const limBano = parseInt(document.getElementById('nuevo-limite-bano').value) || null;
+            const limComida = parseInt(document.getElementById('nuevo-limite-comida').value) || null;
+
+            if(!pin || !nombre) return mostrarNotificacion('El ID y Nombre son obligatorios', 'error');
+            if(datosColaboradoresRaw.some(c => c.pin === pin)) return mostrarNotificacion('Ese ID ya está registrado', 'error');
+
+            try {
+                await addDoc(collection(db, 'colaboradores'), { pin, nombre, limiteBano: limBano, limiteComida: limComida });
+                document.getElementById('nuevo-pin').value = '';
+                document.getElementById('nuevo-nombre').value = '';
+                document.getElementById('nuevo-limite-bano').value = '';
+                document.getElementById('nuevo-limite-comida').value = '';
+                mostrarNotificacion('Colaborador creado con éxito');
+            } catch(e) { mostrarNotificacion('Error al guardar', 'error'); }
+        };
+
+        document.getElementById('btn-confirmar-eliminar').addEventListener('click', async () => {
+            if(idColaboradorAEliminar) {
+                try {
+                    await deleteDoc(doc(db, 'colaboradores', idColaboradorAEliminar));
+                    mostrarNotificacion('Colaborador eliminado');
+                } catch(e) { mostrarNotificacion('Error al eliminar', 'error'); }
+            }
+            cerrarModales();
+        });
+
+        window.eliminarColaborador = function(docId) {
+            cerrarModales(); 
+            idColaboradorAEliminar = docId;
+            document.getElementById('modal-overlay').classList.remove('hidden');
+            document.getElementById('modal-confirm').classList.remove('hidden');
+        };
+
+    </script>
+</body>
+</html>
