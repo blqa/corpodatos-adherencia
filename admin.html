@@ -279,7 +279,7 @@
             </button>
 
             <div class="mt-8 text-center">
-                <a href="index.html" class="inline-flex items-center gap-1.5 text-xs font-semibold text-slate-400 hover:text-slate-500 transition-colors">
+                <a href="colaborador.html" class="inline-flex items-center gap-1.5 text-xs font-semibold text-slate-400 hover:text-slate-500 transition-colors">
                     <i class="ph ph-arrow-left"></i> Regresar al portal
                 </a>
             </div>
@@ -302,6 +302,11 @@
             </div>
             
             <div class="flex items-center gap-3 sm:gap-5">
+                <div class="hidden sm:flex items-center gap-2 bg-slate-100 px-3 py-1.5 rounded-lg border border-slate-200">
+                    <span id="syncDotAdmin" class="w-2 h-2 rounded-full bg-amber-500 shadow-[0_0_8px_rgba(245,158,11,0.6)]"></span>
+                    <span class="text-xs font-mono font-bold text-slate-600" id="reloj-display-admin">--:--:--</span>
+                </div>
+                
                 <button onclick="abrirModalReset()" class="text-slate-600 hover:text-orange-600 bg-white hover:bg-orange-50 border border-slate-200 p-2 sm:px-3 sm:py-1.5 rounded-lg transition-colors flex items-center gap-2 shadow-sm text-sm font-medium" title="Reiniciar Todos los Tiempos de Hoy">
                     <i class="ph ph-arrow-counter-clockwise text-lg"></i> <span class="hidden sm:inline">Reset Día</span>
                 </button>
@@ -404,7 +409,8 @@
                                         <th class="px-5 py-3 font-semibold rounded-tl-lg">Colaborador</th>
                                         <th class="px-5 py-3 font-semibold">Tipo</th>
                                         <th class="px-5 py-3 font-semibold text-blue-600">Tiempo Consumido</th>
-                                        <th class="px-5 py-3 font-semibold rounded-tr-lg">Estado / Justificación</th>
+                                        <th class="px-5 py-3 font-semibold">Estado / Justificación</th>
+                                        <th class="px-5 py-3 font-semibold rounded-tr-lg">Hora</th>
                                     </tr>
                                 </thead>
                                 <tbody id="tabla-registros-global" class="divide-y divide-slate-100 text-sm">
@@ -446,7 +452,7 @@
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { getFirestore, collection, doc, setDoc, addDoc, onSnapshot, deleteDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import { getFirestore, collection, doc, setDoc, addDoc, onSnapshot, deleteDoc, getDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
         let app, auth, db;
         let conectado = false;
@@ -481,16 +487,41 @@
         let logoutsEnviados = {};
         let timeoutModales = null;
 
-        // --- SISTEMA DE SINCRONIZACIÓN DE HORA (SIMPLIFICADO Y GARANTIZADO) ---
-        function sincronizarHoraReal() {
-            // Ya no dependemos de la red para evitar que se quede cargando o no conecte.
-            // Se usa el reloj interno directamente.
-            timeOffset = 0; 
-            const el = document.getElementById('syncDotAdmin');
-            if (el) { 
-                el.classList.replace('bg-amber-500', 'bg-emerald-500'); 
-                el.classList.replace('shadow-[0_0_8px_rgba(245,158,11,0.6)]', 'shadow-[0_0_8px_rgba(16,185,129,0.6)]');
-                el.classList.remove('animate-pulse'); 
+        // --- SINCRONIZACIÓN NATIVA CON FIREBASE (PING DIRECTO) ---
+        async function sincronizarConFirebase() {
+            try {
+                const start = Date.now();
+                // Usamos un documento de prueba en la colección global para el ping del admin
+                const syncRef = doc(db, 'config', 'ping_admin');
+                
+                // Forzamos una escritura rápida con la hora oficial del servidor de Firebase
+                await setDoc(syncRef, { _syncPing: serverTimestamp() }, { merge: true });
+                
+                // Leemos inmediatamente esa hora de vuelta
+                const syncSnap = await getDoc(syncRef);
+                const serverTime = syncSnap.data()._syncPing.toMillis();
+                const end = Date.now();
+                
+                // Calculamos el desfase exacto de la computadora local restando la latencia de ida y vuelta
+                timeOffset = serverTime - end + ((end - start) / 2);
+                
+                const el = document.getElementById('syncDotAdmin');
+                if (el) { 
+                    el.classList.replace('bg-amber-500', 'bg-emerald-500'); 
+                    el.classList.replace('shadow-[0_0_8px_rgba(245,158,11,0.6)]', 'shadow-[0_0_8px_rgba(16,185,129,0.6)]');
+                    el.classList.remove('animate-pulse'); 
+                    el.setAttribute('title', 'Hora sincronizada con Firebase');
+                }
+            } catch (e) {
+                console.warn("Sincronización con Firebase fallida, usando reloj local", e);
+                timeOffset = 0;
+                const el = document.getElementById('syncDotAdmin');
+                if (el) {
+                    el.classList.replace('bg-amber-500', 'bg-red-500');
+                    el.classList.replace('shadow-[0_0_8px_rgba(245,158,11,0.6)]', 'shadow-[0_0_8px_rgba(239,68,68,0.6)]');
+                    el.classList.remove('animate-pulse');
+                    el.setAttribute('title', 'Sincronización fallida');
+                }
             }
         }
 
@@ -528,6 +559,9 @@
 
         setInterval(() => {
             const ahoraMs = getHoraReal();
+            const ahora = new Date(ahoraMs);
+            const admDisplay = document.getElementById('reloj-display-admin');
+            if(admDisplay) admDisplay.textContent = ahora.toLocaleTimeString('es-ES', { hour12: false });
 
             if (adminActivasArray && adminActivasArray.length > 0) {
                 adminActivasArray.forEach(act => {
@@ -703,7 +737,7 @@
 
         function cargarAdminViews() {
             window.mostrarVista('vista-admin');
-            sincronizarHoraReal(); // Sincroniza al entrar en lugar de al cargar el archivo
+            sincronizarConFirebase(); // --- PING DIRECTO A FIREBASE AL ENTRAR AL DASHBOARD ---
             
             document.getElementById('filtro-fecha-historial').value = obtenerFechaHoy();
             
@@ -781,7 +815,7 @@
                         <div class="w-16 h-16 bg-slate-100 rounded-full flex items-center justify-center mb-3">
                             <i class="ph ph-coffee text-2xl text-slate-400"></i>
                         </div>
-                        <p class="text-slate-500 font-medium">No hay ningún asesor conectado hoy.</p>
+                        <p class="text-slate-500 font-medium">Nadie se ha conectado hoy.</p>
                     </div>`;
                 return;
             }
@@ -1014,7 +1048,7 @@
             const registrosFiltrados = todosLosRegistros.filter(r => r.fechaISO === fechaFiltro);
 
             if(registrosFiltrados.length === 0) {
-                tabla.innerHTML = `<tr><td colspan="4" class="py-10 text-center text-slate-400 italic">No hay actividad registrada en esta fecha.</td></tr>`;
+                tabla.innerHTML = `<tr><td colspan="5" class="py-10 text-center text-slate-400 italic">No hay actividad registrada en esta fecha.</td></tr>`;
                 return;
             }
 
@@ -1028,6 +1062,9 @@
                 
                 const justificacionTxt = reg.justificacion ? `<div class="text-[11px] text-slate-500 italic mt-1 max-w-[200px] truncate" title="${reg.justificacion}"><i class="ph ph-chat-circle text-slate-400"></i> "${reg.justificacion}"</div>` : '';
                 
+                // === AQUI EXTRAEMOS LA HORA EXACTA DEL FIN DEL RECESO ===
+                const horaStr = new Date(reg.fin).toLocaleTimeString([], {hour: '2-digit', minute: '2-digit'});
+
                 let tipoIcon = reg.tipo === 'Baño' ? 'ph-toilet text-blue-500 bg-blue-50' : (reg.tipo === 'Comida' ? 'ph-fork-knife text-orange-500 bg-orange-50' : 'ph-star text-purple-500 bg-purple-50');
 
                 tabla.innerHTML += `
@@ -1046,6 +1083,7 @@
                             <span class="px-2 py-0.5 text-[11px] rounded border inline-block ${badgeClass}">${reg.estado}</span>
                             ${justificacionTxt}
                         </td>
+                        <td class="px-5 py-3 text-[11px] text-slate-500 font-medium whitespace-nowrap">${horaStr}</td>
                     </tr>
                 `;
             });
