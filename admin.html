@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="es" class="light">
+<html lang="es">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -12,28 +12,15 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/@phosphor-icons/web"></script>
     
-    <!-- Configuración personalizada de Tailwind con Dark Mode -->
+    <!-- Configuración mínima de Tailwind -->
     <script>
         tailwind.config = {
-            darkMode: 'class',
             theme: {
                 extend: {
                     fontFamily: { sans: ['Inter', 'sans-serif'] },
-                    colors: {
-                        brand: { 50: '#f0fdfa', 100: '#ccfbf1', 500: '#14b8a6', 600: '#0d9488', 900: '#134e4a' }
-                    },
                     animation: { 'pulse-slow': 'pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite' }
                 }
             }
-        }
-    </script>
-
-    <!-- Script inicial para evitar el parpadeo del modo oscuro -->
-    <script>
-        if (localStorage.theme === 'dark' || (!('theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
-            document.documentElement.classList.add('dark');
-        } else {
-            document.documentElement.classList.remove('dark');
         }
     </script>
 
@@ -42,7 +29,6 @@
             border: 3px solid #e2e8f0; border-top: 3px solid #0f172a; border-radius: 50%;
             width: 32px; height: 32px; animation: spin 0.8s linear infinite;
         }
-        html.dark .loader { border-color: #334155; border-top-color: #e2e8f0; }
         
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
         
@@ -52,9 +38,6 @@
         .custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
         .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
         
-        html.dark .custom-scrollbar::-webkit-scrollbar-thumb { background: #475569; }
-        html.dark .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #64748b; }
-        
         /* Ocultar flechas en inputs numéricos */
         input[type=number]::-webkit-inner-spin-button, 
         input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
@@ -63,17 +46,12 @@
             background: rgba(255, 255, 255, 0.90);
             backdrop-filter: blur(12px);
         }
-        html.dark .glass-panel {
-            background: rgba(15, 23, 42, 0.90);
-            backdrop-filter: blur(12px);
-            border-bottom-color: rgba(51, 65, 85, 0.5);
-        }
     </style>
 </head>
-<body class="bg-slate-50 dark:bg-slate-950 min-h-screen text-slate-800 dark:text-slate-200 pb-10 antialiased selection:bg-blue-100 selection:text-blue-900 transition-colors duration-300">
+<body class="bg-slate-50 min-h-screen text-slate-800 pb-10 antialiased selection:bg-blue-100 selection:text-blue-900 transition-colors duration-300">
 
     <!-- Notificación Global -->
-    <div id="notificacion" class="fixed top-6 left-1/2 transform -translate-x-1/2 z-[100] hidden max-w-md w-full bg-slate-900 dark:bg-slate-800 text-white shadow-2xl rounded-2xl p-4 transition-all duration-300 flex items-center gap-3 border border-slate-700 dark:border-slate-600">
+    <div id="notificacion" class="fixed top-6 left-1/2 transform -translate-x-1/2 z-[100] hidden max-w-md w-full bg-slate-900 text-white shadow-2xl rounded-2xl p-4 transition-all duration-300 flex items-center gap-3 border border-slate-700">
         <div id="notificacion-icon" class="text-2xl shrink-0"></div>
         <p class="font-medium text-sm flex-1" id="notificacion-texto"></p>
         <button onclick="document.getElementById('notificacion').classList.add('hidden')" class="text-slate-400 hover:text-white transition-colors">
@@ -82,94 +60,94 @@
     </div>
 
     <!-- Modales -->
-    <div id="modal-overlay" class="fixed inset-0 bg-slate-900/60 dark:bg-slate-950/80 backdrop-blur-sm z-50 hidden flex items-center justify-center px-4 transition-opacity duration-300 opacity-0">
+    <div id="modal-overlay" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 hidden flex items-center justify-center px-4 transition-opacity duration-300 opacity-0">
         
         <!-- Modal Confirmación Eliminar -->
-        <div id="modal-confirm" class="bg-white dark:bg-slate-900 rounded-3xl shadow-2xl w-full max-w-sm p-6 transform scale-95 transition-transform duration-300 hidden border border-transparent dark:border-slate-800">
-            <div class="w-12 h-12 rounded-full bg-red-100 dark:bg-red-500/20 flex items-center justify-center mb-4 mx-auto">
-                <i class="ph ph-trash text-red-600 dark:text-red-400 text-2xl"></i>
+        <div id="modal-confirm" class="bg-white rounded-3xl shadow-2xl w-full max-w-sm p-6 transform scale-95 transition-transform duration-300 hidden border border-transparent">
+            <div class="w-12 h-12 rounded-full bg-red-100 flex items-center justify-center mb-4 mx-auto">
+                <i class="ph ph-trash text-red-600 text-2xl"></i>
             </div>
-            <h3 class="text-xl font-bold text-slate-800 dark:text-white mb-2 text-center">¿Eliminar Colaborador?</h3>
-            <p class="text-slate-500 dark:text-slate-400 text-sm mb-6 text-center">Esta acción es irreversible. Se borrarán sus accesos y configuraciones del sistema.</p>
+            <h3 class="text-xl font-bold text-slate-800 mb-2 text-center">¿Eliminar Colaborador?</h3>
+            <p class="text-slate-500 text-sm mb-6 text-center">Esta acción es irreversible. Se borrarán sus accesos y configuraciones del sistema.</p>
             <div class="flex gap-3">
-                <button onclick="cerrarModales()" class="flex-1 py-2.5 text-slate-600 dark:text-slate-300 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 rounded-xl font-semibold transition-colors">Cancelar</button>
-                <button id="btn-confirmar-eliminar" class="flex-1 py-2.5 bg-red-600 hover:bg-red-700 text-white rounded-xl font-semibold transition-colors shadow-sm shadow-red-200 dark:shadow-none">Sí, Eliminar</button>
+                <button onclick="cerrarModales()" class="flex-1 py-2.5 text-slate-600 bg-slate-100 hover:bg-slate-200 rounded-xl font-semibold transition-colors">Cancelar</button>
+                <button id="btn-confirmar-eliminar" class="flex-1 py-2.5 bg-red-600 hover:bg-red-700 text-white rounded-xl font-semibold transition-colors shadow-sm shadow-red-200">Sí, Eliminar</button>
             </div>
         </div>
 
         <!-- Modal Confirmación Reiniciar Tiempos -->
-        <div id="modal-confirm-reset" class="bg-white dark:bg-slate-900 rounded-3xl shadow-2xl w-full max-w-sm p-6 transform scale-95 transition-transform duration-300 hidden border border-transparent dark:border-slate-800">
-            <div class="w-12 h-12 rounded-full bg-orange-100 dark:bg-orange-500/20 flex items-center justify-center mb-4 mx-auto">
-                <i class="ph ph-warning-circle text-orange-600 dark:text-orange-400 text-2xl"></i>
+        <div id="modal-confirm-reset" class="bg-white rounded-3xl shadow-2xl w-full max-w-sm p-6 transform scale-95 transition-transform duration-300 hidden border border-transparent">
+            <div class="w-12 h-12 rounded-full bg-orange-100 flex items-center justify-center mb-4 mx-auto">
+                <i class="ph ph-warning-circle text-orange-600 text-2xl"></i>
             </div>
-            <h3 class="text-xl font-bold text-slate-800 dark:text-white mb-2 text-center">¿Reiniciar todos los tiempos?</h3>
-            <p class="text-slate-500 dark:text-slate-400 text-sm mb-6 text-center">Esto pondrá en 00:00 los consumos de HOY para todos los colaboradores. ¿Estás seguro?</p>
+            <h3 class="text-xl font-bold text-slate-800 mb-2 text-center">¿Reiniciar todos los tiempos?</h3>
+            <p class="text-slate-500 text-sm mb-6 text-center">Esto pondrá en 00:00 los consumos de HOY para todos los colaboradores. ¿Estás seguro?</p>
             <div class="flex gap-3">
-                <button onclick="cerrarModales()" class="flex-1 py-2.5 text-slate-600 dark:text-slate-300 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 rounded-xl font-semibold transition-colors">Cancelar</button>
-                <button id="btn-confirmar-reset" class="flex-1 py-2.5 bg-orange-600 hover:bg-orange-700 text-white rounded-xl font-semibold transition-colors shadow-sm shadow-orange-200 dark:shadow-none">Reiniciar</button>
+                <button onclick="cerrarModales()" class="flex-1 py-2.5 text-slate-600 bg-slate-100 hover:bg-slate-200 rounded-xl font-semibold transition-colors">Cancelar</button>
+                <button id="btn-confirmar-reset" class="flex-1 py-2.5 bg-orange-600 hover:bg-orange-700 text-white rounded-xl font-semibold transition-colors shadow-sm shadow-orange-200">Reiniciar</button>
             </div>
         </div>
 
         <!-- Modal Editar Tiempos y Límites -->
-        <div id="modal-editar" class="bg-white dark:bg-slate-900 rounded-3xl shadow-2xl w-full max-w-md p-6 transform scale-95 transition-transform duration-300 hidden max-h-[90vh] overflow-y-auto custom-scrollbar border border-transparent dark:border-slate-800">
+        <div id="modal-editar" class="bg-white rounded-3xl shadow-2xl w-full max-w-md p-6 transform scale-95 transition-transform duration-300 hidden max-h-[90vh] overflow-y-auto custom-scrollbar border border-transparent">
             <div class="flex items-center justify-between mb-5">
-                <h3 class="text-lg font-bold text-slate-800 dark:text-white flex items-center gap-2">
-                    <div class="p-2 bg-blue-100 dark:bg-blue-500/20 text-blue-600 dark:text-blue-400 rounded-lg"><i class="ph ph-sliders-horizontal"></i></div>
-                    Ajustes de <span id="edit-nombre" class="text-blue-600 dark:text-blue-400"></span>
+                <h3 class="text-lg font-bold text-slate-800 flex items-center gap-2">
+                    <div class="p-2 bg-blue-100 text-blue-600 rounded-lg"><i class="ph ph-sliders-horizontal"></i></div>
+                    Ajustes de <span id="edit-nombre" class="text-blue-600"></span>
                 </h3>
-                <button onclick="cerrarModales()" class="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 bg-slate-100 dark:bg-slate-800 p-1.5 rounded-full"><i class="ph ph-x"></i></button>
+                <button onclick="cerrarModales()" class="text-slate-400 hover:text-slate-600 bg-slate-100 p-1.5 rounded-full"><i class="ph ph-x"></i></button>
             </div>
             
-            <p class="text-slate-500 dark:text-slate-400 text-sm mb-5 leading-relaxed">Modifica el consumo de <strong class="text-slate-700 dark:text-slate-200">HOY</strong> o define límites específicos. <span class="text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-500/10 px-1 rounded">Deja en blanco o 0 para usar los globales.</span></p>
+            <p class="text-slate-500 text-sm mb-5 leading-relaxed">Modifica el consumo de <strong class="text-slate-700">HOY</strong> o define límites específicos. <span class="text-blue-600 bg-blue-50 px-1 rounded">Deja en blanco o 0 para usar los globales.</span></p>
             
             <div class="space-y-5">
                 <!-- Tiempos Consumidos -->
-                <div class="p-4 rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/50 shadow-sm">
-                    <h4 class="font-semibold text-xs uppercase tracking-wider text-slate-400 dark:text-slate-500 mb-3 flex items-center gap-2"><i class="ph ph-clock"></i> Consumido Hoy</h4>
+                <div class="p-4 rounded-2xl border border-slate-200 bg-white shadow-sm">
+                    <h4 class="font-semibold text-xs uppercase tracking-wider text-slate-400 mb-3 flex items-center gap-2"><i class="ph ph-clock"></i> Consumido Hoy</h4>
                     <div class="grid grid-cols-3 gap-3">
                         <div class="relative">
-                            <label class="block text-[10px] uppercase font-semibold text-slate-500 dark:text-slate-400 mb-1">Baño</label>
+                            <label class="block text-[10px] uppercase font-semibold text-slate-500 mb-1">Baño</label>
                             <div class="relative">
                                 <i class="ph ph-toilet absolute left-2.5 top-2.5 text-slate-400"></i>
-                                <input type="text" id="edit-consumido-bano" placeholder="00:00" class="w-full border border-slate-300 dark:border-slate-700 bg-transparent dark:bg-slate-800 rounded-xl pl-8 pr-2 py-2 text-sm font-mono focus:border-blue-500 focus:ring-2 focus:ring-blue-100 dark:focus:ring-blue-900/50 outline-none transition-all dark:text-white">
+                                <input type="text" id="edit-consumido-bano" placeholder="00:00" class="w-full border border-slate-300 bg-transparent rounded-xl pl-8 pr-2 py-2 text-sm font-mono focus:border-blue-500 focus:ring-2 focus:ring-blue-100 outline-none transition-all">
                             </div>
                         </div>
                         <div class="relative">
-                            <label class="block text-[10px] uppercase font-semibold text-slate-500 dark:text-slate-400 mb-1">Comida</label>
+                            <label class="block text-[10px] uppercase font-semibold text-slate-500 mb-1">Comida</label>
                             <div class="relative">
                                 <i class="ph ph-fork-knife absolute left-2.5 top-2.5 text-slate-400"></i>
-                                <input type="text" id="edit-consumido-comida" placeholder="00:00" class="w-full border border-slate-300 dark:border-slate-700 bg-transparent dark:bg-slate-800 rounded-xl pl-8 pr-2 py-2 text-sm font-mono focus:border-orange-500 focus:ring-2 focus:ring-orange-100 dark:focus:ring-orange-900/50 outline-none transition-all dark:text-white">
+                                <input type="text" id="edit-consumido-comida" placeholder="00:00" class="w-full border border-slate-300 bg-transparent rounded-xl pl-8 pr-2 py-2 text-sm font-mono focus:border-orange-500 focus:ring-2 focus:ring-orange-100 outline-none transition-all">
                             </div>
                         </div>
                         <div class="relative">
-                            <label class="block text-[10px] uppercase font-semibold text-slate-500 dark:text-slate-400 mb-1">Calidad</label>
+                            <label class="block text-[10px] uppercase font-semibold text-slate-500 mb-1">Calidad</label>
                             <div class="relative">
                                 <i class="ph ph-star absolute left-2.5 top-2.5 text-slate-400"></i>
-                                <input type="text" id="edit-consumido-calidad" placeholder="00:00" class="w-full border border-slate-300 dark:border-slate-700 bg-transparent dark:bg-slate-800 rounded-xl pl-8 pr-2 py-2 text-sm font-mono focus:border-purple-500 focus:ring-2 focus:ring-purple-100 dark:focus:ring-purple-900/50 outline-none transition-all dark:text-white">
+                                <input type="text" id="edit-consumido-calidad" placeholder="00:00" class="w-full border border-slate-300 bg-transparent rounded-xl pl-8 pr-2 py-2 text-sm font-mono focus:border-purple-500 focus:ring-2 focus:ring-purple-100 outline-none transition-all">
                             </div>
                         </div>
                     </div>
                 </div>
 
                 <!-- Límites Individuales -->
-                <div class="p-4 rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/50 shadow-sm">
-                    <h4 class="font-semibold text-xs uppercase tracking-wider text-slate-400 dark:text-slate-500 mb-3 flex items-center gap-2"><i class="ph ph-lock-key"></i> Límites Individuales (Min)</h4>
+                <div class="p-4 rounded-2xl border border-slate-200 bg-white shadow-sm">
+                    <h4 class="font-semibold text-xs uppercase tracking-wider text-slate-400 mb-3 flex items-center gap-2"><i class="ph ph-lock-key"></i> Límites Individuales (Min)</h4>
                     <div class="grid grid-cols-2 gap-3">
                         <div class="relative">
-                            <label class="block text-[10px] uppercase font-semibold text-slate-500 dark:text-slate-400 mb-1">Límite Baño</label>
-                            <input type="number" id="edit-limite-bano" class="w-full border border-slate-300 dark:border-slate-700 bg-transparent dark:bg-slate-800 rounded-xl p-2.5 text-sm focus:border-blue-500 focus:ring-2 focus:ring-blue-100 dark:focus:ring-blue-900/50 outline-none transition-all font-mono dark:text-white" placeholder="Ej: 15 (Vacío = Global)">
+                            <label class="block text-[10px] uppercase font-semibold text-slate-500 mb-1">Límite Baño</label>
+                            <input type="number" id="edit-limite-bano" class="w-full border border-slate-300 bg-transparent rounded-xl p-2.5 text-sm focus:border-blue-500 focus:ring-2 focus:ring-blue-100 outline-none transition-all font-mono" placeholder="Ej: 15 (Vacío = Global)">
                         </div>
                         <div class="relative">
-                            <label class="block text-[10px] uppercase font-semibold text-slate-500 dark:text-slate-400 mb-1">Límite Comida</label>
-                            <input type="number" id="edit-limite-comida" class="w-full border border-slate-300 dark:border-slate-700 bg-transparent dark:bg-slate-800 rounded-xl p-2.5 text-sm focus:border-orange-500 focus:ring-2 focus:ring-orange-100 dark:focus:ring-orange-900/50 outline-none transition-all font-mono dark:text-white" placeholder="Ej: 30 (Vacío = Global)">
+                            <label class="block text-[10px] uppercase font-semibold text-slate-500 mb-1">Límite Comida</label>
+                            <input type="number" id="edit-limite-comida" class="w-full border border-slate-300 bg-transparent rounded-xl p-2.5 text-sm focus:border-orange-500 focus:ring-2 focus:ring-orange-100 outline-none transition-all font-mono" placeholder="Ej: 30 (Vacío = Global)">
                         </div>
                     </div>
                 </div>
             </div>
 
-            <div class="flex gap-3 mt-6 pt-4 border-t border-slate-100 dark:border-slate-800">
-                <button onclick="cerrarModales()" class="flex-1 px-4 py-2.5 text-slate-600 dark:text-slate-300 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 rounded-xl font-medium transition-colors">Cancelar</button>
-                <button onclick="guardarEdicionTiempoYLimites()" class="flex-[2] px-4 py-2.5 bg-slate-900 dark:bg-blue-600 hover:bg-slate-800 dark:hover:bg-blue-500 text-white rounded-xl font-medium transition-colors shadow-md flex justify-center items-center gap-2">
+            <div class="flex gap-3 mt-6 pt-4 border-t border-slate-100">
+                <button onclick="cerrarModales()" class="flex-1 px-4 py-2.5 text-slate-600 bg-slate-100 hover:bg-slate-200 rounded-xl font-medium transition-colors">Cancelar</button>
+                <button onclick="guardarEdicionTiempoYLimites()" class="flex-[2] px-4 py-2.5 bg-slate-900 hover:bg-slate-800 text-white rounded-xl font-medium transition-colors shadow-md flex justify-center items-center gap-2">
                     <i class="ph ph-floppy-disk"></i> Guardar Cambios
                 </button>
             </div>
@@ -177,77 +155,77 @@
     </div>
 
     <!-- PANEL LATERAL CONFIGURACIÓN (Slide-over) -->
-    <div id="panel-config-overlay" class="fixed inset-0 bg-slate-900/60 dark:bg-slate-950/80 backdrop-blur-sm z-50 hidden transition-opacity duration-300 opacity-0" onclick="cerrarConfig()">
-        <div class="absolute inset-y-0 right-0 w-full max-w-md bg-white dark:bg-slate-900 shadow-2xl transform translate-x-full transition-transform duration-300 ease-in-out flex flex-col border-l border-slate-200 dark:border-slate-800" id="panel-config" onclick="event.stopPropagation()">
+    <div id="panel-config-overlay" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 hidden transition-opacity duration-300 opacity-0" onclick="cerrarConfig()">
+        <div class="absolute inset-y-0 right-0 w-full max-w-md bg-white shadow-2xl transform translate-x-full transition-transform duration-300 ease-in-out flex flex-col border-l border-slate-200" id="panel-config" onclick="event.stopPropagation()">
             
-            <div class="p-5 border-b border-slate-100 dark:border-slate-800 flex justify-between items-center bg-slate-50/50 dark:bg-slate-900/50">
-                <h2 class="text-lg font-bold text-slate-800 dark:text-white flex items-center gap-2">
+            <div class="p-5 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
+                <h2 class="text-lg font-bold text-slate-800 flex items-center gap-2">
                     <i class="ph ph-gear text-blue-500 text-xl"></i> Ajustes del Sistema
                 </h2>
-                <button onclick="cerrarConfig()" class="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 bg-white dark:bg-slate-800 p-2 rounded-full border border-slate-200 dark:border-slate-700 shadow-sm transition-colors"><i class="ph ph-x"></i></button>
+                <button onclick="cerrarConfig()" class="text-slate-400 hover:text-slate-600 bg-white p-2 rounded-full border border-slate-200 shadow-sm transition-colors"><i class="ph ph-x"></i></button>
             </div>
 
-            <div class="flex-1 overflow-y-auto p-5 space-y-6 custom-scrollbar bg-slate-50/30 dark:bg-slate-900/30">
+            <div class="flex-1 overflow-y-auto p-5 space-y-6 custom-scrollbar bg-slate-50/30">
                 
                 <!-- Expulsión Automática -->
-                <div class="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 p-5">
-                    <h3 class="font-bold text-slate-800 dark:text-white mb-4 flex items-center gap-2 text-sm border-b border-slate-100 dark:border-slate-700/50 pb-2">
+                <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-5">
+                    <h3 class="font-bold text-slate-800 mb-4 flex items-center gap-2 text-sm border-b border-slate-100 pb-2">
                         <i class="ph ph-robot text-purple-500"></i> Asistente Automático
                     </h3>
                     <div class="flex items-center justify-between">
                         <div class="pr-4">
-                            <p class="text-sm font-bold text-slate-800 dark:text-white">Botar Automático</p>
-                            <p class="text-[10px] text-slate-500 dark:text-slate-400 mt-1 leading-tight">Expulsa al asesor automáticamente de su receso cuando el tiempo llega al límite.</p>
+                            <p class="text-sm font-bold text-slate-800">Botar Automático</p>
+                            <p class="text-[10px] text-slate-500 mt-1 leading-tight">Expulsa al asesor automáticamente de su receso cuando el tiempo llega al límite.</p>
                         </div>
                         <label class="relative inline-flex items-center cursor-pointer shrink-0">
                             <input type="checkbox" id="toggle-auto-expulsion" class="sr-only peer" onchange="guardarAutoExpulsion()">
-                            <div class="w-11 h-6 bg-slate-200 peer-focus:outline-none rounded-full peer dark:bg-slate-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-purple-600"></div>
+                            <div class="w-11 h-6 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-purple-600"></div>
                         </label>
                     </div>
                 </div>
 
                 <!-- Límites Globales -->
-                <div class="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 p-5">
-                    <h3 class="font-bold text-slate-800 dark:text-white mb-4 flex items-center gap-2 text-sm border-b border-slate-100 dark:border-slate-700/50 pb-2">
+                <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-5">
+                    <h3 class="font-bold text-slate-800 mb-4 flex items-center gap-2 text-sm border-b border-slate-100 pb-2">
                         <i class="ph ph-timer text-slate-400"></i> Políticas Globales
                     </h3>
-                    <p class="text-xs text-slate-500 dark:text-slate-400 mb-4 leading-relaxed">Establece los límites predeterminados para todos los empleados que no tengan límites personalizados.</p>
+                    <p class="text-xs text-slate-500 mb-4 leading-relaxed">Establece los límites predeterminados para todos los empleados que no tengan límites personalizados.</p>
                     <div class="flex gap-3 mb-4">
                         <div class="flex-1">
-                            <label class="block text-[10px] uppercase text-slate-500 dark:text-slate-400 font-bold mb-1.5 ml-1">Baño (min)</label>
+                            <label class="block text-[10px] uppercase text-slate-500 font-bold mb-1.5 ml-1">Baño (min)</label>
                             <div class="relative">
                                 <i class="ph ph-toilet absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400"></i>
-                                <input type="number" id="limit-bano" class="w-full border border-slate-200 dark:border-slate-600 rounded-xl pl-9 pr-3 py-2 text-sm font-mono focus:border-slate-800 dark:focus:border-blue-500 outline-none transition-all bg-slate-50 dark:bg-slate-900 dark:text-white">
+                                <input type="number" id="limit-bano" class="w-full border border-slate-200 rounded-xl pl-9 pr-3 py-2 text-sm font-mono focus:border-slate-800 outline-none transition-all bg-slate-50">
                             </div>
                         </div>
                         <div class="flex-1">
-                            <label class="block text-[10px] uppercase text-slate-500 dark:text-slate-400 font-bold mb-1.5 ml-1">Comida (min)</label>
+                            <label class="block text-[10px] uppercase text-slate-500 font-bold mb-1.5 ml-1">Comida (min)</label>
                             <div class="relative">
                                 <i class="ph ph-fork-knife absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400"></i>
-                                <input type="number" id="limit-comida" class="w-full border border-slate-200 dark:border-slate-600 rounded-xl pl-9 pr-3 py-2 text-sm font-mono focus:border-slate-800 dark:focus:border-blue-500 outline-none transition-all bg-slate-50 dark:bg-slate-900 dark:text-white">
+                                <input type="number" id="limit-comida" class="w-full border border-slate-200 rounded-xl pl-9 pr-3 py-2 text-sm font-mono focus:border-slate-800 outline-none transition-all bg-slate-50">
                             </div>
                         </div>
                     </div>
-                    <button onclick="guardarConfiguracionGlobal()" class="w-full bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 text-slate-800 dark:text-white text-xs font-bold py-2.5 rounded-xl transition-colors flex items-center justify-center gap-2">
+                    <button onclick="guardarConfiguracionGlobal()" class="w-full bg-slate-100 hover:bg-slate-200 text-slate-800 text-xs font-bold py-2.5 rounded-xl transition-colors flex items-center justify-center gap-2">
                         <i class="ph ph-check-circle"></i> Aplicar Límites
                     </button>
                 </div>
 
                 <!-- Añadir Usuario -->
-                <div class="bg-slate-900 dark:bg-slate-800 rounded-2xl shadow-sm border border-slate-800 dark:border-slate-700 p-5 text-white">
-                    <h3 class="font-bold mb-4 flex items-center gap-2 text-sm border-b border-slate-700 dark:border-slate-700/50 pb-2">
+                <div class="bg-slate-900 rounded-2xl shadow-sm border border-slate-800 p-5 text-white">
+                    <h3 class="font-bold mb-4 flex items-center gap-2 text-sm border-b border-slate-700 pb-2">
                         <i class="ph ph-user-plus text-blue-400"></i> Alta de Empleado
                     </h3>
                     <p class="text-xs text-slate-400 mb-4 leading-relaxed">Registra un nuevo usuario para que pueda acceder al portal y contabilizar sus recesos.</p>
                     <div class="space-y-3 mb-4">
                         <div>
-                            <input type="text" id="nuevo-pin" placeholder="PIN / ID Único" class="w-full border border-slate-700 dark:border-slate-600 rounded-xl bg-slate-800/50 dark:bg-slate-900 p-2.5 text-sm outline-none focus:border-blue-500 focus:bg-slate-800 dark:focus:bg-slate-950 transition-all placeholder:text-slate-500 font-mono text-white">
+                            <input type="text" id="nuevo-pin" placeholder="PIN / ID Único" class="w-full border border-slate-700 rounded-xl bg-slate-800/50 p-2.5 text-sm outline-none focus:border-blue-500 focus:bg-slate-800 transition-all placeholder:text-slate-500 font-mono text-white">
                         </div>
                         <div>
-                            <input type="text" id="nuevo-nombre" placeholder="Nombre Completo" class="w-full border border-slate-700 dark:border-slate-600 rounded-xl bg-slate-800/50 dark:bg-slate-900 p-2.5 text-sm outline-none focus:border-blue-500 focus:bg-slate-800 dark:focus:bg-slate-950 transition-all placeholder:text-slate-500 text-white">
+                            <input type="text" id="nuevo-nombre" placeholder="Nombre Completo" class="w-full border border-slate-700 rounded-xl bg-slate-800/50 p-2.5 text-sm outline-none focus:border-blue-500 focus:bg-slate-800 transition-all placeholder:text-slate-500 text-white">
                         </div>
                     </div>
-                    <button onclick="agregarColaborador()" class="w-full bg-blue-600 hover:bg-blue-500 text-white text-sm font-bold py-2.5 rounded-xl transition-colors flex justify-center items-center gap-2 shadow-sm shadow-blue-900/50 dark:shadow-none">
+                    <button onclick="agregarColaborador()" class="w-full bg-blue-600 hover:bg-blue-500 text-white text-sm font-bold py-2.5 rounded-xl transition-colors flex justify-center items-center gap-2 shadow-sm shadow-blue-900/50">
                         Registrar Empleado <i class="ph ph-plus-bold"></i>
                     </button>
                 </div>
@@ -257,51 +235,51 @@
     </div>
 
     <!-- PANTALLA CARGA -->
-    <div id="vista-cargando" class="flex flex-col items-center justify-center min-h-screen bg-slate-50 dark:bg-slate-950">
+    <div id="vista-cargando" class="flex flex-col items-center justify-center min-h-screen bg-slate-50">
         <div class="relative">
             <div class="loader mb-6 relative z-10"></div>
             <div class="absolute inset-0 bg-blue-400 blur-xl opacity-20 rounded-full"></div>
         </div>
-        <p class="text-slate-600 dark:text-slate-400 font-medium tracking-wide animate-pulse">Conectando al servidor...</p>
+        <p class="text-slate-600 font-medium tracking-wide animate-pulse">Conectando al servidor...</p>
     </div>
 
     <!-- PANTALLA ERROR -->
-    <div id="vista-error" class="hidden flex flex-col items-center justify-center min-h-screen px-4 text-center bg-slate-50 dark:bg-slate-950">
-        <div class="p-6 bg-red-100 dark:bg-red-500/10 rounded-full mb-6">
-            <i class="ph ph-shield-warning text-5xl text-red-600 dark:text-red-400"></i>
+    <div id="vista-error" class="hidden flex flex-col items-center justify-center min-h-screen px-4 text-center bg-slate-50">
+        <div class="p-6 bg-red-100 rounded-full mb-6">
+            <i class="ph ph-shield-warning text-5xl text-red-600"></i>
         </div>
-        <h2 class="text-3xl font-bold text-slate-900 dark:text-white mb-3">Conexión Interrumpida</h2>
-        <p class="text-slate-500 dark:text-slate-400 mb-6 max-w-md">No hemos podido establecer conexión con la base de datos de tiempos. Verifica tu red o la configuración.</p>
-        <div id="texto-error-detalle" class="text-slate-700 dark:text-slate-300 max-w-lg bg-white dark:bg-slate-900 p-4 rounded-xl border border-red-200 dark:border-red-900/30 text-xs font-mono text-left shadow-sm mb-6 w-full overflow-x-auto"></div>
-        <button onclick="window.location.reload()" class="px-8 py-3 bg-slate-900 dark:bg-white text-white dark:text-slate-900 font-semibold rounded-xl hover:bg-slate-800 dark:hover:bg-slate-200 transition-colors shadow-lg flex items-center gap-2">
+        <h2 class="text-3xl font-bold text-slate-900 mb-3">Conexión Interrumpida</h2>
+        <p class="text-slate-500 mb-6 max-w-md">No hemos podido establecer conexión con la base de datos de tiempos. Verifica tu red o la configuración.</p>
+        <div id="texto-error-detalle" class="text-slate-700 max-w-lg bg-white p-4 rounded-xl border border-red-200 text-xs font-mono text-left shadow-sm mb-6 w-full overflow-x-auto"></div>
+        <button onclick="window.location.reload()" class="px-8 py-3 bg-slate-900 text-white font-semibold rounded-xl hover:bg-slate-800 transition-colors shadow-lg flex items-center gap-2">
             <i class="ph ph-arrows-clockwise"></i> Reintentar
         </button>
     </div>
 
     <!-- PANTALLA LOGIN -->
-    <div id="vista-login-admin" class="hidden min-h-screen flex items-center justify-center px-4 relative overflow-hidden bg-slate-50 dark:bg-slate-950">
+    <div id="vista-login-admin" class="hidden min-h-screen flex items-center justify-center px-4 relative overflow-hidden bg-slate-50">
         <!-- Decoración de fondo -->
-        <div class="absolute top-[-10%] left-[-10%] w-96 h-96 bg-blue-400 dark:bg-blue-600 rounded-full mix-blend-multiply filter blur-3xl opacity-10 animate-pulse-slow"></div>
-        <div class="absolute bottom-[-10%] right-[-10%] w-96 h-96 bg-purple-400 dark:bg-purple-600 rounded-full mix-blend-multiply filter blur-3xl opacity-10 animate-pulse-slow" style="animation-delay: 2s;"></div>
+        <div class="absolute top-[-10%] left-[-10%] w-96 h-96 bg-blue-400 rounded-full mix-blend-multiply filter blur-3xl opacity-10 animate-pulse-slow"></div>
+        <div class="absolute bottom-[-10%] right-[-10%] w-96 h-96 bg-purple-400 rounded-full mix-blend-multiply filter blur-3xl opacity-10 animate-pulse-slow" style="animation-delay: 2s;"></div>
 
-        <div class="bg-white dark:bg-slate-900 p-8 md:p-10 rounded-3xl shadow-2xl border border-slate-100 dark:border-slate-800 w-full max-w-sm relative z-10 transform transition-all hover:scale-[1.01]">
-            <div class="w-16 h-16 bg-slate-900 dark:bg-slate-800 rounded-2xl flex items-center justify-center mb-6 shadow-lg shadow-slate-200 dark:shadow-none">
+        <div class="bg-white p-8 md:p-10 rounded-3xl shadow-2xl border border-slate-100 w-full max-w-sm relative z-10 transform transition-all hover:scale-[1.01]">
+            <div class="w-16 h-16 bg-slate-900 rounded-2xl flex items-center justify-center mb-6 shadow-lg shadow-slate-200">
                 <i class="ph ph-fingerprint text-3xl text-white"></i>
             </div>
-            <h2 class="text-2xl font-bold text-slate-900 dark:text-white mb-1">Acceso Root</h2>
-            <p class="text-slate-500 dark:text-slate-400 text-sm mb-8 font-medium">Panel de administración central</p>
+            <h2 class="text-2xl font-bold text-slate-900 mb-1">Acceso Root</h2>
+            <p class="text-slate-500 text-sm mb-8 font-medium">Panel de administración central</p>
             
             <div class="relative mb-6">
-                <input type="password" id="pin-admin" autocomplete="off" placeholder="Palabra clave maestra" class="w-full text-center text-lg tracking-[0.3em] font-mono border-b-2 border-slate-200 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-800/50 rounded-t-xl p-4 focus:border-slate-900 dark:focus:border-blue-500 focus:bg-white dark:focus:bg-slate-800 outline-none transition-all placeholder:tracking-normal placeholder:font-sans placeholder:text-sm dark:text-white" onkeypress="if(event.key === 'Enter') loginAdmin()">
-                <div class="absolute bottom-0 left-0 w-full h-0.5 bg-slate-900 dark:bg-blue-500 scale-x-0 transition-transform origin-left duration-300" id="login-line"></div>
+                <input type="password" id="pin-admin" autocomplete="off" placeholder="Palabra clave maestra" class="w-full text-center text-lg tracking-[0.3em] font-mono border-b-2 border-slate-200 bg-slate-50/50 rounded-t-xl p-4 focus:border-slate-900 outline-none transition-all placeholder:tracking-normal placeholder:font-sans placeholder:text-sm" onkeypress="if(event.key === 'Enter') loginAdmin()">
+                <div class="absolute bottom-0 left-0 w-full h-0.5 bg-slate-900 scale-x-0 transition-transform origin-left duration-300" id="login-line"></div>
             </div>
             
-            <button onclick="loginAdmin()" class="w-full bg-slate-900 dark:bg-blue-600 hover:bg-slate-800 dark:hover:bg-blue-500 text-white font-semibold py-3.5 rounded-xl shadow-lg shadow-slate-200 dark:shadow-none transition-all active:scale-95 flex items-center justify-center gap-2">
+            <button onclick="loginAdmin()" class="w-full bg-slate-900 hover:bg-slate-800 text-white font-semibold py-3.5 rounded-xl shadow-lg shadow-slate-200 transition-all active:scale-95 flex items-center justify-center gap-2">
                 Autenticar <i class="ph ph-arrow-right font-bold"></i>
             </button>
 
             <div class="mt-8 text-center">
-                <a href="index.html" class="inline-flex items-center gap-1.5 text-xs font-semibold text-slate-400 hover:text-slate-500 dark:hover:text-slate-300 transition-colors">
+                <a href="index.html" class="inline-flex items-center gap-1.5 text-xs font-semibold text-slate-400 hover:text-slate-500 transition-colors">
                     <i class="ph ph-arrow-left"></i> Regresar al portal
                 </a>
             </div>
@@ -318,32 +296,23 @@
                     <i class="ph ph-chart-polar text-white text-lg"></i>
                 </div>
                 <div>
-                    <h1 class="text-lg font-bold text-slate-900 dark:text-white leading-tight">Admin<span class="text-blue-600 dark:text-blue-400">Dash</span></h1>
-                    <p class="text-[10px] text-slate-500 dark:text-slate-400 font-medium tracking-wide" id="fecha-admin-display">Cargando fecha...</p>
+                    <h1 class="text-lg font-bold text-slate-900 leading-tight">Admin<span class="text-blue-600">Dash</span></h1>
+                    <p class="text-[10px] text-slate-500 font-medium tracking-wide" id="fecha-admin-display">Cargando fecha...</p>
                 </div>
             </div>
             
             <div class="flex items-center gap-3 sm:gap-5">
-                <div class="hidden sm:flex items-center gap-2 bg-slate-100 dark:bg-slate-800 px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700">
-                    <span id="syncDotAdmin" class="w-2 h-2 rounded-full bg-amber-500 animate-pulse shadow-[0_0_8px_rgba(245,158,11,0.6)]"></span>
-                    <span class="text-xs font-mono font-bold text-slate-600 dark:text-slate-300" id="reloj-display-admin">--:--:--</span>
-                </div>
-                
-                <button onclick="abrirModalReset()" class="text-slate-600 dark:text-slate-400 hover:text-orange-600 dark:hover:text-orange-400 bg-white dark:bg-slate-800 hover:bg-orange-50 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700 p-2 sm:px-3 sm:py-1.5 rounded-lg transition-colors flex items-center gap-2 shadow-sm text-sm font-medium" title="Reiniciar Todos los Tiempos de Hoy">
+                <button onclick="abrirModalReset()" class="text-slate-600 hover:text-orange-600 bg-white hover:bg-orange-50 border border-slate-200 p-2 sm:px-3 sm:py-1.5 rounded-lg transition-colors flex items-center gap-2 shadow-sm text-sm font-medium" title="Reiniciar Todos los Tiempos de Hoy">
                     <i class="ph ph-arrow-counter-clockwise text-lg"></i> <span class="hidden sm:inline">Reset Día</span>
                 </button>
                 
-                <div class="w-px h-6 bg-slate-200 dark:bg-slate-700 hidden sm:block"></div>
-                
-                <button onclick="toggleTheme()" class="text-slate-500 dark:text-slate-400 hover:text-blue-600 dark:hover:text-blue-400 p-2 rounded-lg transition-colors flex items-center justify-center" title="Cambiar Tema">
-                    <i id="theme-icon" class="ph ph-moon text-xl"></i>
-                </button>
+                <div class="w-px h-6 bg-slate-200 hidden sm:block"></div>
 
-                <button onclick="abrirConfig()" class="text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-white p-2 rounded-lg transition-colors flex items-center justify-center" title="Configuración">
+                <button onclick="abrirConfig()" class="text-slate-500 hover:text-slate-800 p-2 rounded-lg transition-colors flex items-center justify-center" title="Configuración">
                     <i class="ph ph-gear text-xl"></i>
                 </button>
                 
-                <button onclick="cerrarSesionAdmin()" class="text-slate-500 dark:text-slate-400 hover:text-red-600 dark:hover:text-red-400 p-2 sm:px-3 sm:py-1.5 rounded-lg transition-colors flex items-center gap-2 text-sm font-medium" title="Cerrar Sesión">
+                <button onclick="cerrarSesionAdmin()" class="text-slate-500 hover:text-red-600 p-2 sm:px-3 sm:py-1.5 rounded-lg transition-colors flex items-center gap-2 text-sm font-medium" title="Cerrar Sesión">
                     <span class="hidden sm:inline">Salir</span> <i class="ph ph-sign-out text-lg"></i>
                 </button>
             </div>
@@ -353,37 +322,37 @@
             
             <!-- KPIs -->
             <div class="grid grid-cols-1 md:grid-cols-3 gap-4 lg:gap-6">
-                <div class="bg-white dark:bg-slate-900 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-800 p-5 flex items-center gap-5 hover:shadow-md transition-shadow relative overflow-hidden">
-                    <div class="absolute -right-4 -top-4 w-24 h-24 bg-blue-50 dark:bg-blue-500/5 rounded-full opacity-50 pointer-events-none"></div>
-                    <div class="w-14 h-14 rounded-xl bg-gradient-to-br from-blue-500 to-blue-600 text-white flex items-center justify-center shadow-lg shadow-blue-200 dark:shadow-none shrink-0">
+                <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-5 flex items-center gap-5 hover:shadow-md transition-shadow relative overflow-hidden">
+                    <div class="absolute -right-4 -top-4 w-24 h-24 bg-blue-50 rounded-full opacity-50 pointer-events-none"></div>
+                    <div class="w-14 h-14 rounded-xl bg-gradient-to-br from-blue-500 to-blue-600 text-white flex items-center justify-center shadow-lg shadow-blue-200 shrink-0">
                         <i class="ph ph-users text-2xl"></i>
                     </div>
                     <div>
                         <p class="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">Personal Total</p>
-                        <p class="text-3xl font-bold text-slate-800 dark:text-white leading-none" id="kpi-total">0</p>
+                        <p class="text-3xl font-bold text-slate-800 leading-none" id="kpi-total">0</p>
                     </div>
                 </div>
                 
-                <div class="bg-white dark:bg-slate-900 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-800 p-5 flex items-center gap-5 hover:shadow-md transition-shadow relative overflow-hidden">
-                    <div class="absolute -right-4 -top-4 w-24 h-24 bg-emerald-50 dark:bg-emerald-500/5 rounded-full opacity-50 pointer-events-none"></div>
-                    <div class="w-14 h-14 rounded-xl bg-gradient-to-br from-emerald-400 to-emerald-500 text-white flex items-center justify-center shadow-lg shadow-emerald-200 dark:shadow-none shrink-0 relative">
+                <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-5 flex items-center gap-5 hover:shadow-md transition-shadow relative overflow-hidden">
+                    <div class="absolute -right-4 -top-4 w-24 h-24 bg-emerald-50 rounded-full opacity-50 pointer-events-none"></div>
+                    <div class="w-14 h-14 rounded-xl bg-gradient-to-br from-emerald-400 to-emerald-500 text-white flex items-center justify-center shadow-lg shadow-emerald-200 shrink-0 relative">
                         <div class="absolute inset-0 border-2 border-white/50 rounded-xl animate-ping opacity-20"></div>
                         <i class="ph ph-broadcast text-2xl"></i>
                     </div>
                     <div>
                         <p class="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">En Descanso (Vivo)</p>
-                        <p class="text-3xl font-bold text-slate-800 dark:text-white leading-none" id="kpi-activos">0</p>
+                        <p class="text-3xl font-bold text-slate-800 leading-none" id="kpi-activos">0</p>
                     </div>
                 </div>
 
-                <div class="bg-white dark:bg-slate-900 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-800 p-5 flex items-center gap-5 hover:shadow-md transition-shadow relative overflow-hidden">
-                    <div class="absolute -right-4 -top-4 w-24 h-24 bg-red-50 dark:bg-red-500/5 rounded-full opacity-50 pointer-events-none"></div>
-                    <div class="w-14 h-14 rounded-xl bg-gradient-to-br from-red-500 to-red-600 text-white flex items-center justify-center shadow-lg shadow-red-200 dark:shadow-none shrink-0">
+                <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-5 flex items-center gap-5 hover:shadow-md transition-shadow relative overflow-hidden">
+                    <div class="absolute -right-4 -top-4 w-24 h-24 bg-red-50 rounded-full opacity-50 pointer-events-none"></div>
+                    <div class="w-14 h-14 rounded-xl bg-gradient-to-br from-red-500 to-red-600 text-white flex items-center justify-center shadow-lg shadow-red-200 shrink-0">
                         <i class="ph ph-warning text-2xl"></i>
                     </div>
                     <div>
                         <p class="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">Excedidos Hoy</p>
-                        <p class="text-3xl font-bold text-red-600 dark:text-red-400 leading-none" id="kpi-excedidos">0</p>
+                        <p class="text-3xl font-bold text-red-600 leading-none" id="kpi-excedidos">0</p>
                     </div>
                 </div>
             </div>
@@ -394,9 +363,9 @@
                 <div class="xl:col-span-2 space-y-6">
                     
                     <!-- Monitor en Vivo -->
-                    <section class="bg-white dark:bg-slate-900 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-800 overflow-hidden flex flex-col">
-                        <div class="px-5 py-4 border-b border-slate-100 dark:border-slate-800 flex justify-between items-center bg-slate-50/50 dark:bg-slate-800/50">
-                            <h2 class="font-bold text-slate-800 dark:text-white flex items-center gap-2">
+                    <section class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden flex flex-col">
+                        <div class="px-5 py-4 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
+                            <h2 class="font-bold text-slate-800 flex items-center gap-2">
                                 <span class="relative flex h-3 w-3">
                                   <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
                                   <span class="relative inline-flex rounded-full h-3 w-3 bg-emerald-500"></span>
@@ -404,43 +373,41 @@
                                 Monitor de Personal Conectado (Hoy)
                             </h2>
                         </div>
-                        <div class="p-5 flex-1 bg-slate-50/30 dark:bg-transparent">
+                        <div class="p-5 flex-1 bg-slate-50/30">
                             <div id="lista-activos" class="grid grid-cols-1 md:grid-cols-2 gap-4">
                                 <!-- Contenido JS Renderizado -->
                                 <div class="col-span-full py-8 text-center flex flex-col items-center justify-center">
-                                    <div class="w-16 h-16 bg-slate-100 dark:bg-slate-800 rounded-full flex items-center justify-center mb-3">
-                                        <i class="ph ph-coffee text-2xl text-slate-400 dark:text-slate-500"></i>
+                                    <div class="w-16 h-16 bg-slate-100 rounded-full flex items-center justify-center mb-3">
+                                        <i class="ph ph-coffee text-2xl text-slate-400"></i>
                                     </div>
-                                    <p class="text-slate-500 dark:text-slate-400 font-medium">Nadie se ha conectado hoy.</p>
+                                    <p class="text-slate-500 font-medium">Nadie se ha conectado hoy.</p>
                                 </div>
                             </div>
                         </div>
                     </section>
 
                     <!-- Historial Global -->
-                    <section class="bg-white dark:bg-slate-900 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-800 overflow-hidden">
-                        <div class="px-5 py-4 border-b border-slate-100 dark:border-slate-800 flex flex-wrap justify-between items-center gap-4 bg-slate-50/50 dark:bg-slate-800/50">
-                            <h2 class="font-bold text-slate-800 dark:text-white flex items-center gap-2">
+                    <section class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+                        <div class="px-5 py-4 border-b border-slate-100 flex flex-wrap justify-between items-center gap-4 bg-slate-50/50">
+                            <h2 class="font-bold text-slate-800 flex items-center gap-2">
                                 <i class="ph ph-clock-counter-clockwise text-blue-500 text-lg"></i> Bitácora de Movimientos
                             </h2>
                             <div class="relative">
                                 <i class="ph ph-calendar-blank absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400"></i>
-                                <input type="date" id="filtro-fecha-historial" class="pl-9 pr-3 py-1.5 border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 rounded-lg text-sm text-slate-600 dark:text-slate-300 font-medium outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all shadow-sm cursor-pointer color-scheme-light dark:color-scheme-dark">
+                                <input type="date" id="filtro-fecha-historial" class="pl-9 pr-3 py-1.5 border border-slate-200 bg-white rounded-lg text-sm text-slate-600 font-medium outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all shadow-sm cursor-pointer">
                             </div>
                         </div>
                         <div class="overflow-x-auto max-h-[400px] custom-scrollbar relative">
                             <table class="w-full text-left border-collapse min-w-[700px]">
-                                <thead class="sticky top-0 bg-slate-50 dark:bg-slate-900 shadow-sm z-10 backdrop-blur-md bg-white/90 dark:bg-slate-900/90 border-b border-slate-200 dark:border-slate-800">
-                                    <tr class="text-slate-500 dark:text-slate-400 text-[11px] uppercase tracking-wider">
+                                <thead class="sticky top-0 bg-slate-50 shadow-sm z-10 backdrop-blur-md bg-white/90 border-b border-slate-200">
+                                    <tr class="text-slate-500 text-[11px] uppercase tracking-wider">
                                         <th class="px-5 py-3 font-semibold rounded-tl-lg">Colaborador</th>
                                         <th class="px-5 py-3 font-semibold">Tipo</th>
-                                        <th class="px-5 py-3 font-semibold">Tiempo Total</th>
-                                        <th class="px-5 py-3 font-semibold">Estado</th>
-                                        <th class="px-5 py-3 font-semibold">Inicio</th>
-                                        <th class="px-5 py-3 font-semibold rounded-tr-lg">Fin</th>
+                                        <th class="px-5 py-3 font-semibold text-blue-600">Tiempo Consumido</th>
+                                        <th class="px-5 py-3 font-semibold rounded-tr-lg">Estado / Justificación</th>
                                     </tr>
                                 </thead>
-                                <tbody id="tabla-registros-global" class="divide-y divide-slate-100 dark:divide-slate-800 text-sm">
+                                <tbody id="tabla-registros-global" class="divide-y divide-slate-100 text-sm">
                                     <!-- JS renderiza -->
                                 </tbody>
                             </table>
@@ -452,18 +419,18 @@
                 <div class="space-y-6">
                     
                     <!-- Gestión de Personal y Consumos -->
-                    <section class="bg-white dark:bg-slate-900 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-800 flex flex-col h-[600px] xl:h-auto xl:max-h-[800px]">
-                        <div class="p-5 border-b border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/50 rounded-t-2xl">
-                            <h2 class="font-bold text-slate-800 dark:text-white flex items-center gap-2 mb-4">
+                    <section class="bg-white rounded-2xl shadow-sm border border-slate-200 flex flex-col h-[600px] xl:h-auto xl:max-h-[800px]">
+                        <div class="p-5 border-b border-slate-100 bg-slate-50/50 rounded-t-2xl">
+                            <h2 class="font-bold text-slate-800 flex items-center gap-2 mb-4">
                                 <i class="ph ph-address-book text-blue-500 text-lg"></i> Consumo del Personal (Hoy)
                             </h2>
                             <div class="relative group">
                                 <i class="ph ph-magnifying-glass absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400 group-focus-within:text-blue-500 transition-colors"></i>
-                                <input type="text" id="search-colab" onkeyup="renderizarListaAdmin()" placeholder="Buscar por nombre o PIN..." class="w-full border border-slate-200 dark:border-slate-700 rounded-xl pl-10 pr-4 py-2.5 text-sm focus:border-blue-500 focus:ring-2 focus:ring-blue-100 dark:focus:ring-blue-900/50 outline-none transition-all shadow-sm bg-white dark:bg-slate-800 dark:text-white">
+                                <input type="text" id="search-colab" onkeyup="renderizarListaAdmin()" placeholder="Buscar por nombre o PIN..." class="w-full border border-slate-200 rounded-xl pl-10 pr-4 py-2.5 text-sm focus:border-blue-500 focus:ring-2 focus:ring-blue-100 outline-none transition-all shadow-sm bg-white">
                             </div>
                         </div>
                         
-                        <div class="overflow-y-auto flex-1 p-3 sm:p-5 custom-scrollbar bg-slate-50/30 dark:bg-transparent">
+                        <div class="overflow-y-auto flex-1 p-3 sm:p-5 custom-scrollbar bg-slate-50/30">
                             <ul id="lista-colaboradores" class="space-y-3">
                                 <!-- JS renderiza -->
                             </ul>
@@ -512,31 +479,18 @@
 
         let timeOffset = 0; 
         let logoutsEnviados = {};
-        
-        // --- VARIABLE PARA EL MANEJO DE LOS MODALES ---
         let timeoutModales = null;
 
-        async function sincronizarHoraReal() {
-            try {
-                const start = Date.now();
-                const res = await fetch(window.location.href, { method: 'HEAD', cache: 'no-cache' });
-                const dateHeader = res.headers.get('Date');
-                if (dateHeader) {
-                    const serverTime = new Date(dateHeader).getTime();
-                    const end = Date.now();
-                    const latencia = (end - start) / 2;
-                    timeOffset = serverTime + latencia - end;
-                    const el = document.getElementById('syncDotAdmin');
-                    if (el) { 
-                        el.classList.replace('bg-amber-500', 'bg-emerald-500'); 
-                        el.classList.replace('shadow-[0_0_8px_rgba(245,158,11,0.6)]', 'shadow-[0_0_8px_rgba(16,185,129,0.6)]');
-                        el.classList.remove('animate-pulse'); 
-                    }
-                }
-            } catch (e) {
-                console.warn("Error al sincronizar la hora real.", e);
-                const el = document.getElementById('syncDotAdmin');
-                if (el) el.classList.replace('bg-amber-500', 'bg-red-500');
+        // --- SISTEMA DE SINCRONIZACIÓN DE HORA (SIMPLIFICADO Y GARANTIZADO) ---
+        function sincronizarHoraReal() {
+            // Ya no dependemos de la red para evitar que se quede cargando o no conecte.
+            // Se usa el reloj interno directamente.
+            timeOffset = 0; 
+            const el = document.getElementById('syncDotAdmin');
+            if (el) { 
+                el.classList.replace('bg-amber-500', 'bg-emerald-500'); 
+                el.classList.replace('shadow-[0_0_8px_rgba(245,158,11,0.6)]', 'shadow-[0_0_8px_rgba(16,185,129,0.6)]');
+                el.classList.remove('animate-pulse'); 
             }
         }
 
@@ -548,25 +502,6 @@
             const tzOffset = (new Date()).getTimezoneOffset() * 60000;
             return (new Date(getHoraReal() - tzOffset)).toISOString().split('T')[0];
         }
-
-        // --- SISTEMA DE TEMA (Dark/Light Mode) ---
-        window.toggleTheme = function() {
-            const html = document.documentElement;
-            const isDark = html.classList.toggle('dark');
-            localStorage.setItem('theme', isDark ? 'dark' : 'light');
-            actualizarIconoTema(isDark);
-        };
-        
-        function actualizarIconoTema(isDark) {
-            const icon = document.getElementById('theme-icon');
-            if(icon) {
-                icon.className = isDark ? 'ph ph-sun text-xl' : 'ph ph-moon text-xl';
-            }
-        }
-        
-        document.addEventListener('DOMContentLoaded', () => {
-            actualizarIconoTema(document.documentElement.classList.contains('dark'));
-        });
 
 
         window.forzarCierreSesionExpulsado = async function(act, transcurridoTotal) {
@@ -593,9 +528,6 @@
 
         setInterval(() => {
             const ahoraMs = getHoraReal();
-            const ahora = new Date(ahoraMs);
-            const admDisplay = document.getElementById('reloj-display-admin');
-            if(admDisplay) admDisplay.textContent = ahora.toLocaleTimeString('es-ES', { hour12: false });
 
             if (adminActivasArray && adminActivasArray.length > 0) {
                 adminActivasArray.forEach(act => {
@@ -617,8 +549,8 @@
                                 elProg.style.width = `${pct}%`;
 
                                 if (totalActual > act.limiteSeg) {
-                                    elTotal.classList.add('text-red-600', 'font-bold', 'dark:text-red-400');
-                                    elTotal.classList.remove('text-slate-700', 'dark:text-slate-300');
+                                    elTotal.classList.add('text-red-600', 'font-bold');
+                                    elTotal.classList.remove('text-slate-700');
                                     elProg.classList.add('bg-red-500');
                                     elProg.classList.remove('bg-blue-500', 'bg-orange-500', 'bg-purple-500');
 
@@ -771,6 +703,8 @@
 
         function cargarAdminViews() {
             window.mostrarVista('vista-admin');
+            sincronizarHoraReal(); // Sincroniza al entrar en lugar de al cargar el archivo
+            
             document.getElementById('filtro-fecha-historial').value = obtenerFechaHoy();
             
             const opcionesFecha = { weekday: 'long', year: 'numeric', month: 'short', day: 'numeric' };
@@ -844,10 +778,10 @@
             if (conectadosHoy.length === 0) {
                 contenedor.innerHTML = `
                     <div class="col-span-full py-10 text-center flex flex-col items-center justify-center">
-                        <div class="w-16 h-16 bg-slate-100 dark:bg-slate-800 rounded-full flex items-center justify-center mb-3">
-                            <i class="ph ph-coffee text-2xl text-slate-400 dark:text-slate-500"></i>
+                        <div class="w-16 h-16 bg-slate-100 rounded-full flex items-center justify-center mb-3">
+                            <i class="ph ph-coffee text-2xl text-slate-400"></i>
                         </div>
-                        <p class="text-slate-500 dark:text-slate-400 font-medium">No hay ningún asesor conectado hoy.</p>
+                        <p class="text-slate-500 font-medium">No hay ningún asesor conectado hoy.</p>
                     </div>`;
                 return;
             }
@@ -878,47 +812,47 @@
                 const act = item.act;
                 const c = item.colab;
                 
-                let icon = '<i class="ph ph-star text-purple-600 dark:text-purple-400 text-xl"></i>';
+                let icon = '<i class="ph ph-star text-purple-600 text-xl"></i>';
                 let bg = 'purple';
-                if(act.tipo === 'Baño') { icon = '<i class="ph ph-toilet text-blue-600 dark:text-blue-400 text-xl"></i>'; bg = 'blue'; }
-                else if(act.tipo === 'Comida') { icon = '<i class="ph ph-fork-knife text-orange-600 dark:text-orange-400 text-xl"></i>'; bg = 'orange'; }
+                if(act.tipo === 'Baño') { icon = '<i class="ph ph-toilet text-blue-600 text-xl"></i>'; bg = 'blue'; }
+                else if(act.tipo === 'Comida') { icon = '<i class="ph ph-fork-knife text-orange-600 text-xl"></i>'; bg = 'orange'; }
                 
                 const transcurrido = Math.floor((getHoraReal() - act.inicio) / 1000);
                 const totalInicial = act.baseAcum + transcurrido;
                 
                 let pct = act.limiteSeg !== Infinity ? Math.min((totalInicial / act.limiteSeg) * 100, 100) : 0;
-                let colorTotal = totalInicial > act.limiteSeg ? 'text-red-600 dark:text-red-400 font-bold' : 'text-slate-700 dark:text-slate-300 font-medium';
+                let colorTotal = totalInicial > act.limiteSeg ? 'text-red-600 font-bold' : 'text-slate-700 font-medium';
                 let bgProgreso = totalInicial > act.limiteSeg ? 'bg-red-500' : `bg-${bg}-500`;
                 
                 html += `
-                    <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-4 flex items-start gap-4 shadow-sm hover:shadow-md transition-shadow relative overflow-hidden group">
+                    <div class="bg-white border border-slate-200 rounded-2xl p-4 flex items-start gap-4 shadow-sm hover:shadow-md transition-shadow relative overflow-hidden group">
                         <div class="absolute top-0 left-0 w-1 h-full bg-${bg}-400"></div>
                         
-                        <div class="w-12 h-12 bg-${bg}-50 dark:bg-${bg}-500/10 rounded-xl flex items-center justify-center shrink-0 border border-${bg}-100 dark:border-${bg}-500/20">
+                        <div class="w-12 h-12 bg-${bg}-50 rounded-xl flex items-center justify-center shrink-0 border border-${bg}-100">
                             ${icon}
                         </div>
                         
                         <div class="flex-1 min-w-0">
                             <div class="flex justify-between items-start mb-1">
-                                <p class="font-bold text-slate-800 dark:text-white text-sm leading-tight truncate pr-2" title="${act.nombre}">${act.nombre}</p>
-                                <span id="timer-admin-${act.pin}" class="bg-${bg}-50 dark:bg-${bg}-500/20 text-${bg}-700 dark:text-${bg}-400 font-mono font-bold text-xs px-2 py-0.5 rounded-md border border-${bg}-100 dark:border-${bg}-500/30 animate-pulse-slow">
+                                <p class="font-bold text-slate-800 text-sm leading-tight truncate pr-2" title="${act.nombre}">${act.nombre}</p>
+                                <span id="timer-admin-${act.pin}" class="bg-${bg}-50 text-${bg}-700 font-mono font-bold text-xs px-2 py-0.5 rounded-md border border-${bg}-100 animate-pulse-slow">
                                     ${formatearTiempo(transcurrido)}
                                 </span>
                             </div>
-                            <p class="text-[11px] text-slate-500 dark:text-slate-400 font-medium mb-3 uppercase tracking-wider">${act.tipo}</p>
+                            <p class="text-[11px] text-slate-500 font-medium mb-3 uppercase tracking-wider">${act.tipo}</p>
                             
                             ${act.tipo !== 'Calidad' ? `
-                            <div class="bg-slate-100 dark:bg-slate-800 rounded-full h-1.5 w-full mb-1.5 overflow-hidden">
+                            <div class="bg-slate-100 rounded-full h-1.5 w-full mb-1.5 overflow-hidden">
                                  <div id="prog-admin-${act.pin}" class="h-full ${bgProgreso} transition-all duration-1000 rounded-full" style="width: ${pct}%"></div>
                             </div>
                             <div class="flex justify-between items-center text-[10px]">
-                                <span class="text-slate-500 dark:text-slate-400">Hoy: <span id="total-admin-${act.pin}" class="${colorTotal} font-mono">${formatearTiempo(totalInicial)}</span></span>
-                                <span class="text-slate-400 dark:text-slate-500 font-medium">Lím: ${act.limiteTxt}</span>
+                                <span class="text-slate-500">Hoy: <span id="total-admin-${act.pin}" class="${colorTotal} font-mono">${formatearTiempo(totalInicial)}</span></span>
+                                <span class="text-slate-400 font-medium">Lím: ${act.limiteTxt}</span>
                             </div>
                             ` : `
-                            <div class="flex justify-between items-center text-[11px] mt-2 pt-2 border-t border-slate-50 dark:border-slate-800">
-                                <span class="text-slate-500 dark:text-slate-400">Acumulado Hoy:</span>
-                                <span id="total-admin-${act.pin}" class="${colorTotal} font-mono bg-slate-50 dark:bg-slate-800 px-2 py-0.5 rounded">${formatearTiempo(totalInicial)}</span>
+                            <div class="flex justify-between items-center text-[11px] mt-2 pt-2 border-t border-slate-50">
+                                <span class="text-slate-500">Acumulado Hoy:</span>
+                                <span id="total-admin-${act.pin}" class="${colorTotal} font-mono bg-slate-50 px-2 py-0.5 rounded">${formatearTiempo(totalInicial)}</span>
                             </div>
                             `}
                         </div>
@@ -928,21 +862,21 @@
 
             operando.forEach(c => {
                 html += `
-                    <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-4 flex items-start gap-4 shadow-sm hover:shadow-md transition-shadow relative overflow-hidden group opacity-85 hover:opacity-100">
+                    <div class="bg-white border border-slate-200 rounded-2xl p-4 flex items-start gap-4 shadow-sm hover:shadow-md transition-shadow relative overflow-hidden group opacity-85 hover:opacity-100">
                         <div class="absolute top-0 left-0 w-1 h-full bg-emerald-400"></div>
                         
-                        <div class="w-12 h-12 bg-emerald-50 dark:bg-emerald-500/10 rounded-xl flex items-center justify-center shrink-0 border border-emerald-100 dark:border-emerald-500/20">
-                            <i class="ph ph-headset text-emerald-600 dark:text-emerald-400 text-xl"></i>
+                        <div class="w-12 h-12 bg-emerald-50 rounded-xl flex items-center justify-center shrink-0 border border-emerald-100">
+                            <i class="ph ph-headset text-emerald-600 text-xl"></i>
                         </div>
                         
                         <div class="flex-1 min-w-0 flex flex-col justify-center h-full pt-1.5">
                             <div class="flex justify-between items-start mb-1.5">
-                                <p class="font-bold text-slate-800 dark:text-white text-sm leading-tight truncate pr-2" title="${c.nombre}">${c.nombre}</p>
-                                <span class="bg-emerald-50 dark:bg-emerald-500/20 text-emerald-700 dark:text-emerald-400 font-bold text-[9px] px-2 py-0.5 rounded-md border border-emerald-100 dark:border-emerald-500/30 uppercase tracking-widest flex items-center gap-1.5 shrink-0">
+                                <p class="font-bold text-slate-800 text-sm leading-tight truncate pr-2" title="${c.nombre}">${c.nombre}</p>
+                                <span class="bg-emerald-50 text-emerald-700 font-bold text-[9px] px-2 py-0.5 rounded-md border border-emerald-100 uppercase tracking-widest flex items-center gap-1.5 shrink-0">
                                     <span class="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse"></span> Operación
                                 </span>
                             </div>
-                            <p class="text-[11px] text-slate-500 dark:text-slate-400 font-medium">Asesor Conectado Hoy</p>
+                            <p class="text-[11px] text-slate-500 font-medium">Asesor Conectado Hoy</p>
                         </div>
                     </div>
                 `;
@@ -970,10 +904,7 @@
         };
 
 
-        // --- MANEJO SEGURO DE MODALES (AQUÍ ESTÁ LA CORRECCIÓN) ---
-
         function prepararAperturaModal() {
-            // Cancelar de inmediato cualquier timer de cierre activo, para que no mate el nuevo modal
             if (timeoutModales) clearTimeout(timeoutModales);
             
             const modales = ['modal-confirm', 'modal-editar', 'modal-confirm-reset'];
@@ -1036,7 +967,6 @@
                 if(el && !el.classList.contains('hidden')) el.classList.add('scale-95');
             });
 
-            // Registrar y limpiar variables solo cuando se termina la animación por completo
             if(timeoutModales) clearTimeout(timeoutModales);
             timeoutModales = setTimeout(() => {
                 overlay.classList.add('hidden');
@@ -1044,9 +974,6 @@
                 idColaboradorAEliminar = null; pinEditando = null; idDocEditando = null;
             }, 300); // Esperar la transición CSS
         };
-
-        // --- FIN MODALES ---
-
 
         document.getElementById('btn-confirmar-reset').addEventListener('click', async () => {
             cerrarModales();
@@ -1087,44 +1014,38 @@
             const registrosFiltrados = todosLosRegistros.filter(r => r.fechaISO === fechaFiltro);
 
             if(registrosFiltrados.length === 0) {
-                tabla.innerHTML = `<tr><td colspan="6" class="py-10 text-center text-slate-400 dark:text-slate-500 italic">No hay actividad registrada en esta fecha.</td></tr>`;
+                tabla.innerHTML = `<tr><td colspan="4" class="py-10 text-center text-slate-400 italic">No hay actividad registrada en esta fecha.</td></tr>`;
                 return;
             }
 
             registrosFiltrados.forEach(reg => {
                 let badgeClass = reg.estado === 'A tiempo' 
-                    ? 'bg-emerald-100 dark:bg-emerald-500/20 text-emerald-700 dark:text-emerald-400 border-emerald-200 dark:border-emerald-500/30' 
-                    : 'bg-red-100 dark:bg-red-500/20 text-red-700 dark:text-red-400 border-red-200 dark:border-red-500/30 font-bold';
+                    ? 'bg-emerald-100 text-emerald-700 border-emerald-200' 
+                    : 'bg-red-100 text-red-700 border-red-200 font-bold';
                 
-                if(reg.estado === 'Excedido (Expulsado)') badgeClass = 'bg-red-600 dark:bg-red-500 text-white border-red-700 dark:border-red-400 font-bold shadow-sm';
-                if(reg.tipo === 'Calidad') badgeClass = 'bg-purple-100 dark:bg-purple-500/20 text-purple-700 dark:text-purple-400 border-purple-200 dark:border-purple-500/30';
+                if(reg.estado === 'Excedido (Expulsado)') badgeClass = 'bg-red-600 text-white border-red-700 font-bold shadow-sm';
+                if(reg.tipo === 'Calidad') badgeClass = 'bg-purple-100 text-purple-700 border-purple-200';
                 
-                const justificacionTxt = reg.justificacion ? `<div class="text-[11px] text-slate-500 dark:text-slate-400 italic mt-1 max-w-[200px] truncate" title="${reg.justificacion}"><i class="ph ph-chat-circle text-slate-400"></i> "${reg.justificacion}"</div>` : '';
+                const justificacionTxt = reg.justificacion ? `<div class="text-[11px] text-slate-500 italic mt-1 max-w-[200px] truncate" title="${reg.justificacion}"><i class="ph ph-chat-circle text-slate-400"></i> "${reg.justificacion}"</div>` : '';
                 
-                const opcionesHora = { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true };
-                const horaInicioStr = new Date(reg.inicio).toLocaleTimeString('es-MX', opcionesHora);
-                const horaFinStr = new Date(reg.fin).toLocaleTimeString('es-MX', opcionesHora);
-                
-                let tipoIcon = reg.tipo === 'Baño' ? 'ph-toilet text-blue-500 bg-blue-50 dark:bg-blue-500/20 dark:text-blue-400' : (reg.tipo === 'Comida' ? 'ph-fork-knife text-orange-500 bg-orange-50 dark:bg-orange-500/20 dark:text-orange-400' : 'ph-star text-purple-500 bg-purple-50 dark:bg-purple-500/20 dark:text-purple-400');
+                let tipoIcon = reg.tipo === 'Baño' ? 'ph-toilet text-blue-500 bg-blue-50' : (reg.tipo === 'Comida' ? 'ph-fork-knife text-orange-500 bg-orange-50' : 'ph-star text-purple-500 bg-purple-50');
 
                 tabla.innerHTML += `
-                    <tr class="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors border-b border-slate-100 dark:border-slate-800 last:border-0 group">
+                    <tr class="hover:bg-slate-50 transition-colors border-b border-slate-100 last:border-0 group">
                         <td class="px-5 py-3">
-                            <div class="font-bold text-slate-800 dark:text-white">${reg.nombre}</div>
-                            <div class="text-[10px] font-mono text-slate-400 dark:text-slate-500 mt-0.5">ID: ${reg.pin}</div>
+                            <div class="font-bold text-slate-800">${reg.nombre}</div>
+                            <div class="text-[10px] font-mono text-slate-400 mt-0.5">ID: ${reg.pin}</div>
                         </td>
                         <td class="px-5 py-3">
-                            <span class="inline-flex items-center gap-1.5 px-2 py-1 rounded-lg text-xs font-medium text-slate-600 dark:text-slate-300 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700">
+                            <span class="inline-flex items-center gap-1.5 px-2 py-1 rounded-lg text-xs font-medium text-slate-600 bg-slate-50 border border-slate-200">
                                 <i class="ph ${tipoIcon} p-0.5 rounded"></i> ${reg.tipo}
                             </span>
                         </td>
-                        <td class="px-5 py-3 font-mono font-bold text-slate-700 dark:text-slate-200">${reg.duracionStr}</td>
+                        <td class="px-5 py-3 font-mono font-black text-blue-600 text-lg">${reg.duracionStr}</td>
                         <td class="px-5 py-3">
                             <span class="px-2 py-0.5 text-[11px] rounded border inline-block ${badgeClass}">${reg.estado}</span>
                             ${justificacionTxt}
                         </td>
-                        <td class="px-5 py-3 text-[11px] text-slate-500 dark:text-slate-400 font-medium whitespace-nowrap">${horaInicioStr}</td>
-                        <td class="px-5 py-3 text-[11px] text-slate-500 dark:text-slate-400 font-medium whitespace-nowrap">${horaFinStr}</td>
                     </tr>
                 `;
             });
@@ -1136,7 +1057,7 @@
             document.getElementById('kpi-total').textContent = datosColaboradoresRaw.length;
 
             if(datosColaboradoresRaw.length === 0) {
-                lista.innerHTML = '<div class="py-10 text-center text-slate-400 dark:text-slate-500 italic">Directorio vacío.</div>';
+                lista.innerHTML = '<div class="py-10 text-center text-slate-400 italic">Directorio vacío.</div>';
                 document.getElementById('kpi-excedidos').textContent = "0";
                 return;
             }
@@ -1161,7 +1082,7 @@
             const filtrados = datosColaboradoresRaw.filter(c => c.nombre.toLowerCase().includes(term) || c.pin.includes(term));
 
             if(filtrados.length === 0) {
-                lista.innerHTML = '<div class="py-10 text-center text-slate-400 dark:text-slate-500 italic">No hay coincidencias.</div>';
+                lista.innerHTML = '<div class="py-10 text-center text-slate-400 italic">No hay coincidencias.</div>';
                 return;
             }
 
@@ -1181,41 +1102,40 @@
                 const limB = c.limiteBano ? `${c.limiteBano}m` : `Global`;
                 const limC = c.limiteComida ? `${c.limiteComida}m` : `Global`;
 
-                let jornadaStr = '<span class="text-slate-400 dark:text-slate-500 italic text-[10px]">Inactivo hoy</span>';
+                let jornadaStr = '<span class="text-slate-400 italic text-[10px]">Inactivo hoy</span>';
                 if (esDeHoy && acumulado.inicioJornada) {
-                    const formatTime = (ts) => new Date(ts).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
-                    jornadaStr = `<i class="ph ph-clock text-blue-500 dark:text-blue-400"></i> ${formatTime(acumulado.inicioJornada)} - ${formatTime(acumulado.finJornada || acumulado.inicioJornada)}`;
+                    jornadaStr = `<i class="ph ph-check-circle text-blue-500"></i> Presente hoy`;
                 }
 
                 lista.innerHTML += `
-                    <li class="bg-white dark:bg-slate-900 p-4 rounded-2xl border border-slate-200 dark:border-slate-800 hover:border-blue-300 dark:hover:border-blue-500/50 transition-colors shadow-sm relative overflow-hidden group">
+                    <li class="bg-white p-4 rounded-2xl border border-slate-200 hover:border-blue-300 transition-colors shadow-sm relative overflow-hidden group">
                         <div class="flex justify-between items-start mb-3">
                             <div>
-                                <div class="font-bold text-slate-800 dark:text-white text-sm mb-0.5">${c.nombre}</div>
+                                <div class="font-bold text-slate-800 text-sm mb-0.5">${c.nombre}</div>
                                 <div class="flex items-center gap-2">
-                                    <div class="text-[10px] text-slate-500 dark:text-slate-400 font-mono bg-slate-100 dark:bg-slate-800 px-1.5 py-0.5 rounded border border-slate-200 dark:border-slate-700">ID: ${c.pin}</div>
-                                    <div class="text-[10px] font-semibold flex items-center gap-1 ${esDeHoy && acumulado.inicioJornada ? 'text-blue-700 dark:text-blue-400 bg-blue-50 dark:bg-blue-500/10 px-1.5 py-0.5 rounded' : ''}">
+                                    <div class="text-[10px] text-slate-500 font-mono bg-slate-100 px-1.5 py-0.5 rounded border border-slate-200">ID: ${c.pin}</div>
+                                    <div class="text-[10px] font-semibold flex items-center gap-1 ${esDeHoy && acumulado.inicioJornada ? 'text-blue-700 bg-blue-50 px-1.5 py-0.5 rounded' : ''}">
                                         ${jornadaStr}
                                     </div>
                                 </div>
                             </div>
                             <div class="flex gap-1.5 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
-                                <button onclick="abrirModalEditar('${c.pin}', '${c.nombre}', '${c.id}')" class="text-slate-500 dark:text-slate-400 hover:text-blue-600 dark:hover:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-500/20 p-2 rounded-lg transition-colors border border-transparent hover:border-blue-100 dark:hover:border-blue-500/30" title="Editar"><i class="ph ph-pencil-simple text-base"></i></button>
-                                <button onclick="eliminarColaborador('${c.id}')" class="text-slate-500 dark:text-slate-400 hover:text-red-600 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-500/20 p-2 rounded-lg transition-colors border border-transparent hover:border-red-100 dark:hover:border-red-500/30" title="Borrar"><i class="ph ph-trash text-base"></i></button>
+                                <button onclick="abrirModalEditar('${c.pin}', '${c.nombre}', '${c.id}')" class="text-slate-500 hover:text-blue-600 hover:bg-blue-50 p-2 rounded-lg transition-colors border border-transparent hover:border-blue-100" title="Editar"><i class="ph ph-pencil-simple text-base"></i></button>
+                                <button onclick="eliminarColaborador('${c.id}')" class="text-slate-500 hover:text-red-600 hover:bg-red-50 p-2 rounded-lg transition-colors border border-transparent hover:border-red-100" title="Borrar"><i class="ph ph-trash text-base"></i></button>
                             </div>
                         </div>
                         
                         <div class="grid grid-cols-3 gap-2">
-                            <div class="flex flex-col p-2 rounded-xl bg-slate-50 dark:bg-slate-800 border ${banoExcedido ? 'border-red-300 dark:border-red-500/50 text-red-700 dark:text-red-400 bg-red-50/50 dark:bg-red-500/10' : 'border-slate-100 dark:border-slate-700 text-slate-700 dark:text-slate-300'}">
-                                <span class="flex items-center gap-1 text-[9px] uppercase font-bold text-slate-400 dark:text-slate-500 mb-1"><i class="ph ph-toilet text-blue-500 dark:text-blue-400"></i> Baño</span>
-                                <span class="font-bold text-sm font-mono leading-none">${formatearTiempo(minBano)} <span class="text-[9px] font-sans text-slate-400 dark:text-slate-500 font-normal">/ ${limB}</span></span>
+                            <div class="flex flex-col p-2 rounded-xl bg-slate-50 border ${banoExcedido ? 'border-red-300 text-red-700 bg-red-50/50' : 'border-slate-100 text-slate-700'}">
+                                <span class="flex items-center gap-1 text-[9px] uppercase font-bold text-slate-400 mb-1"><i class="ph ph-toilet text-blue-500"></i> Baño</span>
+                                <span class="font-bold text-sm font-mono leading-none">${formatearTiempo(minBano)} <span class="text-[9px] font-sans text-slate-400 font-normal">/ ${limB}</span></span>
                             </div>
-                            <div class="flex flex-col p-2 rounded-xl bg-slate-50 dark:bg-slate-800 border ${comidaExcedida ? 'border-red-300 dark:border-red-500/50 text-red-700 dark:text-red-400 bg-red-50/50 dark:bg-red-500/10' : 'border-slate-100 dark:border-slate-700 text-slate-700 dark:text-slate-300'}">
-                                <span class="flex items-center gap-1 text-[9px] uppercase font-bold text-slate-400 dark:text-slate-500 mb-1"><i class="ph ph-fork-knife text-orange-500 dark:text-orange-400"></i> Comida</span>
-                                <span class="font-bold text-sm font-mono leading-none">${formatearTiempo(minComida)} <span class="text-[9px] font-sans text-slate-400 dark:text-slate-500 font-normal">/ ${limC}</span></span>
+                            <div class="flex flex-col p-2 rounded-xl bg-slate-50 border ${comidaExcedida ? 'border-red-300 text-red-700 bg-red-50/50' : 'border-slate-100 text-slate-700'}">
+                                <span class="flex items-center gap-1 text-[9px] uppercase font-bold text-slate-400 mb-1"><i class="ph ph-fork-knife text-orange-500"></i> Comida</span>
+                                <span class="font-bold text-sm font-mono leading-none">${formatearTiempo(minComida)} <span class="text-[9px] font-sans text-slate-400 font-normal">/ ${limC}</span></span>
                             </div>
-                            <div class="flex flex-col p-2 rounded-xl bg-purple-50 dark:bg-purple-500/10 border border-purple-100 dark:border-purple-500/20 text-purple-700 dark:text-purple-400">
-                                <span class="flex items-center gap-1 text-[9px] uppercase font-bold text-purple-400 dark:text-purple-500 mb-1"><i class="ph ph-star text-purple-500 dark:text-purple-400"></i> Calidad</span>
+                            <div class="flex flex-col p-2 rounded-xl bg-purple-50 border border-purple-100 text-purple-700">
+                                <span class="flex items-center gap-1 text-[9px] uppercase font-bold text-purple-400 mb-1"><i class="ph ph-star text-purple-500"></i> Calidad</span>
                                 <span class="font-bold text-sm font-mono leading-none">${formatearTiempo(minCalidad)}</span>
                             </div>
                         </div>
@@ -1272,7 +1192,7 @@
                 await addDoc(collection(db, 'colaboradores'), { pin, nombre, limiteBano: null, limiteComida: null });
                 document.getElementById('nuevo-pin').value = '';
                 document.getElementById('nuevo-nombre').value = '';
-                cerrarConfig(); // Cierra el panel al crearlo exitosamente para limpiar la vista
+                cerrarConfig(); 
                 mostrarNotificacion(`Colaborador ${nombre} registrado con éxito.`);
             } catch(e) { mostrarNotificacion('Error interno al registrar colaborador.', 'error'); }
         };
