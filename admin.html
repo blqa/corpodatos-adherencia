@@ -486,7 +486,6 @@
 
         const EMAIL_ADMIN = "admin@corpodatos.com";
 
-        // Mantenemos tu configuración original intacta
         try {
             const firebaseConfig = {
                 apiKey: "AIzaSyDT7iPaeRjlt-WIWWzwBh3deN2z_E-b2JA",
@@ -513,6 +512,9 @@
 
         let timeOffset = 0; 
         let logoutsEnviados = {};
+        
+        // --- VARIABLE PARA EL MANEJO DE LOS MODALES ---
+        let timeoutModales = null;
 
         async function sincronizarHoraReal() {
             try {
@@ -562,13 +564,11 @@
             }
         }
         
-        // Cargar estado inicial del icono
         document.addEventListener('DOMContentLoaded', () => {
             actualizarIconoTema(document.documentElement.classList.contains('dark'));
         });
 
 
-        // Exponer globalmente para HTML onClick events
         window.forzarCierreSesionExpulsado = async function(act, transcurridoTotal) {
             const fin = getHoraReal();
             const transcurridoSegmento = Math.floor((fin - act.inicio) / 1000);
@@ -622,7 +622,6 @@
                                     elProg.classList.add('bg-red-500');
                                     elProg.classList.remove('bg-blue-500', 'bg-orange-500', 'bg-purple-500');
 
-                                    // AQUÍ RESPETAMOS SI EL TOGGLE ESTÁ ACTIVO O NO
                                     if (limitesGlobales.autoExpulsion !== false) { 
                                         if (!logoutsEnviados[act.pin]) {
                                             logoutsEnviados[act.pin] = true;
@@ -639,10 +638,8 @@
             }
         }, 1000);
 
-        sincronizarHoraReal();
-
         // Variables de Estado
-        let limitesGlobales = { bano: 15, comida: 30, autoExpulsion: true }; // Ajustado aquí por defecto
+        let limitesGlobales = { bano: 15, comida: 30, autoExpulsion: true }; 
         let datosColaboradoresRaw = [];
         let tiemposAcumuladosGlobal = {};
         let todosLosRegistros = [];
@@ -661,7 +658,6 @@
             const target = document.getElementById(idVista);
             if (target) {
                 target.classList.remove('hidden');
-                // Auto-focus para el login
                 if(idVista === 'vista-login-admin') setTimeout(()=> document.getElementById('pin-admin').focus(), 100);
             }
         };
@@ -689,7 +685,6 @@
             noti.classList.remove('hidden');
             noti.style.top = '20px';
             
-            // Animación de entrada suave
             noti.animate([{ transform: 'translate(-50%, -20px)', opacity: 0 }, { transform: 'translate(-50%, 0)', opacity: 1 }], { duration: 300, fill: 'forwards', easing: 'ease-out' });
             
             setTimeout(() => {
@@ -714,7 +709,6 @@
             return Math.floor((parseFloat(tiempoStr) || 0) * 60);
         }
 
-        // Lógica de validación inputs mm:ss
         function formatInputTimer(e) {
             let val = e.target.value.replace(/\D/g, '');
             if(val.length > 4) val = val.substring(0,4);
@@ -727,7 +721,6 @@
             document.getElementById(id).addEventListener('input', formatInputTimer);
         });
 
-        // Inicialización y Auth
         if (conectado) {
             window.mostrarVista('vista-cargando');
             onAuthStateChanged(auth, async (user) => {
@@ -786,7 +779,6 @@
             
             unsubConfig = onSnapshot(doc(db, 'config', 'global'), (docSnap) => {
                 if(docSnap.exists()){
-                    // Integra también el valor de autoExpulsion
                     limitesGlobales = { autoExpulsion: true, ...docSnap.data() }; 
                     document.getElementById('limit-bano').value = limitesGlobales.bano;
                     document.getElementById('limit-comida').value = limitesGlobales.comida;
@@ -835,20 +827,17 @@
             });
         }
         
-        // --- LOGICA DE RENDERIZADO DEL MONITOR (NUEVO) ---
         window.renderizarMonitorLive = function() {
             const contenedor = document.getElementById('lista-activos');
             if(!contenedor) return;
             contenedor.innerHTML = '';
             
             const hoy = obtenerFechaHoy();
-            // Buscar a todos los que tienen inicio de jornada hoy
             const conectadosHoy = datosColaboradoresRaw.filter(c => {
                 const acum = tiemposAcumuladosGlobal[c.pin];
                 return acum && acum.fecha === hoy && acum.inicioJornada;
             });
 
-            // Actualizamos el KPI Top sólo con la cantidad de gente en Break (para que mantenga su función de alerta en tiempo real)
             const kpiActivos = document.getElementById('kpi-activos');
             if(kpiActivos) kpiActivos.textContent = adminActivasArray.length;
 
@@ -866,7 +855,6 @@
             const enReceso = [];
             const operando = [];
 
-            // Separar en dos grupos: En Break (sesiones activas) y Operando normal
             conectadosHoy.forEach(c => {
                 const act = adminActivasArray.find(a => a.pin === c.pin);
                 if(act) {
@@ -886,7 +874,6 @@
 
             let html = '';
 
-            // Primero pintamos a los que están En Receso (más importante)
             enReceso.forEach(item => {
                 const act = item.act;
                 const c = item.colab;
@@ -939,7 +926,6 @@
                 `;
             });
 
-            // Luego pintamos a los que están Operando de manera regular
             operando.forEach(c => {
                 html += `
                     <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-4 flex items-start gap-4 shadow-sm hover:shadow-md transition-shadow relative overflow-hidden group opacity-85 hover:opacity-100">
@@ -965,7 +951,6 @@
             contenedor.innerHTML = html;
         };
 
-        // --- MANEJO DE MODALES Y PANELES ---
         window.abrirConfig = function() {
             const overlay = document.getElementById('panel-config-overlay');
             const panel = document.getElementById('panel-config');
@@ -984,17 +969,37 @@
             setTimeout(() => { overlay.classList.add('hidden'); }, 300);
         };
 
+
+        // --- MANEJO SEGURO DE MODALES (AQUÍ ESTÁ LA CORRECCIÓN) ---
+
+        function prepararAperturaModal() {
+            // Cancelar de inmediato cualquier timer de cierre activo, para que no mate el nuevo modal
+            if (timeoutModales) clearTimeout(timeoutModales);
+            
+            const modales = ['modal-confirm', 'modal-editar', 'modal-confirm-reset'];
+            modales.forEach(id => {
+                const el = document.getElementById(id);
+                if(el) {
+                    el.classList.add('hidden');
+                    el.classList.add('scale-95'); // Reset state
+                }
+            });
+            
+            document.getElementById('modal-overlay').classList.remove('hidden');
+            idColaboradorAEliminar = null; pinEditando = null; idDocEditando = null;
+        }
+
         window.abrirModalReset = function() {
-            cerrarModales();
+            prepararAperturaModal();
             const modal = document.getElementById('modal-confirm-reset');
             const overlay = document.getElementById('modal-overlay');
-            overlay.classList.remove('hidden');
             setTimeout(() => { overlay.classList.remove('opacity-0'); modal.classList.remove('hidden', 'scale-95'); }, 10);
         }
 
         window.abrirModalEditar = function(pin, nombre, docId) {
-            cerrarModales(); 
+            prepararAperturaModal(); 
             pinEditando = pin; idDocEditando = docId;
+            
             const hoy = obtenerFechaHoy();
             const acumulado = tiemposAcumuladosGlobal[pin] || {};
             const esDeHoy = acumulado.fecha === hoy;
@@ -1009,16 +1014,15 @@
             
             const modal = document.getElementById('modal-editar');
             const overlay = document.getElementById('modal-overlay');
-            overlay.classList.remove('hidden');
             setTimeout(() => { overlay.classList.remove('opacity-0'); modal.classList.remove('hidden', 'scale-95'); }, 10);
         };
 
         window.eliminarColaborador = function(docId) {
-            cerrarModales(); 
+            prepararAperturaModal(); 
             idColaboradorAEliminar = docId;
+            
             const modal = document.getElementById('modal-confirm');
             const overlay = document.getElementById('modal-overlay');
-            overlay.classList.remove('hidden');
             setTimeout(() => { overlay.classList.remove('opacity-0'); modal.classList.remove('hidden', 'scale-95'); }, 10);
         };
 
@@ -1032,14 +1036,17 @@
                 if(el && !el.classList.contains('hidden')) el.classList.add('scale-95');
             });
 
-            setTimeout(() => {
+            // Registrar y limpiar variables solo cuando se termina la animación por completo
+            if(timeoutModales) clearTimeout(timeoutModales);
+            timeoutModales = setTimeout(() => {
                 overlay.classList.add('hidden');
                 modales.forEach(id => document.getElementById(id).classList.add('hidden'));
                 idColaboradorAEliminar = null; pinEditando = null; idDocEditando = null;
-            }, 300); // Wait for transition
+            }, 300); // Esperar la transición CSS
         };
 
-        // --- ACCIONES ---
+        // --- FIN MODALES ---
+
 
         document.getElementById('btn-confirmar-reset').addEventListener('click', async () => {
             cerrarModales();
@@ -1094,7 +1101,6 @@
                 
                 const justificacionTxt = reg.justificacion ? `<div class="text-[11px] text-slate-500 dark:text-slate-400 italic mt-1 max-w-[200px] truncate" title="${reg.justificacion}"><i class="ph ph-chat-circle text-slate-400"></i> "${reg.justificacion}"</div>` : '';
                 
-                // Formato que incluye los segundos exactos
                 const opcionesHora = { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true };
                 const horaInicioStr = new Date(reg.inicio).toLocaleTimeString('es-MX', opcionesHora);
                 const horaFinStr = new Date(reg.fin).toLocaleTimeString('es-MX', opcionesHora);
@@ -1250,7 +1256,6 @@
             const bano = parseInt(document.getElementById('limit-bano').value) || 15;
             const comida = parseInt(document.getElementById('limit-comida').value) || 30;
             try {
-                // Actualiza solo bano y comida sin sobrescribir autoExpulsion usando merge
                 await setDoc(doc(db, 'config', 'global'), { bano, comida }, { merge: true });
                 mostrarNotificacion('Políticas globales de tiempo actualizadas.');
             } catch(e) { mostrarNotificacion('Error al guardar configuración global', 'error'); }
