@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Control de Tiempos - Agente</title>
+    <title>Control de Tiempos - Colaborador</title>
     
     <!-- Fuentes y Tailwind -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -362,6 +362,16 @@
         let todosLosRegistros = [];
         
         let unsubConfig = null, unsubMisDatos = null, unsubAcumulados = null, unsubMiSesion = null, unsubRegistros = null;
+        window.isPausing = false; // Seguro anti-duplicados
+
+        // ALERTA ANTES DE CERRAR LA PESTAÑA (Capa extra de seguridad contra tiempos fantasma)
+        window.addEventListener('beforeunload', (e) => {
+            if (sesionActivaActual) {
+                e.preventDefault();
+                e.returnValue = "Tienes un descanso en curso. Si cierras la ventana sin pausar, tu tiempo seguirá sumando en el sistema y podrías ser expulsado. ¿Estás seguro de que quieres salir?";
+                return e.returnValue;
+            }
+        });
 
         function obtenerFechaHoy() {
             const tzOffset = (new Date()).getTimezoneOffset() * 60000;
@@ -508,6 +518,20 @@
         window.cerrarSesionGeneral = async function() {
             if(intervaloCronometro) clearInterval(intervaloCronometro);
             
+            // --- FIX CRÍTICO (TIEMPOS FANTASMA): DETENER CRONÓMETRO ANTES DE SALIR ---
+            if (sesionActivaActual) {
+                try {
+                    const btn = document.getElementById('btn-detener-cronometro');
+                    if (btn) {
+                        btn.disabled = true;
+                        btn.innerHTML = '<i class="ph ph-spinner animate-spin text-2xl"></i> Pausando y saliendo...';
+                    }
+                    await window.detenerCronometro(); // Esto pausa el tiempo y lo guarda en Firebase
+                } catch(e) {
+                    console.error("Error intentando detener cronómetro antes de salir:", e);
+                }
+            }
+
             if (empleadoActual) {
                 try {
                     await setDoc(doc(db, 'tiempos_acumulados', empleadoActual.pin), {
@@ -524,6 +548,7 @@
             if(unsubRegistros) unsubRegistros();
             
             empleadoActual = null;
+            sesionActivaActual = null; // IMPORTANTE
             await signOut(auth);
         };
 
@@ -782,7 +807,8 @@
         }
 
         window.detenerCronometro = async function() {
-            if(!sesionActivaActual) return;
+            if(!sesionActivaActual || window.isPausing) return;
+            window.isPausing = true; // Bloquea múltiples clics o señales rápidas de la extensión
             
             if(intervaloCronometro) clearInterval(intervaloCronometro);
             const btn = document.getElementById('btn-detener-cronometro');
@@ -836,6 +862,8 @@
                     const trans = Math.floor((getHoraReal() - sesionActivaActual.inicio) / 1000) + (tiempoAcumuladoActual[tipoActivo]||0);
                     document.getElementById('disp-' + tipoActivo).textContent = formatearTiempo(trans);
                 }, 1000);
+            } finally {
+                window.isPausing = false; // Libera el bloqueo una vez que Firebase termina de guardar
             }
         };
 
