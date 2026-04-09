@@ -3,163 +3,274 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Control de Tiempos - Colaborador</title>
+    <title>Control de Tiempos - Agente</title>
+    
+    <!-- Fuentes y Tailwind -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/@phosphor-icons/web"></script>
+    
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: { sans: ['Inter', 'sans-serif'] },
+                    animation: { 'pulse-slow': 'pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite' }
+                }
+            }
+        }
+    </script>
+
     <style>
         .loader {
-            border: 4px solid #f3f3f3; border-top: 4px solid #3b82f6; border-radius: 50%;
+            border: 4px solid #e2e8f0; border-top: 4px solid #3b82f6; border-radius: 50%;
             width: 40px; height: 40px; animation: spin 1s linear infinite;
         }
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
-        .custom-scrollbar::-webkit-scrollbar { width: 6px; }
-        .custom-scrollbar::-webkit-scrollbar-track { background: #f1f5f9; border-radius: 4px; }
-        .custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+        .custom-scrollbar::-webkit-scrollbar { width: 6px; height: 6px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+        
+        .glass-panel {
+            background: rgba(255, 255, 255, 0.90);
+            backdrop-filter: blur(12px);
+        }
     </style>
 </head>
-<body class="bg-gray-50 min-h-screen font-sans text-gray-800 pb-10">
+<body class="bg-slate-50 min-h-screen font-sans text-slate-800 pb-10 selection:bg-blue-100 selection:text-blue-900 transition-colors duration-300">
 
     <!-- Mensajes de Notificación Globales -->
-    <div id="notificacion" class="fixed top-4 left-1/2 transform -translate-x-1/2 z-50 hidden max-w-sm w-full bg-white shadow-lg rounded-lg border-l-4 p-4 transition-all duration-300">
-        <p class="font-bold flex items-center gap-2" id="notificacion-texto"></p>
+    <div id="notificacion" class="fixed top-6 left-1/2 transform -translate-x-1/2 z-[100] hidden max-w-md w-full bg-slate-900 text-white shadow-2xl rounded-2xl p-4 transition-all duration-300 flex items-center gap-3 border border-slate-700">
+        <div id="notificacion-icon" class="text-2xl shrink-0"></div>
+        <p class="font-medium text-sm flex-1" id="notificacion-texto"></p>
+        <button onclick="document.getElementById('notificacion').classList.add('hidden')" class="text-slate-400 hover:text-white transition-colors">
+            <i class="ph ph-x"></i>
+        </button>
     </div>
 
     <!-- MODAL JUSTIFICACIÓN CALIDAD -->
-    <div id="modal-overlay" class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 hidden flex items-center justify-center px-4 transition-opacity">
-        <div id="modal-calidad" class="bg-white rounded-2xl shadow-xl w-full max-w-sm p-6 hidden">
-            <h3 class="text-xl font-bold text-slate-800 mb-2 flex items-center gap-2"><i class="ph ph-star text-purple-500 text-2xl"></i> Tiempo de Calidad</h3>
-            <p class="text-slate-500 text-sm mb-4">Ingresa el justificante o razón para usar este tiempo. No hay límite, pero quedará registrado.</p>
-            <textarea id="calidad-justificacion" class="w-full border-2 border-slate-200 rounded-xl p-3 mb-6 focus:border-purple-500 outline-none resize-none h-24" placeholder="Ej. Revisión de caso especial #123..."></textarea>
-            <div class="flex justify-end gap-3">
-                <button onclick="cerrarModales()" class="px-4 py-2 text-slate-500 hover:bg-slate-100 rounded-lg font-medium transition-colors">Cancelar</button>
-                <button onclick="confirmarCalidad()" class="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg font-bold transition-colors">Iniciar Cronómetro</button>
+    <div id="modal-overlay" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 hidden flex items-center justify-center px-4 transition-opacity duration-300 opacity-0">
+        <div id="modal-calidad" class="bg-white rounded-3xl shadow-2xl w-full max-w-sm p-6 transform scale-95 transition-transform duration-300 hidden border border-transparent">
+            <div class="w-12 h-12 rounded-full bg-purple-100 flex items-center justify-center mb-4 mx-auto">
+                <i class="ph ph-star text-purple-600 text-2xl"></i>
+            </div>
+            <h3 class="text-xl font-bold text-slate-800 mb-2 text-center">Tiempo de Calidad</h3>
+            <p class="text-slate-500 text-sm mb-6 text-center">Ingresa el justificante o razón para usar este tiempo. Quedará registrado en tu bitácora.</p>
+            
+            <textarea id="calidad-justificacion" class="w-full border border-slate-300 rounded-xl p-3.5 mb-6 focus:ring-2 focus:ring-purple-100 focus:border-purple-500 outline-none resize-none h-24 text-sm transition-all shadow-sm" placeholder="Ej. Revisión de caso especial #123..."></textarea>
+            
+            <div class="flex gap-3">
+                <button onclick="cerrarModales()" class="flex-1 py-2.5 text-slate-600 bg-slate-100 hover:bg-slate-200 rounded-xl font-semibold transition-colors">Cancelar</button>
+                <button onclick="confirmarCalidad()" class="flex-1 py-2.5 bg-purple-600 hover:bg-purple-700 text-white rounded-xl font-semibold transition-colors shadow-sm shadow-purple-200 flex justify-center items-center gap-2">
+                    Iniciar <i class="ph ph-play"></i>
+                </button>
             </div>
         </div>
     </div>
 
     <!-- PANTALLA DE CARGA INICIAL -->
-    <div id="vista-cargando" class="flex flex-col items-center justify-center min-h-screen">
-        <div class="loader mb-4"></div>
-        <p class="text-gray-500 font-medium animate-pulse">Conectando a la nube...</p>
+    <div id="vista-cargando" class="flex flex-col items-center justify-center min-h-screen bg-slate-50">
+        <div class="relative">
+            <div class="loader mb-6 relative z-10"></div>
+            <div class="absolute inset-0 bg-blue-400 blur-xl opacity-20 rounded-full"></div>
+        </div>
+        <p class="text-slate-600 font-medium tracking-wide animate-pulse">Conectando a la nube...</p>
     </div>
 
     <!-- PANTALLA ERROR DE ENTORNO -->
-    <div id="vista-error" class="hidden flex flex-col items-center justify-center min-h-screen px-4 text-center">
-        <i class="ph ph-shield-warning text-6xl text-red-500 mb-4"></i>
-        <h2 class="text-2xl font-bold text-gray-800 mb-2">Bloqueo de Seguridad (Firebase)</h2>
-        <div id="texto-error-detalle" class="text-gray-600 max-w-lg bg-red-50 p-6 rounded-lg border border-red-200 text-sm text-left shadow-inner"></div>
-        <button onclick="window.location.reload()" class="mt-6 px-6 py-3 bg-slate-800 text-white font-bold rounded-lg hover:bg-slate-700 transition-colors flex items-center gap-2">
-            <i class="ph ph-arrows-clockwise"></i> Reintentar Conexión
+    <div id="vista-error" class="hidden flex flex-col items-center justify-center min-h-screen px-4 text-center bg-slate-50">
+        <div class="p-6 bg-red-100 rounded-full mb-6">
+            <i class="ph ph-shield-warning text-5xl text-red-600"></i>
+        </div>
+        <h2 class="text-3xl font-bold text-slate-900 mb-3">Bloqueo de Seguridad</h2>
+        <p class="text-slate-500 mb-6 max-w-md">No hemos podido establecer conexión con la base de datos de tiempos. Verifica tu red o la configuración.</p>
+        <div id="texto-error-detalle" class="text-slate-700 max-w-lg bg-white p-4 rounded-xl border border-red-200 text-xs font-mono text-left shadow-sm mb-6 w-full overflow-x-auto"></div>
+        <button onclick="window.location.reload()" class="px-8 py-3 bg-slate-900 text-white font-semibold rounded-xl hover:bg-slate-800 transition-colors shadow-lg flex items-center gap-2">
+            <i class="ph ph-arrows-clockwise"></i> Reintentar
         </button>
     </div>
 
     <!-- PANTALLA LOGIN ÚNICO -->
-    <div id="vista-login-colaborador" class="hidden max-w-sm mx-auto pt-32 px-4 text-center">
-        <div class="bg-white p-8 rounded-2xl shadow-md border border-gray-100">
-            <i class="ph ph-identification-badge text-6xl text-blue-600 mb-4 block"></i>
-            <h2 class="text-2xl font-bold text-gray-800 mb-2">Ingresa tu ID</h2>
-            <p class="text-gray-500 text-sm mb-6">Coloca tu número de identificación para acceder al sistema.</p>
+    <div id="vista-login-colaborador" class="hidden min-h-screen flex items-center justify-center px-4 relative overflow-hidden bg-slate-50">
+        <!-- Decoración de fondo -->
+        <div class="absolute top-[-10%] right-[-10%] w-96 h-96 bg-blue-400 rounded-full mix-blend-multiply filter blur-3xl opacity-10 animate-pulse-slow"></div>
+        <div class="absolute bottom-[-10%] left-[-10%] w-96 h-96 bg-emerald-400 rounded-full mix-blend-multiply filter blur-3xl opacity-10 animate-pulse-slow" style="animation-delay: 2s;"></div>
+
+        <div class="bg-white p-8 md:p-10 rounded-3xl shadow-2xl border border-slate-100 w-full max-w-sm relative z-10 transform transition-all hover:scale-[1.01]">
+            <div class="w-16 h-16 bg-blue-50 rounded-2xl flex items-center justify-center mb-6 shadow-sm border border-blue-100 mx-auto">
+                <i class="ph ph-identification-badge text-4xl text-blue-600"></i>
+            </div>
+            <h2 class="text-2xl font-bold text-slate-900 mb-1 text-center">Ingresa tu ID</h2>
+            <p class="text-slate-500 text-sm mb-8 font-medium text-center">Coloca tu número de identificación</p>
             
-            <input type="text" id="pin-empleado" autocomplete="off" placeholder="Ej. 1234" class="w-full text-center text-2xl tracking-widest border-2 border-gray-300 rounded-xl p-3 focus:ring-4 focus:ring-blue-100 focus:border-blue-500 outline-none transition-all mb-4" onkeypress="if(event.key === 'Enter') loginEmpleado()">
+            <div class="relative mb-6">
+                <input type="text" id="pin-empleado" autocomplete="off" placeholder="Ej. 1234" class="w-full text-center text-xl tracking-[0.2em] font-mono border-b-2 border-slate-200 bg-slate-50/50 rounded-t-xl p-4 focus:border-blue-600 outline-none transition-all placeholder:tracking-normal placeholder:font-sans placeholder:text-sm" onkeypress="if(event.key === 'Enter') loginEmpleado()">
+            </div>
             
-            <button onclick="loginEmpleado()" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 rounded-xl shadow-md transition-colors">
-                Ingresar
+            <button onclick="loginEmpleado()" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3.5 rounded-xl shadow-lg shadow-blue-200 transition-all active:scale-95 flex items-center justify-center gap-2">
+                Acceder al Portal <i class="ph ph-arrow-right font-bold"></i>
             </button>
 
             <!-- Acceso al Administrador -->
-            <a href="admin.html" class="inline-block mt-6 text-sm font-medium text-slate-400 hover:text-blue-600 transition-colors">
-                <i class="ph ph-lock-key"></i> Acceso Administrador
-            </a>
+            <div class="mt-8 text-center border-t border-slate-100 pt-6">
+                <a href="index.html" class="inline-flex items-center gap-1.5 text-xs font-semibold text-slate-400 hover:text-slate-600 transition-colors">
+                    <i class="ph ph-lock-key"></i> Acceso Administrador
+                </a>
+            </div>
         </div>
     </div>
 
     <!-- PANTALLA PRINCIPAL COLABORADOR -->
-    <div id="vista-empleado" class="hidden max-w-4xl mx-auto pt-8 px-4 pb-12">
-        <header class="flex justify-between items-center mb-8 bg-white p-4 rounded-xl shadow-sm border border-gray-100">
-            <div>
-                <h1 class="text-2xl font-bold text-gray-800">Hola, <span id="nombre-empleado-display" class="text-blue-600"></span></h1>
-                <p class="text-sm text-gray-500">ID: <span id="id-empleado-display"></span></p>
-            </div>
-            <div class="flex items-center gap-4">
-                <div class="flex flex-col items-end px-3 py-1 border-r border-slate-200 shrink-0">
-                    <div class="flex text-[0.6rem] text-slate-400 font-black tracking-wider leading-none mb-0.5 items-center gap-1 justify-end uppercase">
-                          <span id="syncDot" class="w-1.5 h-1.5 rounded-full bg-amber-500 inline-block animate-pulse"></span> Hora
-                    </div>
-                    <div id="reloj-display-empleado" class="font-mono text-sm font-bold text-slate-700">--:--:--</div>
+    <div id="vista-empleado" class="hidden max-w-5xl mx-auto pt-4 sm:pt-8 px-4 pb-12">
+        
+        <!-- Header / Navbar -->
+        <header class="glass-panel flex flex-col sm:flex-row justify-between items-center mb-6 p-4 sm:px-6 sm:py-4 rounded-2xl shadow-sm border border-slate-200 gap-4">
+            <div class="flex items-center gap-4 w-full sm:w-auto">
+                <div class="w-12 h-12 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center shrink-0 border border-blue-200 shadow-inner">
+                    <i class="ph ph-user text-2xl"></i>
                 </div>
-                <button onclick="cerrarSesionGeneral()" class="text-red-500 hover:text-red-700 flex flex-col items-center text-sm font-medium">
-                    <i class="ph ph-sign-out text-2xl"></i> Salir
+                <div class="flex-1 min-w-0">
+                    <h1 class="text-xl font-bold text-slate-800 leading-tight truncate">Hola, <span id="nombre-empleado-display" class="text-blue-600"></span></h1>
+                    <p class="text-sm text-slate-500 font-mono mt-0.5">ID: <span id="id-empleado-display"></span></p>
+                </div>
+            </div>
+            
+            <div class="flex items-center gap-4 sm:gap-6 w-full sm:w-auto justify-between sm:justify-end border-t sm:border-0 border-slate-100 pt-4 sm:pt-0">
+                <div class="flex items-center gap-3 bg-white px-4 py-2 rounded-xl border border-slate-200 shadow-sm">
+                    <span id="syncDot" class="w-2.5 h-2.5 rounded-full bg-amber-500 inline-block shadow-[0_0_8px_rgba(245,158,11,0.6)]"></span>
+                    <div id="reloj-display-empleado" class="font-mono text-sm font-bold text-slate-700 tracking-wider">--:--:--</div>
+                </div>
+                
+                <button onclick="cerrarSesionGeneral()" class="text-slate-500 hover:text-red-600 bg-white hover:bg-red-50 p-2 sm:px-4 sm:py-2 border border-slate-200 rounded-xl transition-all flex items-center gap-2 font-semibold text-sm shadow-sm" title="Cerrar Sesión">
+                    <span class="hidden sm:inline">Salir</span> <i class="ph ph-sign-out text-xl"></i>
                 </button>
             </div>
         </header>
 
         <!-- Panel Principal Unificado -->
-        <div id="panel-principal" class="bg-white rounded-2xl shadow-lg border border-gray-100 p-6 mb-8">
-            <div class="flex justify-between items-center mb-6">
-                <h2 class="text-xl font-bold text-gray-800" id="titulo-panel-empleado">Tus Tiempos de Hoy</h2>
-                <div class="text-sm text-slate-500 font-medium" id="fecha-empleado-display"></div>
+        <div id="panel-principal" class="bg-white rounded-3xl shadow-md border border-slate-200 p-5 sm:p-8 mb-8 relative overflow-hidden transition-all duration-300">
+            
+            <!-- Decoración sutil -->
+            <div class="absolute top-0 left-0 w-full h-1.5 bg-gradient-to-r from-blue-400 via-purple-400 to-orange-400 opacity-80"></div>
+
+            <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 sm:mb-8 gap-2">
+                <div>
+                    <h2 class="text-2xl font-bold text-slate-800" id="titulo-panel-empleado">Tus Tiempos</h2>
+                    <p class="text-slate-500 text-sm mt-1">Selecciona el motivo de tu descanso para iniciar el cronómetro.</p>
+                </div>
+                <div class="bg-slate-100 text-slate-600 px-3 py-1.5 rounded-lg text-xs font-bold uppercase tracking-wider flex items-center gap-2 border border-slate-200">
+                    <i class="ph ph-calendar-blank"></i> <span id="fecha-empleado-display"></span>
+                </div>
             </div>
 
-            <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-5 sm:gap-6">
+                
                 <!-- Botón Baño -->
-                <button id="btn-Baño" onclick="iniciarCronometro('Baño')" class="flex flex-col items-center justify-center p-4 sm:p-6 rounded-xl relative border border-gray-200 hover:bg-blue-50 hover:scale-[1.02] transition-all cursor-pointer bg-gray-50/50 group">
-                    <div class="text-xs sm:text-sm font-extrabold uppercase text-gray-500 mb-2 flex items-center justify-center gap-1 group-hover:text-blue-600 transition-colors">
-                        <i class="ph-bold ph-toilet text-lg"></i> Baño <i class="ph-bold ph-play-circle text-blue-400 text-[1.1em] hidden" id="play-Baño"></i>
+                <button id="btn-Baño" onclick="iniciarCronometro('Baño')" class="flex flex-col items-center justify-center p-6 sm:p-8 rounded-2xl relative border-2 border-slate-100 hover:border-blue-300 hover:bg-blue-50/50 hover:shadow-lg hover:-translate-y-1 transition-all duration-300 cursor-pointer bg-white group overflow-hidden">
+                    <div class="absolute top-3 right-3 opacity-0 group-hover:opacity-100 transition-opacity hidden" id="play-Baño">
+                        <span class="relative flex h-4 w-4">
+                          <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75"></span>
+                          <span class="relative inline-flex rounded-full h-4 w-4 bg-blue-500"></span>
+                        </span>
                     </div>
-                    <div class="font-mono font-bold text-3xl sm:text-4xl text-gray-800 tabular-nums my-2 transition-colors" id="disp-Baño">00:00</div>
-                    <div class="text-xs text-gray-400 font-medium">/ <span id="lim-Baño">15</span>m</div>
-                    <div id="rem-Baño" class="text-[0.7rem] sm:text-xs font-extrabold mt-3 text-gray-500 transition-colors">Restan: --</div>
+                    
+                    <div class="w-14 h-14 bg-blue-50 text-blue-500 rounded-full flex items-center justify-center mb-4 group-hover:bg-blue-500 group-hover:text-white transition-colors duration-300">
+                        <i class="ph-fill ph-toilet text-3xl"></i>
+                    </div>
+                    <h3 class="text-sm font-bold uppercase tracking-widest text-slate-400 mb-1 group-hover:text-blue-600 transition-colors">Baño</h3>
+                    
+                    <div class="font-mono font-black text-4xl sm:text-5xl text-slate-800 tabular-nums my-3 transition-colors tracking-tight" id="disp-Baño">00:00</div>
+                    
+                    <div class="flex items-center justify-between w-full px-2 mt-2">
+                        <div class="text-xs text-slate-400 font-medium">Límite: <span id="lim-Baño">15</span>m</div>
+                        <div id="rem-Baño" class="text-xs font-extrabold text-slate-500 bg-slate-100 px-2 py-1 rounded-md transition-colors">Restan: --</div>
+                    </div>
                 </button>
                 
                 <!-- Botón Comida -->
-                <button id="btn-Comida" onclick="iniciarCronometro('Comida')" class="flex flex-col items-center justify-center p-4 sm:p-6 rounded-xl relative border border-gray-200 hover:bg-orange-50 hover:scale-[1.02] transition-all cursor-pointer bg-gray-50/50 group">
-                    <div class="text-xs sm:text-sm font-extrabold uppercase text-gray-500 mb-2 flex items-center justify-center gap-1 group-hover:text-orange-600 transition-colors">
-                        <i class="ph-bold ph-hamburger text-lg"></i> Comida <i class="ph-bold ph-play-circle text-orange-400 text-[1.1em] hidden" id="play-Comida"></i>
+                <button id="btn-Comida" onclick="iniciarCronometro('Comida')" class="flex flex-col items-center justify-center p-6 sm:p-8 rounded-2xl relative border-2 border-slate-100 hover:border-orange-300 hover:bg-orange-50/50 hover:shadow-lg hover:-translate-y-1 transition-all duration-300 cursor-pointer bg-white group overflow-hidden">
+                    <div class="absolute top-3 right-3 opacity-0 group-hover:opacity-100 transition-opacity hidden" id="play-Comida">
+                        <span class="relative flex h-4 w-4">
+                          <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-orange-400 opacity-75"></span>
+                          <span class="relative inline-flex rounded-full h-4 w-4 bg-orange-500"></span>
+                        </span>
                     </div>
-                    <div class="font-mono font-bold text-3xl sm:text-4xl text-gray-800 tabular-nums my-2 transition-colors" id="disp-Comida">00:00</div>
-                    <div class="text-xs text-gray-400 font-medium">/ <span id="lim-Comida">30</span>m</div>
-                    <div id="rem-Comida" class="text-[0.7rem] sm:text-xs font-extrabold mt-3 text-gray-500 transition-colors">Restan: --</div>
+                    
+                    <div class="w-14 h-14 bg-orange-50 text-orange-500 rounded-full flex items-center justify-center mb-4 group-hover:bg-orange-500 group-hover:text-white transition-colors duration-300">
+                        <i class="ph-fill ph-hamburger text-3xl"></i>
+                    </div>
+                    <h3 class="text-sm font-bold uppercase tracking-widest text-slate-400 mb-1 group-hover:text-orange-600 transition-colors">Comida</h3>
+                    
+                    <div class="font-mono font-black text-4xl sm:text-5xl text-slate-800 tabular-nums my-3 transition-colors tracking-tight" id="disp-Comida">00:00</div>
+                    
+                    <div class="flex items-center justify-between w-full px-2 mt-2">
+                        <div class="text-xs text-slate-400 font-medium">Límite: <span id="lim-Comida">30</span>m</div>
+                        <div id="rem-Comida" class="text-xs font-extrabold text-slate-500 bg-slate-100 px-2 py-1 rounded-md transition-colors">Restan: --</div>
+                    </div>
                 </button>
 
                 <!-- Botón Calidad -->
-                <button id="btn-Calidad" onclick="abrirModalCalidad()" class="flex flex-col items-center justify-center p-4 sm:p-6 rounded-xl relative border border-gray-200 hover:bg-purple-50 hover:scale-[1.02] transition-all cursor-pointer bg-gray-50/50 group">
-                    <div class="text-xs sm:text-sm font-extrabold uppercase text-gray-500 mb-2 flex items-center justify-center gap-1 group-hover:text-purple-600 transition-colors">
-                        <i class="ph-bold ph-star text-lg"></i> Calidad <i class="ph-bold ph-play-circle text-purple-400 text-[1.1em] hidden" id="play-Calidad"></i>
+                <button id="btn-Calidad" onclick="abrirModalCalidad()" class="flex flex-col items-center justify-center p-6 sm:p-8 rounded-2xl relative border-2 border-slate-100 hover:border-purple-300 hover:bg-purple-50/50 hover:shadow-lg hover:-translate-y-1 transition-all duration-300 cursor-pointer bg-white group overflow-hidden">
+                    <div class="absolute top-3 right-3 opacity-0 group-hover:opacity-100 transition-opacity hidden" id="play-Calidad">
+                        <span class="relative flex h-4 w-4">
+                          <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-purple-400 opacity-75"></span>
+                          <span class="relative inline-flex rounded-full h-4 w-4 bg-purple-500"></span>
+                        </span>
                     </div>
-                    <div class="font-mono font-bold text-3xl sm:text-4xl text-gray-800 tabular-nums my-2 transition-colors" id="disp-Calidad">00:00</div>
-                    <div class="text-xs text-purple-400 font-medium">Sin límite</div>
-                    <div id="rem-Calidad" class="text-[0.7rem] sm:text-xs mt-3 text-gray-400 transition-colors px-2 text-center truncate w-full">Requiere justificación</div>
+
+                    <div class="w-14 h-14 bg-purple-50 text-purple-500 rounded-full flex items-center justify-center mb-4 group-hover:bg-purple-500 group-hover:text-white transition-colors duration-300">
+                        <i class="ph-fill ph-star text-3xl"></i>
+                    </div>
+                    <h3 class="text-sm font-bold uppercase tracking-widest text-slate-400 mb-1 group-hover:text-purple-600 transition-colors">Calidad</h3>
+                    
+                    <div class="font-mono font-black text-4xl sm:text-5xl text-slate-800 tabular-nums my-3 transition-colors tracking-tight" id="disp-Calidad">00:00</div>
+                    
+                    <div class="flex items-center justify-between w-full px-2 mt-2">
+                        <div class="text-[10px] text-purple-400 font-bold uppercase bg-purple-50 px-2 py-1 rounded w-full text-center" id="rem-Calidad">Requiere Justificación</div>
+                    </div>
                 </button>
             </div>
 
-            <div id="contenedor-stop" class="mt-8 hidden">
-                <button id="btn-detener-cronometro" onclick="detenerCronometro()" class="w-full py-4 bg-red-600 hover:bg-red-700 text-white font-bold rounded-xl shadow-md transition-all active:scale-95 flex items-center justify-center gap-2 text-lg disabled:opacity-50 disabled:cursor-not-allowed">
-                    <i class="ph ph-pause-circle text-2xl"></i>
-                    Pausar Descanso
+            <!-- Botón Pausar (Aparece cuando está activo) -->
+            <div id="contenedor-stop" class="mt-8 hidden opacity-0 transition-all duration-500 transform translate-y-4">
+                <button id="btn-detener-cronometro" onclick="detenerCronometro()" class="w-full py-5 bg-red-500 hover:bg-red-600 text-white font-black rounded-2xl shadow-lg shadow-red-200 transition-all active:scale-[0.98] flex items-center justify-center gap-3 text-xl border-b-4 border-red-700 hover:border-red-800 disabled:opacity-50 disabled:cursor-not-allowed relative overflow-hidden group">
+                    <div class="absolute inset-0 bg-white/20 transform -skew-x-12 -translate-x-full group-hover:animate-[shimmer_1.5s_infinite]"></div>
+                    <span class="relative flex h-5 w-5 mr-1">
+                        <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-white opacity-75"></span>
+                        <span class="relative inline-flex rounded-full h-5 w-5 bg-white flex items-center justify-center"><div class="w-2 h-2 bg-red-600 rounded-sm"></div></span>
+                    </span>
+                    PAUSAR DESCANSO Y REGRESAR
                 </button>
             </div>
+            
+            <style>
+                @keyframes shimmer { 100% { transform: translateX(200%); } }
+            </style>
         </div>
 
         <!-- Historial del Empleado -->
-        <div id="panel-historial-empleado" class="bg-white rounded-2xl shadow-lg border border-gray-100 p-6">
-            <div class="flex flex-wrap justify-between items-center mb-4 gap-4">
-                <h2 class="text-xl font-bold text-gray-800 flex items-center gap-2">
-                    <i class="ph ph-clock-counter-clockwise text-blue-500"></i> Mi Historial de Tiempos
+        <div id="panel-historial-empleado" class="bg-white rounded-3xl shadow-sm border border-slate-200 overflow-hidden">
+            <div class="px-6 py-5 border-b border-slate-100 flex flex-wrap justify-between items-center gap-4 bg-slate-50/50">
+                <h2 class="text-lg font-bold text-slate-800 flex items-center gap-2">
+                    <i class="ph ph-clock-counter-clockwise text-blue-500 text-xl"></i> Mi Bitácora
                 </h2>
-                <div class="flex items-center gap-2 bg-slate-50 border border-slate-200 rounded-lg px-3 py-1.5 shadow-sm">
-                    <i class="ph ph-calendar text-slate-400"></i>
-                    <input type="date" id="filtro-fecha-empleado" class="border-none bg-transparent text-sm outline-none text-slate-600 font-medium" onchange="renderizarHistorialEmpleado()">
+                <div class="relative group">
+                    <i class="ph ph-calendar-blank absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400 group-focus-within:text-blue-500 transition-colors"></i>
+                    <input type="date" id="filtro-fecha-empleado" class="pl-10 pr-4 py-2 border border-slate-200 bg-white rounded-xl text-sm text-slate-600 font-medium outline-none focus:ring-2 focus:ring-blue-100 focus:border-blue-500 transition-all shadow-sm cursor-pointer" onchange="renderizarHistorialEmpleado()">
                 </div>
             </div>
             
-            <div class="overflow-x-auto max-h-64 custom-scrollbar">
-                <table class="w-full text-left text-sm border-collapse">
-                    <thead class="sticky top-0 bg-white shadow-sm z-10">
-                        <tr class="text-slate-500 uppercase text-xs tracking-wider border-b border-slate-200">
-                            <th class="p-3 font-semibold">Tipo</th>
-                            <th class="p-3 font-semibold text-blue-600">Tiempo</th>
-                            <th class="p-3 font-semibold">Estado / Justificación</th>
-                            <th class="p-3 font-semibold">Hora Real</th>
+            <div class="overflow-x-auto max-h-[400px] custom-scrollbar relative">
+                <table class="w-full text-left text-sm border-collapse min-w-[700px]">
+                    <thead class="sticky top-0 bg-white/95 backdrop-blur-sm shadow-sm z-10 border-b border-slate-200">
+                        <tr class="text-slate-500 uppercase text-[11px] tracking-wider font-bold">
+                            <th class="px-6 py-4">Tipo</th>
+                            <th class="px-6 py-4 text-blue-600">Tiempo</th>
+                            <th class="px-6 py-4">Estado / Justificación</th>
+                            <th class="px-6 py-4 text-right">Hora (Fin)</th>
                         </tr>
                     </thead>
                     <tbody id="tabla-registros-empleado" class="divide-y divide-slate-100">
@@ -207,44 +318,32 @@
 
         let timeOffset = 0; 
         
-        // --- SINCRONIZACIÓN NATIVA CON FIREBASE (PING DIRECTO) ---
+        // --- SINCRONIZACIÓN NATIVA CON FIREBASE ---
         async function sincronizarConFirebase(pin) {
             try {
                 const start = Date.now();
                 const syncRef = doc(db, 'tiempos_acumulados', pin);
                 
-                // Forzamos una escritura rápida con la hora oficial del servidor de Firebase
                 await setDoc(syncRef, { _syncPing: serverTimestamp() }, { merge: true });
-                
-                // Leemos inmediatamente esa hora de vuelta
                 const syncSnap = await getDoc(syncRef);
                 const serverTime = syncSnap.data()._syncPing.toMillis();
                 const end = Date.now();
                 
-                // Calculamos el desfase exacto de la computadora local restando la latencia de ida y vuelta
                 timeOffset = serverTime - end + ((end - start) / 2);
                 
                 const el = document.getElementById('syncDot');
                 if (el) {
-                    el.classList.replace('bg-amber-500', 'bg-green-500');
-                    el.classList.remove('animate-pulse');
-                    el.setAttribute('title', 'Hora sincronizada con Firebase');
+                    el.classList.replace('bg-amber-500', 'bg-emerald-500');
+                    el.classList.replace('shadow-[0_0_8px_rgba(245,158,11,0.6)]', 'shadow-[0_0_8px_rgba(16,185,129,0.6)]');
+                    el.setAttribute('title', 'Hora sincronizada con la nube');
                 }
             } catch (e) {
-                console.warn("Sincronización con Firebase fallida, usando reloj local", e);
+                console.warn("Sincronización con Firebase fallida", e);
                 timeOffset = 0;
-                const el = document.getElementById('syncDot');
-                if (el) {
-                    el.classList.replace('bg-amber-500', 'bg-red-500');
-                    el.classList.remove('animate-pulse');
-                    el.setAttribute('title', 'Sincronización fallida');
-                }
             }
         }
 
-        function getHoraReal() {
-            return Date.now() + timeOffset;
-        }
+        function getHoraReal() { return Date.now() + timeOffset; }
 
         setInterval(() => {
             const ahora = new Date(getHoraReal());
@@ -281,10 +380,27 @@
         function mostrarNotificacion(mensaje, tipo = 'exito') {
             const noti = document.getElementById('notificacion');
             const texto = document.getElementById('notificacion-texto');
-            texto.innerHTML = tipo === 'error' ? `<i class="ph ph-warning-circle text-xl"></i> ${mensaje}` : `<i class="ph ph-check-circle text-xl"></i> ${mensaje}`;
-            noti.className = `fixed top-4 left-1/2 transform -translate-x-1/2 z-50 max-w-sm w-full shadow-lg rounded-lg border-l-4 p-4 transition-all duration-300 ${tipo === 'error' ? 'bg-red-50 border-red-500 text-red-700' : 'bg-green-50 border-green-500 text-green-700'}`;
+            const icon = document.getElementById('notificacion-icon');
+            
+            if(tipo === 'error') {
+                icon.innerHTML = '<i class="ph ph-warning-circle text-red-400"></i>';
+                noti.classList.add('border-red-500/50');
+                noti.classList.remove('border-emerald-500/50');
+            } else {
+                icon.innerHTML = '<i class="ph ph-check-circle text-emerald-400"></i>';
+                noti.classList.add('border-emerald-500/50');
+                noti.classList.remove('border-red-500/50');
+            }
+            
+            texto.textContent = mensaje;
             noti.classList.remove('hidden');
-            setTimeout(() => noti.classList.add('hidden'), 3500);
+            noti.style.top = '24px';
+            
+            noti.animate([{ transform: 'translate(-50%, -20px)', opacity: 0 }, { transform: 'translate(-50%, 0)', opacity: 1 }], { duration: 300, fill: 'forwards', easing: 'ease-out' });
+            
+            setTimeout(() => {
+                noti.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 300, fill: 'forwards' }).onfinish = () => noti.classList.add('hidden');
+            }, 3500);
         }
 
         function formatearTiempo(segundos) {
@@ -302,7 +418,7 @@
                 if (user) {
                     usuarioAutenticado = user;
                     if (user.email === EMAIL_ADMIN) {
-                        window.location.href = 'admin.html';
+                        window.location.href = 'index.html';
                     } else {
                         const pin = user.email.split('@')[0];
                         validarEmpleadoYMostrar(pin);
@@ -316,7 +432,7 @@
 
         window.loginEmpleado = async function() {
             const pinDigitado = document.getElementById('pin-empleado').value.trim();
-            if(!pinDigitado) return mostrarNotificacion('Ingresa tu ID', 'error');
+            if(!pinDigitado) return mostrarNotificacion('Ingresa tu ID para continuar', 'error');
             
             window.mostrarVista('vista-cargando');
 
@@ -333,7 +449,7 @@
                     }
                 } else {
                     window.mostrarVista('vista-login-colaborador');
-                    mostrarNotificacion('Error de conexión a Firebase', 'error');
+                    mostrarNotificacion('Error de conexión a la Base de Datos', 'error');
                 }
             }
         };
@@ -350,7 +466,6 @@
                     return; 
                 }
 
-                // Sincronizamos la hora con Firebase ANTES de procesar la jornada
                 await sincronizarConFirebase(pin);
 
                 // --- REGISTRO DE INICIO/FIN DE JORNADA ---
@@ -360,7 +475,7 @@
                 let updateData = { ultimaActualizacion: getHoraReal() };
 
                 if (acumSnap.exists() && acumSnap.data().fecha === hoy) {
-                    updateData.finJornada = getHoraReal(); // Se conectó de nuevo, actualiza fin.
+                    updateData.finJornada = getHoraReal(); 
                     if (!acumSnap.data().inicioJornada) updateData.inicioJornada = getHoraReal();
                 } else {
                     updateData = {
@@ -373,10 +488,13 @@
                 }
                 await setDoc(acumRef, updateData, { merge: true });
 
+                const opcionesFecha = { weekday: 'long', year: 'numeric', month: 'short', day: 'numeric' };
+                const fechaString = new Date(getHoraReal()).toLocaleDateString('es-ES', opcionesFecha);
+
                 document.getElementById('nombre-empleado-display').textContent = empleadoActual.nombre;
                 document.getElementById('id-empleado-display').textContent = empleadoActual.pin;
                 document.getElementById('pin-empleado').value = ''; 
-                document.getElementById('fecha-empleado-display').textContent = obtenerFechaHoy();
+                document.getElementById('fecha-empleado-display').textContent = fechaString;
                 document.getElementById('filtro-fecha-empleado').value = obtenerFechaHoy();
                 
                 window.mostrarVista('vista-empleado');
@@ -390,7 +508,6 @@
         window.cerrarSesionGeneral = async function() {
             if(intervaloCronometro) clearInterval(intervaloCronometro);
             
-            // --- GUARDAR FIN DE JORNADA AL SALIR ---
             if (empleadoActual) {
                 try {
                     await setDoc(doc(db, 'tiempos_acumulados', empleadoActual.pin), {
@@ -411,8 +528,14 @@
         };
 
         window.cerrarModales = function() {
-            document.getElementById('modal-overlay').classList.add('hidden');
-            document.getElementById('modal-calidad').classList.add('hidden');
+            const overlay = document.getElementById('modal-overlay');
+            const modal = document.getElementById('modal-calidad');
+            overlay.classList.add('opacity-0');
+            modal.classList.add('scale-95');
+            setTimeout(() => {
+                overlay.classList.add('hidden');
+                modal.classList.add('hidden');
+            }, 300);
         };
 
         function iniciarEscuchasEmpleado() {
@@ -480,18 +603,25 @@
 
                 const disp = document.getElementById('disp-' + tipo);
                 const rem = document.getElementById('rem-' + tipo);
+                const btn = document.getElementById('btn-' + tipo);
 
                 disp.textContent = formatearTiempo(acumulado);
 
                 if(tipo !== 'Calidad') {
                     if (restante > 0) {
                         rem.innerHTML = `Restan: ${formatearTiempo(restante)}`;
-                        rem.className = "text-[0.7rem] sm:text-xs font-extrabold mt-3 text-gray-500";
-                        disp.className = "font-mono font-bold text-3xl sm:text-4xl text-gray-800 tabular-nums my-2 transition-colors";
+                        rem.className = "text-xs font-extrabold text-slate-500 bg-slate-100 px-2 py-1 rounded-md transition-colors";
+                        disp.className = "font-mono font-black text-4xl sm:text-5xl text-slate-800 tabular-nums my-3 transition-colors tracking-tight";
+                        // Reset borders
+                        btn.classList.remove('border-red-300', 'bg-red-50/50');
+                        btn.classList.add('border-slate-100', 'bg-white');
                     } else {
                         rem.innerHTML = `Excedido: ${formatearTiempo(Math.abs(restante))}`;
-                        rem.className = "text-[0.7rem] sm:text-xs font-extrabold mt-3 text-red-600";
-                        disp.className = "font-mono font-bold text-3xl sm:text-4xl text-red-600 tabular-nums my-2 transition-colors";
+                        rem.className = "text-xs font-extrabold text-red-600 bg-red-100 px-2 py-1 rounded-md transition-colors animate-pulse";
+                        disp.className = "font-mono font-black text-4xl sm:text-5xl text-red-600 tabular-nums my-3 transition-colors tracking-tight";
+                        // Highlight exceeded card
+                        btn.classList.add('border-red-300', 'bg-red-50/50');
+                        btn.classList.remove('border-slate-100', 'bg-white');
                     }
                 }
             });
@@ -517,11 +647,19 @@
 
         window.abrirModalCalidad = function() {
             if(sesionActivaActual) return;
-            cerrarModales();
             document.getElementById('calidad-justificacion').value = '';
-            document.getElementById('modal-overlay').classList.remove('hidden');
-            document.getElementById('modal-calidad').classList.remove('hidden');
-            setTimeout(() => document.getElementById('calidad-justificacion').focus(), 100);
+            
+            const overlay = document.getElementById('modal-overlay');
+            const modal = document.getElementById('modal-calidad');
+            
+            overlay.classList.remove('hidden');
+            modal.classList.remove('hidden');
+            
+            setTimeout(() => {
+                overlay.classList.remove('opacity-0');
+                modal.classList.remove('scale-95');
+                document.getElementById('calidad-justificacion').focus();
+            }, 10);
         };
 
         window.confirmarCalidad = function() {
@@ -532,7 +670,10 @@
         };
 
         function activarInterfazCronometro(datosSesion) {
-            document.getElementById('contenedor-stop').classList.remove('hidden');
+            const stopContainer = document.getElementById('contenedor-stop');
+            stopContainer.classList.remove('hidden');
+            setTimeout(() => stopContainer.classList.remove('opacity-0', 'translate-y-4'), 10);
+
             document.getElementById('titulo-panel-empleado').textContent = "Descanso en Progreso";
             
             const tipoActivo = datosSesion.tipo;
@@ -540,13 +681,18 @@
             ['Baño', 'Comida', 'Calidad'].forEach(t => {
                 const btn = document.getElementById('btn-' + t);
                 if (t !== tipoActivo) {
-                    btn.classList.add('opacity-40', 'pointer-events-none');
+                    btn.classList.add('opacity-40', 'pointer-events-none', 'grayscale', 'scale-95');
+                    btn.classList.remove('hover:-translate-y-1', 'hover:shadow-lg');
                 } else {
                     let colorCode = t==='Baño'?'blue':t==='Comida'?'orange':'purple';
-                    btn.classList.add(`border-${colorCode}-400`, `bg-${colorCode}-50/80`, 'scale-[1.02]', 'ring-4', `ring-${colorCode}-100`);
-                    btn.classList.remove('hover:bg-blue-50', 'hover:bg-orange-50', 'hover:bg-purple-50', 'bg-gray-50/50');
+                    // Active Styling
+                    btn.classList.add(`ring-4`, `ring-${colorCode}-200`, `border-${colorCode}-400`, `bg-${colorCode}-50`, 'scale-[1.02]');
+                    btn.classList.remove('border-slate-100', 'bg-white', 'border-red-300', 'bg-red-50/50', `hover:border-${colorCode}-300`, `hover:bg-${colorCode}-50/50`, 'hover:-translate-y-1');
                     btn.onclick = null; 
-                    document.getElementById('play-' + t).classList.remove('hidden');
+                    
+                    const playIcon = document.getElementById('play-' + t);
+                    playIcon.classList.remove('hidden', 'opacity-0');
+                    playIcon.classList.add('opacity-100');
                 }
             });
 
@@ -566,24 +712,25 @@
                 
                 if (tipoActivo === 'Calidad') {
                     displayRestante.innerHTML = `<span class="truncate w-full px-2" title="${datosSesion.justificacion}">${datosSesion.justificacion}</span>`;
-                    displayRestante.className = "text-[0.7rem] sm:text-xs mt-3 text-purple-600 font-medium italic block";
+                    displayRestante.className = "text-xs mt-2 text-purple-600 font-medium italic block bg-purple-100 px-2 py-1 rounded w-full text-center";
                 } else {
                     const restante = limiteSegundos - transcurridoTotal;
                     if (restante > 0) {
                         displayRestante.innerHTML = `Restan: ${formatearTiempo(restante)}`;
-                        displayRestante.className = "text-[0.7rem] sm:text-xs font-extrabold mt-3 text-blue-600";
+                        displayRestante.className = "text-xs font-extrabold text-blue-700 bg-blue-100 px-2 py-1 rounded-md transition-colors shadow-sm";
                     } else {
                         displayRestante.innerHTML = `Excedido: ${formatearTiempo(Math.abs(restante))}`;
-                        displayRestante.className = "text-[0.7rem] sm:text-xs font-extrabold mt-3 text-red-600 animate-pulse";
+                        displayRestante.className = "text-xs font-extrabold text-white bg-red-500 px-2 py-1 rounded-md transition-colors shadow-sm animate-pulse";
                     }
 
                     if (transcurridoTotal > limiteSegundos) {
                         display.classList.add('text-red-600');
-                        display.classList.remove('text-gray-800');
+                        display.classList.remove('text-slate-800');
                         const btnActivo = document.getElementById('btn-' + tipoActivo);
+                        btnActivo.classList.add('border-red-400', 'bg-red-50', 'ring-red-200');
+                        
                         let cCode = tipoActivo==='Baño'?'blue':'orange';
-                        btnActivo.classList.add('border-red-400', 'bg-red-50', 'ring-red-100');
-                        btnActivo.classList.remove(`border-${cCode}-400`, `bg-${cCode}-50/80`, `ring-${cCode}-100`);
+                        btnActivo.classList.remove(`border-${cCode}-400`, `bg-${cCode}-50`, `ring-${cCode}-200`);
                     }
                 }
             };
@@ -594,26 +741,42 @@
 
         function desactivarInterfazCronometro() {
             if(intervaloCronometro) clearInterval(intervaloCronometro);
-            document.getElementById('contenedor-stop').classList.add('hidden');
-            document.getElementById('titulo-panel-empleado').textContent = "Tus Tiempos de Hoy";
+            
+            const stopContainer = document.getElementById('contenedor-stop');
+            stopContainer.classList.add('opacity-0', 'translate-y-4');
+            setTimeout(() => stopContainer.classList.add('hidden'), 300);
+
+            document.getElementById('titulo-panel-empleado').textContent = "Tus Tiempos";
             
             ['Baño', 'Comida', 'Calidad'].forEach(t => {
                 const btn = document.getElementById('btn-' + t);
-                btn.className = "flex flex-col items-center justify-center p-4 sm:p-6 rounded-xl relative border border-gray-200 transition-all cursor-pointer bg-gray-50/50 group";
-                if(t==='Baño') { btn.classList.add('hover:bg-blue-50', 'hover:scale-[1.02]'); btn.onclick = () => iniciarCronometro(t); }
-                if(t==='Comida') { btn.classList.add('hover:bg-orange-50', 'hover:scale-[1.02]'); btn.onclick = () => iniciarCronometro(t); }
-                if(t==='Calidad') { btn.classList.add('hover:bg-purple-50', 'hover:scale-[1.02]'); btn.onclick = () => abrirModalCalidad(); }
+                let colorCode = t==='Baño'?'blue':t==='Comida'?'orange':'purple';
                 
-                document.getElementById('play-' + t).classList.add('hidden');
+                // Reset Classes to idle state
+                btn.className = `flex flex-col items-center justify-center p-6 sm:p-8 rounded-2xl relative border-2 border-slate-100 hover:border-${colorCode}-300 hover:bg-${colorCode}-50/50 hover:shadow-lg hover:-translate-y-1 transition-all duration-300 cursor-pointer bg-white group overflow-hidden`;
+                
+                if(t==='Baño') btn.onclick = () => iniciarCronometro(t);
+                if(t==='Comida') btn.onclick = () => iniciarCronometro(t);
+                if(t==='Calidad') btn.onclick = () => abrirModalCalidad();
+                
+                const playIcon = document.getElementById('play-' + t);
+                playIcon.classList.add('opacity-0');
+                setTimeout(() => playIcon.classList.add('hidden'), 300);
             });
             
             const remCalidad = document.getElementById('rem-Calidad');
-            remCalidad.textContent = 'Requiere justificación';
-            remCalidad.className = 'text-[0.7rem] sm:text-xs mt-3 text-gray-400 transition-colors px-2 text-center truncate w-full';
+            remCalidad.textContent = 'Requiere Justificación';
+            remCalidad.className = 'text-[10px] text-purple-400 font-bold uppercase bg-purple-50 px-2 py-1 rounded w-full text-center transition-colors';
 
             const btnStop = document.getElementById('btn-detener-cronometro');
             btnStop.disabled = false;
-            btnStop.innerHTML = '<i class="ph ph-pause-circle text-2xl"></i> Pausar Descanso';
+            btnStop.innerHTML = `
+                <div class="absolute inset-0 bg-white/20 transform -skew-x-12 -translate-x-full group-hover:animate-[shimmer_1.5s_infinite]"></div>
+                <span class="relative flex h-5 w-5 mr-1">
+                    <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-white opacity-75"></span>
+                    <span class="relative inline-flex rounded-full h-5 w-5 bg-white flex items-center justify-center"><div class="w-2 h-2 bg-red-600 rounded-sm"></div></span>
+                </span>
+                PAUSAR DESCANSO Y REGRESAR`;
             
             actualizarDisplaysInactivos(); 
         }
@@ -659,7 +822,7 @@
                     [tipoActivo]: nuevoAcumulado,
                     fecha: obtenerFechaHoy(),
                     ultimaActualizacion: fin,
-                    finJornada: fin // --- Actualiza la última conexión
+                    finJornada: fin 
                 }, { merge: true });
                 
                 await deleteDoc(doc(db, 'sesiones_activas', empleadoActual.pin));
@@ -668,7 +831,7 @@
             } catch(e) {
                 mostrarNotificacion('Error al pausar: Verifica conexión.', 'error');
                 btn.disabled = false;
-                btn.innerHTML = '<i class="ph ph-pause-circle text-2xl"></i> Pausar Descanso';
+                btn.innerHTML = '<i class="ph ph-pause-circle text-2xl"></i> Reintentar Pausa';
                 intervaloCronometro = setInterval(() => {
                     const trans = Math.floor((getHoraReal() - sesionActivaActual.inicio) / 1000) + (tiempoAcumuladoActual[tipoActivo]||0);
                     document.getElementById('disp-' + tipoActivo).textContent = formatearTiempo(trans);
@@ -687,7 +850,7 @@
             const misRegistros = todosLosRegistros.filter(r => r.pin === empleadoActual.pin && r.fechaISO === fechaFiltro);
 
             if (misRegistros.length === 0) {
-                tabla.innerHTML = `<tr><td colspan="4" class="p-6 text-center text-slate-400 italic">No hay registros para la fecha seleccionada.</td></tr>`;
+                tabla.innerHTML = `<tr><td colspan="4" class="p-10 text-center text-slate-400 italic">No hay registros para la fecha seleccionada.</td></tr>`;
                 return;
             }
 
@@ -696,23 +859,30 @@
                 if(reg.estado === 'Excedido (Expulsado)') badgeClass = 'bg-red-600 text-white border-red-700 font-bold shadow-sm';
                 if(reg.tipo === 'Calidad') badgeClass = 'bg-purple-50 text-purple-700 border-purple-200';
                 
-                const justificacionTxt = reg.justificacion ? `<div class="text-xs text-slate-500 italic mt-1 max-w-[200px] truncate" title="${reg.justificacion}">"${reg.justificacion}"</div>` : '';
+                const justificacionTxt = reg.justificacion ? `<div class="text-[11px] text-slate-500 italic mt-1 flex items-center gap-1"><i class="ph ph-chat-circle text-slate-400"></i> "${reg.justificacion}"</div>` : '';
                 
-                // LA HORA EXACTA QUE ME PEDISTE CONSERVAR
                 const fechaObj = new Date(reg.fin);
                 const horaStr = fechaObj.toLocaleTimeString([],{hour:'2-digit', minute:'2-digit'});
                 
-                let tipoIcon = reg.tipo === 'Baño' ? 'ph-toilet text-blue-500' : (reg.tipo === 'Comida' ? 'ph-fork-knife text-orange-500' : 'ph-star text-purple-500');
+                let tipoIcon = reg.tipo === 'Baño' ? 'ph-fill ph-toilet text-blue-500 bg-blue-50' : (reg.tipo === 'Comida' ? 'ph-fill ph-hamburger text-orange-500 bg-orange-50' : 'ph-fill ph-star text-purple-500 bg-purple-50');
 
                 tabla.innerHTML += `
-                    <tr class="hover:bg-slate-50/80 transition-colors border-b border-slate-100 last:border-0 group">
-                        <td class="p-3 text-slate-600 font-medium text-sm flex items-center gap-1.5 mt-1.5"><i class="ph ${tipoIcon} text-lg"></i> ${reg.tipo}</td>
-                        <td class="p-3 font-mono font-black text-blue-600 text-lg">${reg.duracionStr}</td>
-                        <td class="p-3">
-                            <span class="px-2 py-0.5 text-xs rounded border inline-block ${badgeClass}">${reg.estado}</span>
+                    <tr class="hover:bg-slate-50/80 transition-colors border-b border-slate-100 last:border-0">
+                        <td class="px-6 py-4">
+                            <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-bold text-slate-600 bg-white border border-slate-200 shadow-sm">
+                                <i class="${tipoIcon} p-1 rounded text-sm"></i> ${reg.tipo}
+                            </span>
+                        </td>
+                        <td class="px-6 py-4 font-mono font-black text-blue-600 text-lg tracking-wider">${reg.duracionStr}</td>
+                        <td class="px-6 py-4">
+                            <span class="px-2 py-0.5 text-[11px] rounded-md border inline-block ${badgeClass}">${reg.estado}</span>
                             ${justificacionTxt}
                         </td>
-                        <td class="p-3 text-xs text-slate-500 font-medium">${horaStr}</td>
+                        <td class="px-6 py-4 text-right">
+                            <div class="inline-flex items-center gap-1.5 text-xs text-slate-500 font-medium bg-slate-50 px-2 py-1 rounded-md border border-slate-100">
+                                <i class="ph ph-clock"></i> ${horaStr}
+                            </div>
+                        </td>
                     </tr>
                 `;
             });
@@ -737,7 +907,7 @@
                         break;
                     case 'START_BREAK_CALIDAD':
                         if (!sesionActivaActual) window.iniciarCronometro('Calidad', 'Activado vía TouchPoint');
-                        break;    
+                        break;  
                     case 'START_SHIFT':
                         if (sesionActivaActual) window.detenerCronometro();
                         break;
