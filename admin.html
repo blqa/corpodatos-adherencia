@@ -462,7 +462,42 @@
 
         let timeOffset = 0; 
         let logoutsEnviados = {};
+        let alertas1MinEnviadas = {}; // NUEVO: Evitar spam de alertas de 1 minuto
         let timeoutModales = null;
+
+        // --- SISTEMA DE AUDIO (Beep corto generado por código, sin archivos externos) ---
+        function reproducirBeepCorto() {
+            try {
+                const ctx = new (window.AudioContext || window.webkitAudioContext)();
+                const osc = ctx.createOscillator();
+                const gain = ctx.createGain();
+                osc.connect(gain);
+                gain.connect(ctx.destination);
+                osc.type = 'sine'; // Sonido suave
+                osc.frequency.setValueAtTime(880, ctx.currentTime); // Nota A5
+                gain.gain.setValueAtTime(0.2, ctx.currentTime);
+                osc.start();
+                // Desvanecimiento rápido
+                gain.gain.exponentialRampToValueAtTime(0.00001, ctx.currentTime + 0.5);
+                osc.stop(ctx.currentTime + 0.5);
+            } catch(e) { console.log("Audio falló", e); }
+        }
+
+        // --- SISTEMA DE NOTIFICACIONES DE ESCRITORIO ---
+        function solicitarPermisosNotificacion() {
+            if ("Notification" in window && Notification.permission !== "granted" && Notification.permission !== "denied") {
+                Notification.requestPermission();
+            }
+        }
+
+        function enviarNotificacionEscritorio(titulo, cuerpo) {
+            if ("Notification" in window && Notification.permission === "granted") {
+                new Notification(titulo, { 
+                    body: cuerpo,
+                    icon: "https://cdn-icons-png.flaticon.com/512/1827/1827370.png" // Icono genérico de reloj
+                });
+            }
+        }
 
         // --- SINCRONIZACIÓN NATIVA CON FIREBASE ---
         async function sincronizarConFirebase() {
@@ -495,9 +530,14 @@
             return (new Date(getHoraReal() - tzOffset)).toISOString().split('T')[0];
         }
 
-        window.forzarCierreSesionExpulsado = async function(act, transcurridoTotal) {
+        window.forzarCierreSesionExpulsado = async function(act, tiempoForzadoExacto) {
             const fin = getHoraReal();
-            const transcurridoSegmento = Math.floor((fin - act.inicio) / 1000);
+            
+            // Si le pasamos un tiempo exacto (el límite), usamos ese, si no, el real (evita que diga 14:59 si botamos a los 14:58)
+            const transcurridoTotalFinal = tiempoForzadoExacto || Math.floor((fin - act.inicio) / 1000) + (act.baseAcum || 0);
+            
+            // Cuánto tiempo de este tramo se consumió
+            const transcurridoSegmento = transcurridoTotalFinal - (act.baseAcum || 0);
 
             const registroFinal = {
                 pin: act.pin, nombre: act.nombre, tipo: act.tipo,
@@ -510,15 +550,24 @@
             try {
                 await addDoc(collection(db, 'registros'), registroFinal);
                 await setDoc(doc(db, 'tiempos_acumulados', act.pin), {
-                    [act.tipo]: transcurridoTotal, fecha: obtenerFechaHoy(),
+                    [act.tipo]: transcurridoTotalFinal, fecha: obtenerFechaHoy(),
                     ultimaActualizacion: fin, finJornada: fin
                 }, { merge: true });
                 await deleteDoc(doc(db, 'sesiones_activas', act.pin));
             } catch(e) { console.error("Error expulsando", e); }
         };
 
-        // --- RELOJ Y ACTUALIZADOR DE TARJETAS EN VIVO ---
-        setInterval(() => {
+        // --- NUEVO RELOJ DE PRECISIÓN (WEB WORKER) ANTI-CONGELAMIENTO ---
+        // Este Web Worker asegura que el intervalo corra cada segundo INCLUSO si cambias de pestaña.
+        const workerBlob = new Blob([`
+            setInterval(() => {
+                postMessage('tick');
+            }, 1000);
+        `], { type: 'application/javascript' });
+        
+        const motorReloj = new Worker(URL.createObjectURL(workerBlob));
+
+        motorReloj.onmessage = function() {
             const ahoraMs = getHoraReal();
             const ahora = new Date(ahoraMs);
             const admDisplay = document.getElementById('reloj-display-admin');
@@ -543,26 +592,54 @@
                                 if (pct > 100) pct = 100;
                                 elProg.style.width = `${pct}%`;
 
-                                // Si excede el tiempo, pintar de rojo la tarjeta
-                                if (totalActual > act.limiteSeg) {
+                                const tiempoRestante = act.limiteSeg - totalActual;
+
+                                // --- ALERTA DE 1 MINUTO EXACTO ---
+                                if (tiempoRestante <= 60 && tiempoRestante > 0) {
+                                    // Cambios visuales de alerta (Naranja)
+                                    elTotal.classList.add('text-orange-500', 'animate-pulse');
+                                    elTotal.classList.remove('text-slate-700');
+                                    if(elTotal.parentElement) {
+                                        elTotal.parentElement.classList.add('bg-orange-50', 'border-orange-200');
+                                        elTotal.parentElement.classList.remove('bg-slate-50', 'border-slate-100');
+                                    }
+                                    elProg.classList.add('bg-orange-500');
+                                    elProg.classList.remove('bg-blue-500');
+
+                                    // Sonido y notificación externa (una sola vez por evento)
+                                    const alertaKey = act.pin + act.inicio; // identificador único del receso actual
+                                    if (!alertas1MinEnviadas[alertaKey]) {
+                                        alertas1MinEnviadas[alertaKey] = true;
+                                        reproducirBeepCorto();
+                                        enviarNotificacionEscritorio("¡Atención de Tiempo!", `⏳ ${act.nombre} tiene solo 1 MINUTO restante de ${act.tipo}.`);
+                                    }
+                                }
+
+                                // --- EXPULSIÓN PREVENTIVA EXACTA (-2 segundos) ---
+                                // Disparamos la expulsión 2 segundos ANTES para compensar la velocidad de la interfaz de TouchPoint.
+                                // Esto garantiza que en la base de datos se guarde con 0 excedentes reales.
+                                if (totalActual >= (act.limiteSeg - 2)) {
+                                    // Cambiar a rojo extremo
                                     elTotal.classList.add('text-red-600', 'font-black');
-                                    elTotal.classList.remove('text-slate-700', 'font-bold');
+                                    elTotal.classList.remove('text-slate-700', 'font-bold', 'text-orange-500', 'animate-pulse');
                                     
-                                    // Cambiar borde y fondo de la cajita stats
                                     if(elTotal.parentElement) {
                                         elTotal.parentElement.classList.add('bg-red-50', 'border-red-200', 'text-red-700');
-                                        elTotal.parentElement.classList.remove('bg-slate-50', 'border-slate-100', 'text-slate-700');
+                                        elTotal.parentElement.classList.remove('bg-slate-50', 'border-slate-100', 'text-slate-700', 'bg-orange-50', 'border-orange-200');
                                     }
 
                                     elProg.classList.add('bg-red-500');
                                     elProg.classList.remove('bg-blue-500', 'bg-orange-500', 'bg-purple-500');
 
+                                    // Lógica de expulsión
                                     if (limitesGlobales.autoExpulsion !== false) { 
                                         if (!logoutsEnviados[act.pin]) {
                                             logoutsEnviados[act.pin] = true;
                                             window.postMessage({ type: "GODSPLAN_ADMIN_COMMAND", action: "FORCE_LOGOUT_TP", nombre: act.nombre, pin: act.pin }, "*");
-                                            mostrarNotificacion(`¡${act.nombre} excedió el tiempo! Expulsando del sistema.`, 'error');
-                                            window.forzarCierreSesionExpulsado(act, totalActual);
+                                            mostrarNotificacion(`¡${act.nombre} llegó al límite! Expulsando del sistema instantáneamente.`, 'error');
+                                            
+                                            // Al registrarlo, le forzamos el tiempo límite exacto para que quede limpio en 0 excedentes en DB
+                                            window.forzarCierreSesionExpulsado(act, act.limiteSeg); 
                                         }
                                     }
                                 }
@@ -571,7 +648,7 @@
                     }
                 });
             }
-        }, 1000);
+        };
 
         // Variables de Estado
         let limitesGlobales = { bano: 15, comida: 30, autoExpulsion: true }; 
@@ -683,6 +760,8 @@
             if (pin.toLowerCase() === 'blqa') {
                 try {
                     await signInWithEmailAndPassword(auth, EMAIL_ADMIN, 'admin123');
+                    // Pedir permisos de notificación de escritorio en cuanto inicie sesión
+                    solicitarPermisosNotificacion();
                 } catch (error) {
                     window.mostrarVista('vista-login-admin');
                     mostrarNotificacion('Error en la autenticación del administrador.', 'error');
@@ -799,7 +878,6 @@
             const limB = colab.limiteBano ? `${colab.limiteBano}m` : `Global`;
             const limC = colab.limiteComida ? `${colab.limiteComida}m` : `Global`;
 
-            // Para que setInterval actualice estos campos dinámicamente si está activo
             let banoIdStr = (act && act.tipo === 'Baño') ? `id="total-admin-${pin}"` : '';
             let comidaIdStr = (act && act.tipo === 'Comida') ? `id="total-admin-${pin}"` : '';
             let calidadIdStr = (act && act.tipo === 'Calidad') ? `id="total-admin-${pin}"` : '';
