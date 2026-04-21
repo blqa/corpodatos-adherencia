@@ -363,7 +363,7 @@
         
         let unsubConfig = null, unsubMisDatos = null, unsubAcumulados = null, unsubMiSesion = null, unsubRegistros = null;
         window.isPausing = false; // Seguro anti-duplicados
-        window.autoLogoutFired = false; // NUEVO: Seguro anti-bucle para la desconexión automática
+        window.autoLogoutFired = false; // Seguro anti-bucle para la desconexión automática
 
         // ALERTA ANTES DE CERRAR LA PESTAÑA (Capa extra de seguridad contra tiempos fantasma)
         window.addEventListener('beforeunload', (e) => {
@@ -752,17 +752,19 @@
                         displayRestante.className = "text-xs font-extrabold text-white bg-red-500 px-2 py-1 rounded-md transition-colors shadow-sm animate-pulse";
                         
                         // =========================================================
-                        // NUEVO: GATILLO DE DESCONEXIÓN AUTOMÁTICA
+                        // NUEVO Y CORREGIDO: GATILLO DE DESCONEXIÓN AUTOMÁTICA
                         // =========================================================
-                        if (!window.autoLogoutFired) {
-                            window.autoLogoutFired = true; // Bloquea para que no mande la orden cada segundo
-                            console.log("⏱️ Límite excedido. Disparando desconexión automática a la extensión...");
+                        // Damos 8 segundos de gracia al reconectar y, LO MÁS IMPORTANTE, detenemos el cronómetro local
+                        if (!window.autoLogoutFired && transcurridoSegmento > 8) {
+                            window.autoLogoutFired = true; // Bloquea para que no mande la orden cada milisegundo
+                            console.log("⏱️ Límite excedido. Disparando desconexión automática y deteniendo tiempo...");
                             
-                            // Envía la orden para que el content_godsplan.js la atrape y desloguee TouchPoint
+                            // 1. Envía la orden para que el content_godsplan.js la atrape y desloguee TouchPoint
                             window.postMessage({ type: 'GODSPLAN_ADMIN_COMMAND', action: 'FORCE_LOGOUT_TP' }, '*');
+                            mostrarNotificacion("⏳ Límite excedido. Se cerró tu sesión por seguridad.", "error");
                             
-                            // Avisa al asesor en la interfaz
-                            mostrarNotificacion("⏳ Límite de tiempo excedido. Se cerró tu sesión de TouchPoint por seguridad.", "error");
+                            // 2. LA PIEZA FALTANTE: Detenemos el cronómetro para que Firebase sepa que la sesión ya acabó
+                            window.detenerCronometro();
                         }
                     }
 
@@ -873,6 +875,9 @@
                 
                 await deleteDoc(doc(db, 'sesiones_activas', empleadoActual.pin));
                 
+                // Limpieza de variable local para evitar que se dispare dos veces si la extensión manda END_SHIFT
+                sesionActivaActual = null; 
+
                 mostrarNotificacion(`Agregaste ${formatearTiempo(transcurridoSegmento)} a tu cuenta.`);
             } catch(e) {
                 mostrarNotificacion('Error al pausar: Verifica conexión.', 'error');
@@ -951,7 +956,8 @@
                         if (sesionActivaActual) window.detenerCronometro();
                         break;
                     case 'END_SHIFT':
-                        if (empleadoActual) window.cerrarSesionGeneral();
+                        // Aquí modificamos para que NO cierre la sesión completa, solo detenga el reloj
+                        if (sesionActivaActual) window.detenerCronometro();
                         break;
                     case 'START_BREAK_CALIDAD':
                         if (!sesionActivaActual) window.iniciarCronometro('Calidad', 'Activado vía TouchPoint');
