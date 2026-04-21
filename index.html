@@ -363,6 +363,7 @@
         
         let unsubConfig = null, unsubMisDatos = null, unsubAcumulados = null, unsubMiSesion = null, unsubRegistros = null;
         window.isPausing = false; // Seguro anti-duplicados
+        window.autoLogoutFired = false; // NUEVO: Seguro anti-bucle para la desconexión automática
 
         // ALERTA ANTES DE CERRAR LA PESTAÑA (Capa extra de seguridad contra tiempos fantasma)
         window.addEventListener('beforeunload', (e) => {
@@ -695,6 +696,8 @@
         };
 
         function activarInterfazCronometro(datosSesion) {
+            window.autoLogoutFired = false; // Resetear seguro al iniciar un nuevo descanso
+
             const stopContainer = document.getElementById('contenedor-stop');
             stopContainer.classList.remove('hidden');
             setTimeout(() => stopContainer.classList.remove('opacity-0', 'translate-y-4'), 10);
@@ -743,9 +746,24 @@
                     if (restante > 0) {
                         displayRestante.innerHTML = `Restan: ${formatearTiempo(restante)}`;
                         displayRestante.className = "text-xs font-extrabold text-blue-700 bg-blue-100 px-2 py-1 rounded-md transition-colors shadow-sm";
+                        window.autoLogoutFired = false; // Se mantiene en falso si aún hay tiempo
                     } else {
                         displayRestante.innerHTML = `Excedido: ${formatearTiempo(Math.abs(restante))}`;
                         displayRestante.className = "text-xs font-extrabold text-white bg-red-500 px-2 py-1 rounded-md transition-colors shadow-sm animate-pulse";
+                        
+                        // =========================================================
+                        // NUEVO: GATILLO DE DESCONEXIÓN AUTOMÁTICA
+                        // =========================================================
+                        if (!window.autoLogoutFired) {
+                            window.autoLogoutFired = true; // Bloquea para que no mande la orden cada segundo
+                            console.log("⏱️ Límite excedido. Disparando desconexión automática a la extensión...");
+                            
+                            // Envía la orden para que el content_godsplan.js la atrape y desloguee TouchPoint
+                            window.postMessage({ type: 'GODSPLAN_ADMIN_COMMAND', action: 'FORCE_LOGOUT_TP' }, '*');
+                            
+                            // Avisa al asesor en la interfaz
+                            mostrarNotificacion("⏳ Límite de tiempo excedido. Se cerró tu sesión de TouchPoint por seguridad.", "error");
+                        }
                     }
 
                     if (transcurridoTotal > limiteSegundos) {
@@ -766,6 +784,7 @@
 
         function desactivarInterfazCronometro() {
             if(intervaloCronometro) clearInterval(intervaloCronometro);
+            window.autoLogoutFired = false; // Resetear al volver
             
             const stopContainer = document.getElementById('contenedor-stop');
             stopContainer.classList.add('opacity-0', 'translate-y-4');
@@ -809,6 +828,7 @@
         window.detenerCronometro = async function() {
             if(!sesionActivaActual || window.isPausing) return;
             window.isPausing = true; // Bloquea múltiples clics o señales rápidas de la extensión
+            window.autoLogoutFired = false; 
             
             if(intervaloCronometro) clearInterval(intervaloCronometro);
             const btn = document.getElementById('btn-detener-cronometro');
