@@ -3,9 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Control de Tiempos - Colaborador</title>
+    <title>Corpodatos - Control de Tiempos</title>
     
-    <!-- Fuentes y Tailwind -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
@@ -33,129 +32,78 @@
         .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
         .custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
         .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
-        
-        .glass-panel {
-            background: rgba(255, 255, 255, 0.90);
-            backdrop-filter: blur(12px);
-        }
+        .glass-panel { background: rgba(255, 255, 255, 0.90); backdrop-filter: blur(12px); }
+        @keyframes shimmer { 100% { transform: translateX(200%); } }
     </style>
 </head>
 <body class="bg-slate-50 min-h-screen font-sans text-slate-800 pb-10 selection:bg-blue-100 selection:text-blue-900 transition-colors duration-300">
 
-    <!-- Mensajes de Notificación Globales -->
+    <!-- Notificaciones -->
     <div id="notificacion" class="fixed top-6 left-1/2 transform -translate-x-1/2 z-[100] hidden max-w-md w-full bg-slate-900 text-white shadow-2xl rounded-2xl p-4 transition-all duration-300 flex items-center gap-3 border border-slate-700">
         <div id="notificacion-icon" class="text-2xl shrink-0"></div>
         <p class="font-medium text-sm flex-1" id="notificacion-texto"></p>
-        <button onclick="document.getElementById('notificacion').classList.add('hidden')" class="text-slate-400 hover:text-white transition-colors">
-            <i class="ph ph-x"></i>
-        </button>
+        <button onclick="document.getElementById('notificacion').classList.add('hidden')" class="text-slate-400 hover:text-white transition-colors"><i class="ph ph-x"></i></button>
     </div>
 
-    <!-- MODAL JUSTIFICACIÓN CALIDAD -->
-    <div id="modal-overlay" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 hidden flex items-center justify-center px-4 transition-opacity duration-300 opacity-0">
-        <div id="modal-calidad" class="bg-white rounded-3xl shadow-2xl w-full max-w-sm p-6 transform scale-95 transition-transform duration-300 hidden border border-transparent">
-            <div class="w-12 h-12 rounded-full bg-purple-100 flex items-center justify-center mb-4 mx-auto">
-                <i class="ph ph-star text-purple-600 text-2xl"></i>
-            </div>
-            <h3 class="text-xl font-bold text-slate-800 mb-2 text-center">Tiempo de Calidad</h3>
-            <p class="text-slate-500 text-sm mb-6 text-center">Ingresa el justificante o razón para usar este tiempo. Quedará registrado en tu bitácora.</p>
-            
-            <textarea id="calidad-justificacion" class="w-full border border-slate-300 rounded-xl p-3.5 mb-6 focus:ring-2 focus:ring-purple-100 focus:border-purple-500 outline-none resize-none h-24 text-sm transition-all shadow-sm" placeholder="Ej. Revisión de caso especial #123..."></textarea>
-            
-            <div class="flex gap-3">
-                <button onclick="cerrarModales()" class="flex-1 py-2.5 text-slate-600 bg-slate-100 hover:bg-slate-200 rounded-xl font-semibold transition-colors">Cancelar</button>
-                <button onclick="confirmarCalidad()" class="flex-1 py-2.5 bg-purple-600 hover:bg-purple-700 text-white rounded-xl font-semibold transition-colors shadow-sm shadow-purple-200 flex justify-center items-center gap-2">
-                    Iniciar <i class="ph ph-play"></i>
-                </button>
-            </div>
-        </div>
-    </div>
-
-    <!-- PANTALLA DE CARGA INICIAL -->
+    <!-- Pantallas Iniciales -->
     <div id="vista-cargando" class="flex flex-col items-center justify-center min-h-screen bg-slate-50">
-        <div class="relative">
-            <div class="loader mb-6 relative z-10"></div>
-            <div class="absolute inset-0 bg-blue-400 blur-xl opacity-20 rounded-full"></div>
-        </div>
+        <div class="relative"><div class="loader mb-6 relative z-10"></div><div class="absolute inset-0 bg-blue-400 blur-xl opacity-20 rounded-full"></div></div>
         <p class="text-slate-600 font-medium tracking-wide animate-pulse">Conectando a la nube...</p>
     </div>
 
-    <!-- PANTALLA ERROR DE ENTORNO -->
     <div id="vista-error" class="hidden flex flex-col items-center justify-center min-h-screen px-4 text-center bg-slate-50">
-        <div class="p-6 bg-red-100 rounded-full mb-6">
-            <i class="ph ph-shield-warning text-5xl text-red-600"></i>
-        </div>
+        <div class="p-6 bg-red-100 rounded-full mb-6"><i class="ph ph-shield-warning text-5xl text-red-600"></i></div>
         <h2 class="text-3xl font-bold text-slate-900 mb-3">Bloqueo de Seguridad</h2>
-        <p class="text-slate-500 mb-6 max-w-md">No hemos podido establecer conexión con la base de datos de tiempos. Verifica tu red o la configuración.</p>
+        <p class="text-slate-500 mb-6 max-w-md">No hemos podido establecer conexión. Verifica tu red.</p>
         <div id="texto-error-detalle" class="text-slate-700 max-w-lg bg-white p-4 rounded-xl border border-red-200 text-xs font-mono text-left shadow-sm mb-6 w-full overflow-x-auto"></div>
-        <button onclick="window.location.reload()" class="px-8 py-3 bg-slate-900 text-white font-semibold rounded-xl hover:bg-slate-800 transition-colors shadow-lg flex items-center gap-2">
-            <i class="ph ph-arrows-clockwise"></i> Reintentar
-        </button>
+        <button onclick="window.location.reload()" class="px-8 py-3 bg-slate-900 text-white font-semibold rounded-xl hover:bg-slate-800 transition-colors shadow-lg flex items-center gap-2"><i class="ph ph-arrows-clockwise"></i> Reintentar</button>
     </div>
 
-    <!-- PANTALLA LOGIN ÚNICO -->
+    <!-- LOGIN COLABORADOR -->
     <div id="vista-login-colaborador" class="hidden min-h-screen flex items-center justify-center px-4 relative overflow-hidden bg-slate-50">
-        <!-- Decoración de fondo -->
         <div class="absolute top-[-10%] right-[-10%] w-96 h-96 bg-blue-400 rounded-full mix-blend-multiply filter blur-3xl opacity-10 animate-pulse-slow"></div>
         <div class="absolute bottom-[-10%] left-[-10%] w-96 h-96 bg-emerald-400 rounded-full mix-blend-multiply filter blur-3xl opacity-10 animate-pulse-slow" style="animation-delay: 2s;"></div>
 
         <div class="bg-white p-8 md:p-10 rounded-3xl shadow-2xl border border-slate-100 w-full max-w-sm relative z-10 transform transition-all hover:scale-[1.01]">
-            <div class="w-16 h-16 bg-blue-50 rounded-2xl flex items-center justify-center mb-6 shadow-sm border border-blue-100 mx-auto">
+            <div class="w-16 h-16 bg-blue-50 rounded-2xl flex items-center justify-center mb-6 shadow-sm border border-blue-100 mx-auto transition-colors">
                 <i class="ph ph-identification-badge text-4xl text-blue-600"></i>
             </div>
             <h2 class="text-2xl font-bold text-slate-900 mb-1 text-center">Ingresa tu ID</h2>
-            <p class="text-slate-500 text-sm mb-8 font-medium text-center">Coloca tu número de identificación</p>
+            <p class="text-slate-500 text-sm mb-8 font-medium text-center">Control de Tiempos Personal</p>
             
             <div class="relative mb-6">
-                <input type="text" id="pin-empleado" autocomplete="off" placeholder="Ej. 1234" class="w-full text-center text-xl tracking-[0.2em] font-mono border-b-2 border-slate-200 bg-slate-50/50 rounded-t-xl p-4 focus:border-blue-600 outline-none transition-all placeholder:tracking-normal placeholder:font-sans placeholder:text-sm" onkeypress="if(event.key === 'Enter') loginEmpleado()">
+                <input type="text" id="pin-empleado" autocomplete="off" placeholder="Ej. 1234" class="w-full text-center text-xl tracking-[0.2em] font-mono border-b-2 border-slate-200 bg-slate-50/50 rounded-t-xl p-4 focus:border-blue-600 outline-none transition-all" onkeypress="if(event.key === 'Enter') loginEmpleado()">
             </div>
             
             <button onclick="loginEmpleado()" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3.5 rounded-xl shadow-lg shadow-blue-200 transition-all active:scale-95 flex items-center justify-center gap-2">
                 Acceder al Portal <i class="ph ph-arrow-right font-bold"></i>
             </button>
-
-            <!-- Acceso al Administrador -->
-            <div class="mt-8 text-center border-t border-slate-100 pt-6">
-                <a href="index.html" class="inline-flex items-center gap-1.5 text-xs font-semibold text-slate-400 hover:text-slate-600 transition-colors">
-                    <i class="ph ph-lock-key"></i> Acceso Administrador
-                </a>
-            </div>
         </div>
     </div>
 
-    <!-- PANTALLA PRINCIPAL COLABORADOR -->
+    <!-- PANEL PRINCIPAL COLABORADOR -->
     <div id="vista-empleado" class="hidden max-w-5xl mx-auto pt-4 sm:pt-8 px-4 pb-12">
-        
-        <!-- Header / Navbar -->
         <header class="glass-panel flex flex-col sm:flex-row justify-between items-center mb-6 p-4 sm:px-6 sm:py-4 rounded-2xl shadow-sm border border-slate-200 gap-4">
             <div class="flex items-center gap-4 w-full sm:w-auto">
-                <div class="w-12 h-12 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center shrink-0 border border-blue-200 shadow-inner">
-                    <i class="ph ph-user text-2xl"></i>
-                </div>
+                <div class="w-12 h-12 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center shrink-0 border border-blue-200 shadow-inner"><i class="ph ph-user text-2xl"></i></div>
                 <div class="flex-1 min-w-0">
                     <h1 class="text-xl font-bold text-slate-800 leading-tight truncate">Hola, <span id="nombre-empleado-display" class="text-blue-600"></span></h1>
                     <p class="text-sm text-slate-500 font-mono mt-0.5">ID: <span id="id-empleado-display"></span></p>
                 </div>
             </div>
-            
             <div class="flex items-center gap-4 sm:gap-6 w-full sm:w-auto justify-between sm:justify-end border-t sm:border-0 border-slate-100 pt-4 sm:pt-0">
                 <div class="flex items-center gap-3 bg-white px-4 py-2 rounded-xl border border-slate-200 shadow-sm">
                     <span id="syncDot" class="w-2.5 h-2.5 rounded-full bg-amber-500 inline-block shadow-[0_0_8px_rgba(245,158,11,0.6)]"></span>
                     <div id="reloj-display-empleado" class="font-mono text-sm font-bold text-slate-700 tracking-wider">--:--:--</div>
                 </div>
-                
                 <button onclick="cerrarSesionGeneral()" class="text-slate-500 hover:text-red-600 bg-white hover:bg-red-50 p-2 sm:px-4 sm:py-2 border border-slate-200 rounded-xl transition-all flex items-center gap-2 font-semibold text-sm shadow-sm" title="Cerrar Sesión">
                     <span class="hidden sm:inline">Salir</span> <i class="ph ph-sign-out text-xl"></i>
                 </button>
             </div>
         </header>
 
-        <!-- Panel Principal Unificado -->
         <div id="panel-principal" class="bg-white rounded-3xl shadow-md border border-slate-200 p-5 sm:p-8 mb-8 relative overflow-hidden transition-all duration-300">
-            
-            <!-- Decoración sutil -->
             <div class="absolute top-0 left-0 w-full h-1.5 bg-gradient-to-r from-blue-400 via-purple-400 to-orange-400 opacity-80"></div>
-
             <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 sm:mb-8 gap-2">
                 <div>
                     <h2 class="text-2xl font-bold text-slate-800" id="titulo-panel-empleado">Tus Tiempos</h2>
@@ -167,74 +115,41 @@
             </div>
 
             <div class="grid grid-cols-1 sm:grid-cols-3 gap-5 sm:gap-6">
-                
                 <!-- Botón Baño -->
                 <button id="btn-Baño" onclick="iniciarCronometro('Baño')" class="flex flex-col items-center justify-center p-6 sm:p-8 rounded-2xl relative border-2 border-slate-100 hover:border-blue-300 hover:bg-blue-50/50 hover:shadow-lg hover:-translate-y-1 transition-all duration-300 cursor-pointer bg-white group overflow-hidden">
-                    <div class="absolute top-3 right-3 opacity-0 group-hover:opacity-100 transition-opacity hidden" id="play-Baño">
-                        <span class="relative flex h-4 w-4">
-                          <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75"></span>
-                          <span class="relative inline-flex rounded-full h-4 w-4 bg-blue-500"></span>
-                        </span>
-                    </div>
-                    
-                    <div class="w-14 h-14 bg-blue-50 text-blue-500 rounded-full flex items-center justify-center mb-4 group-hover:bg-blue-500 group-hover:text-white transition-colors duration-300">
-                        <i class="ph-fill ph-toilet text-3xl"></i>
-                    </div>
+                    <div class="absolute top-3 right-3 opacity-0 group-hover:opacity-100 transition-opacity hidden" id="play-Baño"><span class="relative flex h-4 w-4"><span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75"></span><span class="relative inline-flex rounded-full h-4 w-4 bg-blue-500"></span></span></div>
+                    <div class="w-14 h-14 bg-blue-50 text-blue-500 rounded-full flex items-center justify-center mb-4 group-hover:bg-blue-500 group-hover:text-white transition-colors duration-300"><i class="ph-fill ph-toilet text-3xl"></i></div>
                     <h3 class="text-sm font-bold uppercase tracking-widest text-slate-400 mb-1 group-hover:text-blue-600 transition-colors">Baño</h3>
-                    
                     <div class="font-mono font-black text-4xl sm:text-5xl text-slate-800 tabular-nums my-3 transition-colors tracking-tight" id="disp-Baño">00:00</div>
-                    
                     <div class="flex items-center justify-between w-full px-2 mt-2">
                         <div class="text-xs text-slate-400 font-medium">Límite: <span id="lim-Baño">15</span>m</div>
                         <div id="rem-Baño" class="text-xs font-extrabold text-slate-500 bg-slate-100 px-2 py-1 rounded-md transition-colors">Restan: --</div>
                     </div>
                 </button>
-                
                 <!-- Botón Comida -->
                 <button id="btn-Comida" onclick="iniciarCronometro('Comida')" class="flex flex-col items-center justify-center p-6 sm:p-8 rounded-2xl relative border-2 border-slate-100 hover:border-orange-300 hover:bg-orange-50/50 hover:shadow-lg hover:-translate-y-1 transition-all duration-300 cursor-pointer bg-white group overflow-hidden">
-                    <div class="absolute top-3 right-3 opacity-0 group-hover:opacity-100 transition-opacity hidden" id="play-Comida">
-                        <span class="relative flex h-4 w-4">
-                          <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-orange-400 opacity-75"></span>
-                          <span class="relative inline-flex rounded-full h-4 w-4 bg-orange-500"></span>
-                        </span>
-                    </div>
-                    
-                    <div class="w-14 h-14 bg-orange-50 text-orange-500 rounded-full flex items-center justify-center mb-4 group-hover:bg-orange-500 group-hover:text-white transition-colors duration-300">
-                        <i class="ph-fill ph-hamburger text-3xl"></i>
-                    </div>
+                    <div class="absolute top-3 right-3 opacity-0 group-hover:opacity-100 transition-opacity hidden" id="play-Comida"><span class="relative flex h-4 w-4"><span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-orange-400 opacity-75"></span><span class="relative inline-flex rounded-full h-4 w-4 bg-orange-500"></span></span></div>
+                    <div class="w-14 h-14 bg-orange-50 text-orange-500 rounded-full flex items-center justify-center mb-4 group-hover:bg-orange-500 group-hover:text-white transition-colors duration-300"><i class="ph-fill ph-hamburger text-3xl"></i></div>
                     <h3 class="text-sm font-bold uppercase tracking-widest text-slate-400 mb-1 group-hover:text-orange-600 transition-colors">Comida</h3>
-                    
                     <div class="font-mono font-black text-4xl sm:text-5xl text-slate-800 tabular-nums my-3 transition-colors tracking-tight" id="disp-Comida">00:00</div>
-                    
                     <div class="flex items-center justify-between w-full px-2 mt-2">
                         <div class="text-xs text-slate-400 font-medium">Límite: <span id="lim-Comida">30</span>m</div>
                         <div id="rem-Comida" class="text-xs font-extrabold text-slate-500 bg-slate-100 px-2 py-1 rounded-md transition-colors">Restan: --</div>
                     </div>
                 </button>
-
                 <!-- Botón Calidad -->
                 <button id="btn-Calidad" onclick="abrirModalCalidad()" class="flex flex-col items-center justify-center p-6 sm:p-8 rounded-2xl relative border-2 border-slate-100 hover:border-purple-300 hover:bg-purple-50/50 hover:shadow-lg hover:-translate-y-1 transition-all duration-300 cursor-pointer bg-white group overflow-hidden">
-                    <div class="absolute top-3 right-3 opacity-0 group-hover:opacity-100 transition-opacity hidden" id="play-Calidad">
-                        <span class="relative flex h-4 w-4">
-                          <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-purple-400 opacity-75"></span>
-                          <span class="relative inline-flex rounded-full h-4 w-4 bg-purple-500"></span>
-                        </span>
-                    </div>
-
-                    <div class="w-14 h-14 bg-purple-50 text-purple-500 rounded-full flex items-center justify-center mb-4 group-hover:bg-purple-500 group-hover:text-white transition-colors duration-300">
-                        <i class="ph-fill ph-star text-3xl"></i>
-                    </div>
+                    <div class="absolute top-3 right-3 opacity-0 group-hover:opacity-100 transition-opacity hidden" id="play-Calidad"><span class="relative flex h-4 w-4"><span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-purple-400 opacity-75"></span><span class="relative inline-flex rounded-full h-4 w-4 bg-purple-500"></span></span></div>
+                    <div class="w-14 h-14 bg-purple-50 text-purple-500 rounded-full flex items-center justify-center mb-4 group-hover:bg-purple-500 group-hover:text-white transition-colors duration-300"><i class="ph-fill ph-star text-3xl"></i></div>
                     <h3 class="text-sm font-bold uppercase tracking-widest text-slate-400 mb-1 group-hover:text-purple-600 transition-colors">Calidad</h3>
-                    
                     <div class="font-mono font-black text-4xl sm:text-5xl text-slate-800 tabular-nums my-3 transition-colors tracking-tight" id="disp-Calidad">00:00</div>
-                    
                     <div class="flex items-center justify-between w-full px-2 mt-2">
                         <div class="text-[10px] text-purple-400 font-bold uppercase bg-purple-50 px-2 py-1 rounded w-full text-center" id="rem-Calidad">Requiere Justificación</div>
                     </div>
                 </button>
             </div>
 
-            <!-- Botón Pausar (Aparece cuando está activo) -->
+            <!-- Botón Pausar -->
             <div id="contenedor-stop" class="mt-8 hidden opacity-0 transition-all duration-500 transform translate-y-4">
                 <button id="btn-detener-cronometro" onclick="detenerCronometro()" class="w-full py-5 bg-red-500 hover:bg-red-600 text-white font-black rounded-2xl shadow-lg shadow-red-200 transition-all active:scale-[0.98] flex items-center justify-center gap-3 text-xl border-b-4 border-red-700 hover:border-red-800 disabled:opacity-50 disabled:cursor-not-allowed relative overflow-hidden group">
                     <div class="absolute inset-0 bg-white/20 transform -skew-x-12 -translate-x-full group-hover:animate-[shimmer_1.5s_infinite]"></div>
@@ -245,42 +160,45 @@
                     PAUSAR DESCANSO Y REGRESAR
                 </button>
             </div>
-            
-            <style>
-                @keyframes shimmer { 100% { transform: translateX(200%); } }
-            </style>
         </div>
 
-        <!-- Historial del Empleado -->
+        <!-- Historial -->
         <div id="panel-historial-empleado" class="bg-white rounded-3xl shadow-sm border border-slate-200 overflow-hidden">
             <div class="px-6 py-5 border-b border-slate-100 flex flex-wrap justify-between items-center gap-4 bg-slate-50/50">
-                <h2 class="text-lg font-bold text-slate-800 flex items-center gap-2">
-                    <i class="ph ph-clock-counter-clockwise text-blue-500 text-xl"></i> Mi Bitácora
-                </h2>
+                <h2 class="text-lg font-bold text-slate-800 flex items-center gap-2"><i class="ph ph-clock-counter-clockwise text-blue-500 text-xl"></i> Mi Bitácora</h2>
                 <div class="relative group">
-                    <i class="ph ph-calendar-blank absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400 group-focus-within:text-blue-500 transition-colors"></i>
-                    <input type="date" id="filtro-fecha-empleado" class="pl-10 pr-4 py-2 border border-slate-200 bg-white rounded-xl text-sm text-slate-600 font-medium outline-none focus:ring-2 focus:ring-blue-100 focus:border-blue-500 transition-all shadow-sm cursor-pointer" onchange="renderizarHistorialEmpleado()">
+                    <i class="ph ph-calendar-blank absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400"></i>
+                    <input type="date" id="filtro-fecha-empleado" class="pl-10 pr-4 py-2 border border-slate-200 bg-white rounded-xl text-sm text-slate-600 outline-none focus:ring-2 focus:ring-blue-100 transition-all cursor-pointer" onchange="renderizarHistorialEmpleado()">
                 </div>
             </div>
-            
             <div class="overflow-x-auto max-h-[400px] custom-scrollbar relative">
                 <table class="w-full text-left text-sm border-collapse min-w-[700px]">
                     <thead class="sticky top-0 bg-white/95 backdrop-blur-sm shadow-sm z-10 border-b border-slate-200">
                         <tr class="text-slate-500 uppercase text-[11px] tracking-wider font-bold">
-                            <th class="px-6 py-4">Tipo</th>
-                            <th class="px-6 py-4 text-blue-600">Tiempo</th>
-                            <th class="px-6 py-4">Estado / Justificación</th>
-                            <th class="px-6 py-4 text-right">Hora (Fin)</th>
+                            <th class="px-6 py-4">Tipo</th><th class="px-6 py-4 text-blue-600">Tiempo</th><th class="px-6 py-4">Estado / Justificación</th><th class="px-6 py-4 text-right">Hora (Fin)</th>
                         </tr>
                     </thead>
-                    <tbody id="tabla-registros-empleado" class="divide-y divide-slate-100">
-                        <!-- JS renderiza registros del empleado -->
-                    </tbody>
+                    <tbody id="tabla-registros-empleado" class="divide-y divide-slate-100"></tbody>
                 </table>
             </div>
         </div>
     </div>
 
+    <!-- Modal Calidad -->
+    <div id="modal-overlay" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 hidden flex items-center justify-center px-4 transition-opacity duration-300 opacity-0">
+        <div id="modal-calidad" class="bg-white rounded-3xl shadow-2xl w-full max-w-sm p-6 transform scale-95 transition-transform duration-300 hidden border border-transparent">
+            <div class="w-12 h-12 rounded-full bg-purple-100 flex items-center justify-center mb-4 mx-auto"><i class="ph ph-star text-purple-600 text-2xl"></i></div>
+            <h3 class="text-xl font-bold text-slate-800 mb-2 text-center">Tiempo de Calidad</h3>
+            <p class="text-slate-500 text-sm mb-6 text-center">Ingresa el justificante para usar este tiempo.</p>
+            <textarea id="calidad-justificacion" class="w-full border border-slate-300 rounded-xl p-3.5 mb-6 focus:ring-2 focus:ring-purple-100 focus:border-purple-500 outline-none resize-none h-24 text-sm transition-all shadow-sm" placeholder="Ej. Revisión de caso especial #123..."></textarea>
+            <div class="flex gap-3">
+                <button onclick="cerrarModales()" class="flex-1 py-2.5 text-slate-600 bg-slate-100 hover:bg-slate-200 rounded-xl font-semibold transition-colors">Cancelar</button>
+                <button onclick="confirmarCalidad()" class="flex-1 py-2.5 bg-purple-600 hover:bg-purple-700 text-white rounded-xl font-semibold transition-colors shadow-sm shadow-purple-200 flex justify-center items-center gap-2">Iniciar <i class="ph ph-play"></i></button>
+            </div>
+        </div>
+    </div>
+
+    <!-- SCRIPT FIREBASE & LÓGICA -->
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
@@ -288,10 +206,8 @@
 
         let app, auth, db;
         let conectado = false;
-
         const PASSWORD_DEFAULT = "CorpoDatos2024!";
-        const EMAIL_ADMIN = "admin@corpodatos.com";
-
+        
         try {
             const firebaseConfig = {
                 apiKey: "AIzaSyDT7iPaeRjlt-WIWWzwBh3deN2z_E-b2JA",
@@ -306,72 +222,26 @@
             db = getFirestore(app);
             conectado = true;
         } catch (error) {
-            console.error("No se pudo iniciar Firebase:", error);
             document.getElementById('texto-error-detalle').innerHTML = `<strong>Error de Configuración:</strong> ${error.message}`;
-            ['vista-cargando', 'vista-login-colaborador', 'vista-empleado'].forEach(v => {
-                const el = document.getElementById(v);
-                if(el) el.classList.add('hidden');
-            });
-            const errorView = document.getElementById('vista-error');
-            if(errorView) errorView.classList.remove('hidden');
+            ['vista-cargando', 'vista-login-colaborador', 'vista-empleado'].forEach(v => document.getElementById(v)?.classList.add('hidden'));
+            document.getElementById('vista-error')?.classList.remove('hidden');
         }
 
         let timeOffset = 0; 
-        
-        // --- SINCRONIZACIÓN NATIVA CON FIREBASE ---
-        async function sincronizarConFirebase(pin) {
-            try {
-                const start = Date.now();
-                const syncRef = doc(db, 'tiempos_acumulados', pin);
-                
-                await setDoc(syncRef, { _syncPing: serverTimestamp() }, { merge: true });
-                const syncSnap = await getDoc(syncRef);
-                const serverTime = syncSnap.data()._syncPing.toMillis();
-                const end = Date.now();
-                
-                timeOffset = serverTime - end + ((end - start) / 2);
-                
-                const el = document.getElementById('syncDot');
-                if (el) {
-                    el.classList.replace('bg-amber-500', 'bg-emerald-500');
-                    el.classList.replace('shadow-[0_0_8px_rgba(245,158,11,0.6)]', 'shadow-[0_0_8px_rgba(16,185,129,0.6)]');
-                    el.setAttribute('title', 'Hora sincronizada con la nube');
-                }
-            } catch (e) {
-                console.warn("Sincronización con Firebase fallida", e);
-                timeOffset = 0;
-            }
-        }
-
-        function getHoraReal() { return Date.now() + timeOffset; }
-
-        setInterval(() => {
-            const ahora = new Date(getHoraReal());
-            const empDisplay = document.getElementById('reloj-display-empleado');
-            if(empDisplay) empDisplay.textContent = ahora.toLocaleTimeString('es-ES', { hour12: false });
-        }, 1000);
-
-
-        // --- Variables de Estado ---
-        let usuarioAutenticado = null;
-        let limitesGlobales = { bano: 15, comida: 30 };
+        let limitesGlobales = { bano: 15, comida: 30, autoExpulsion: true };
         let empleadoActual = null; 
         let sesionActivaActual = null;
         let tiempoAcumuladoActual = { Baño: 0, Comida: 0, Calidad: 0, fecha: '' }; 
         let intervaloCronometro = null;
         let todosLosRegistros = [];
         
-        let unsubConfig = null, unsubMisDatos = null, unsubAcumulados = null, unsubMiSesion = null, unsubRegistros = null;
-        window.isPausing = false; // Seguro anti-duplicados
-        window.autoLogoutFired = false; // Seguro anti-bucle para la desconexión automática
+        let unsubConfig, unsubMisDatos, unsubAcumulados, unsubMiSesion, unsubRegistros, unsubComandos;
 
-        // ALERTA ANTES DE CERRAR LA PESTAÑA (Capa extra de seguridad contra tiempos fantasma)
+        window.isPausing = false;
+        window.autoLogoutFired = false; 
+
         window.addEventListener('beforeunload', (e) => {
-            if (sesionActivaActual) {
-                e.preventDefault();
-                e.returnValue = "Tienes un descanso en curso. Si cierras la ventana sin pausar, tu tiempo seguirá sumando en el sistema y podrías ser expulsado. ¿Estás seguro de que quieres salir?";
-                return e.returnValue;
-            }
+            if (sesionActivaActual) { e.preventDefault(); e.returnValue = "Tienes un descanso en curso."; return e.returnValue; }
         });
 
         function obtenerFechaHoy() {
@@ -380,39 +250,22 @@
         }
 
         window.mostrarVista = function(idVista) {
-            ['vista-cargando', 'vista-error', 'vista-login-colaborador', 'vista-empleado'].forEach(v => {
-                const el = document.getElementById(v);
-                if (el) el.classList.add('hidden');
-            });
-            const target = document.getElementById(idVista);
-            if (target) target.classList.remove('hidden');
+            ['vista-cargando', 'vista-error', 'vista-login-colaborador', 'vista-empleado'].forEach(v => document.getElementById(v)?.classList.add('hidden'));
+            document.getElementById(idVista)?.classList.remove('hidden');
         };
 
-        function mostrarNotificacion(mensaje, tipo = 'exito') {
+        window.mostrarNotificacion = function(mensaje, tipo = 'exito') {
             const noti = document.getElementById('notificacion');
             const texto = document.getElementById('notificacion-texto');
             const icon = document.getElementById('notificacion-icon');
             
-            if(tipo === 'error') {
-                icon.innerHTML = '<i class="ph ph-warning-circle text-red-400"></i>';
-                noti.classList.add('border-red-500/50');
-                noti.classList.remove('border-emerald-500/50');
-            } else {
-                icon.innerHTML = '<i class="ph ph-check-circle text-emerald-400"></i>';
-                noti.classList.add('border-emerald-500/50');
-                noti.classList.remove('border-red-500/50');
-            }
-            
+            icon.innerHTML = tipo === 'error' ? '<i class="ph ph-warning-circle text-red-400"></i>' : '<i class="ph ph-check-circle text-emerald-400"></i>';
+            noti.className = `fixed top-6 left-1/2 transform -translate-x-1/2 z-[100] max-w-md w-full bg-slate-900 text-white shadow-2xl rounded-2xl p-4 flex items-center gap-3 border ${tipo === 'error' ? 'border-red-500/50' : 'border-emerald-500/50'}`;
             texto.textContent = mensaje;
-            noti.classList.remove('hidden');
-            noti.style.top = '24px';
             
-            noti.animate([{ transform: 'translate(-50%, -20px)', opacity: 0 }, { transform: 'translate(-50%, 0)', opacity: 1 }], { duration: 300, fill: 'forwards', easing: 'ease-out' });
-            
-            setTimeout(() => {
-                noti.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 300, fill: 'forwards' }).onfinish = () => noti.classList.add('hidden');
-            }, 3500);
-        }
+            noti.animate([{ transform: 'translate(-50%, -20px)', opacity: 0 }, { transform: 'translate(-50%, 0)', opacity: 1 }], { duration: 300, fill: 'forwards' });
+            setTimeout(() => { noti.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 300, fill: 'forwards' }).onfinish = () => noti.classList.add('hidden'); }, 3500);
+        };
 
         function formatearTiempo(segundos) {
             const sign = segundos < 0 ? "-" : "";
@@ -422,20 +275,32 @@
             return `${sign}${m}:${s}`;
         }
 
+        async function sincronizarConFirebase(pin) {
+            try {
+                const start = Date.now();
+                const syncRef = doc(db, 'tiempos_acumulados', pin || 'sync_global');
+                await setDoc(syncRef, { _syncPing: serverTimestamp() }, { merge: true });
+                const syncSnap = await getDoc(syncRef);
+                const serverTime = syncSnap.data()._syncPing.toMillis();
+                const end = Date.now();
+                timeOffset = serverTime - end + ((end - start) / 2);
+                document.getElementById('syncDot')?.classList.replace('bg-amber-500', 'bg-emerald-500');
+            } catch (e) {}
+        }
+        function getHoraReal() { return Date.now() + timeOffset; }
+        setInterval(() => {
+            const ahora = new Date(getHoraReal());
+            const empDisplay = document.getElementById('reloj-display-empleado');
+            if(empDisplay) empDisplay.textContent = ahora.toLocaleTimeString('es-ES', { hour12: false });
+        }, 1000);
+
         if (conectado) {
             window.mostrarVista('vista-cargando');
-
             onAuthStateChanged(auth, (user) => {
-                if (user) {
-                    usuarioAutenticado = user;
-                    if (user.email === EMAIL_ADMIN) {
-                        window.location.href = 'index.html';
-                    } else {
-                        const pin = user.email.split('@')[0];
-                        validarEmpleadoYMostrar(pin);
-                    }
+                if (user && !user.email.includes('admin')) {
+                    validarEmpleadoYMostrar(user.email.split('@')[0]);
                 } else {
-                    usuarioAutenticado = null;
+                    if(user) signOut(auth);
                     window.mostrarVista('vista-login-colaborador');
                 }
             });
@@ -446,21 +311,15 @@
             if(!pinDigitado) return mostrarNotificacion('Ingresa tu ID para continuar', 'error');
             
             window.mostrarVista('vista-cargando');
-
             const emailFicticio = `${pinDigitado}@corpodatos.com`;
             try {
                 await signInWithEmailAndPassword(auth, emailFicticio, PASSWORD_DEFAULT);
             } catch (error) {
                 if (error.code === 'auth/user-not-found' || error.code === 'auth/invalid-credential' || error.code === 'auth/invalid-login-credentials') {
-                    try {
-                        await createUserWithEmailAndPassword(auth, emailFicticio, PASSWORD_DEFAULT);
-                    } catch (err2) {
-                        window.mostrarVista('vista-login-colaborador');
-                        mostrarNotificacion('Error del sistema al crear ID', 'error');
-                    }
+                    try { await createUserWithEmailAndPassword(auth, emailFicticio, PASSWORD_DEFAULT); } 
+                    catch (err2) { window.mostrarVista('vista-login-colaborador'); mostrarNotificacion('Error del sistema al crear ID', 'error'); }
                 } else {
-                    window.mostrarVista('vista-login-colaborador');
-                    mostrarNotificacion('Error de conexión a la Base de Datos', 'error');
+                    window.mostrarVista('vista-login-colaborador'); mostrarNotificacion('Error de conexión a la Base de Datos', 'error');
                 }
             }
         };
@@ -472,14 +331,10 @@
                 empleadoActual = todos.find(c => c.pin === pin);
                 
                 if (!empleadoActual) {
-                    await signOut(auth); 
-                    mostrarNotificacion('Tu ID no ha sido registrado por el administrador.', 'error');
-                    return; 
+                    await signOut(auth); mostrarNotificacion('Tu ID no ha sido registrado por el administrador.', 'error'); return; 
                 }
 
                 await sincronizarConFirebase(pin);
-
-                // --- REGISTRO DE INICIO/FIN DE JORNADA ---
                 const hoy = obtenerFechaHoy();
                 const acumRef = doc(db, 'tiempos_acumulados', pin);
                 const acumSnap = await getDoc(acumRef);
@@ -489,123 +344,60 @@
                     updateData.finJornada = getHoraReal(); 
                     if (!acumSnap.data().inicioJornada) updateData.inicioJornada = getHoraReal();
                 } else {
-                    updateData = {
-                        Baño: 0, Comida: 0, Calidad: 0,
-                        fecha: hoy,
-                        inicioJornada: getHoraReal(),
-                        finJornada: getHoraReal(),
-                        ultimaActualizacion: getHoraReal()
-                    };
+                    updateData = { Baño: 0, Comida: 0, Calidad: 0, fecha: hoy, inicioJornada: getHoraReal(), finJornada: getHoraReal(), ultimaActualizacion: getHoraReal() };
                 }
                 await setDoc(acumRef, updateData, { merge: true });
-
-                const opcionesFecha = { weekday: 'long', year: 'numeric', month: 'short', day: 'numeric' };
-                const fechaString = new Date(getHoraReal()).toLocaleDateString('es-ES', opcionesFecha);
 
                 document.getElementById('nombre-empleado-display').textContent = empleadoActual.nombre;
                 document.getElementById('id-empleado-display').textContent = empleadoActual.pin;
                 document.getElementById('pin-empleado').value = ''; 
-                document.getElementById('fecha-empleado-display').textContent = fechaString;
-                document.getElementById('filtro-fecha-empleado').value = obtenerFechaHoy();
+                document.getElementById('fecha-empleado-display').textContent = new Date(getHoraReal()).toLocaleDateString('es-ES', { weekday: 'long', year: 'numeric', month: 'short', day: 'numeric' });
+                document.getElementById('filtro-fecha-empleado').value = hoy;
                 
                 window.mostrarVista('vista-empleado');
                 iniciarEscuchasEmpleado();
-            } catch (error) {
-                await signOut(auth);
-                mostrarNotificacion('Error al leer datos. Contacta al administrador.', 'error');
-            }
+            } catch (error) { await signOut(auth); mostrarNotificacion('Error al leer datos.', 'error'); }
         }
-
-        window.cerrarSesionGeneral = async function() {
-            if(intervaloCronometro) clearInterval(intervaloCronometro);
-            
-            // --- FIX CRÍTICO (TIEMPOS FANTASMA): DETENER CRONÓMETRO ANTES DE SALIR ---
-            if (sesionActivaActual) {
-                try {
-                    const btn = document.getElementById('btn-detener-cronometro');
-                    if (btn) {
-                        btn.disabled = true;
-                        btn.innerHTML = '<i class="ph ph-spinner animate-spin text-2xl"></i> Pausando y saliendo...';
-                    }
-                    await window.detenerCronometro(); // Esto pausa el tiempo y lo guarda en Firebase
-                } catch(e) {
-                    console.error("Error intentando detener cronómetro antes de salir:", e);
-                }
-            }
-
-            if (empleadoActual) {
-                try {
-                    await setDoc(doc(db, 'tiempos_acumulados', empleadoActual.pin), {
-                        finJornada: getHoraReal(),
-                        ultimaActualizacion: getHoraReal()
-                    }, { merge: true });
-                } catch(e) { console.error("Error guardando fin de jornada", e); }
-            }
-
-            if(unsubMiSesion) unsubMiSesion();
-            if(unsubConfig) unsubConfig();
-            if(unsubAcumulados) unsubAcumulados();
-            if(unsubMisDatos) unsubMisDatos();
-            if(unsubRegistros) unsubRegistros();
-            
-            empleadoActual = null;
-            sesionActivaActual = null; // IMPORTANTE
-            await signOut(auth);
-        };
-
-        window.cerrarModales = function() {
-            const overlay = document.getElementById('modal-overlay');
-            const modal = document.getElementById('modal-calidad');
-            overlay.classList.add('opacity-0');
-            modal.classList.add('scale-95');
-            setTimeout(() => {
-                overlay.classList.add('hidden');
-                modal.classList.add('hidden');
-            }, 300);
-        };
 
         function iniciarEscuchasEmpleado() {
             unsubMisDatos = onSnapshot(doc(db, 'colaboradores', empleadoActual.docId), (docSnap) => {
-                if(docSnap.exists()){
-                    empleadoActual = { docId: docSnap.id, ...docSnap.data() };
-                    actualizarDisplaysInactivos();
-                }
+                if(docSnap.exists()){ empleadoActual = { docId: docSnap.id, ...docSnap.data() }; actualizarDisplaysInactivos(); }
             });
 
             unsubConfig = onSnapshot(doc(db, 'config', 'global'), (docSnap) => {
-                if(docSnap.exists()) {
-                    limitesGlobales = docSnap.data();
-                    actualizarDisplaysInactivos();
-                }
+                if(docSnap.exists()) { limitesGlobales = { autoExpulsion: true, ...docSnap.data() }; actualizarDisplaysInactivos(); }
             });
 
             unsubAcumulados = onSnapshot(doc(db, 'tiempos_acumulados', empleadoActual.pin), (docSnap) => {
-                const hoy = obtenerFechaHoy();
-                let data = docSnap.data();
-                
+                const hoy = obtenerFechaHoy(); let data = docSnap.data();
                 if(!data || data.fecha !== hoy) {
                     data = { Baño: 0, Comida: 0, Calidad: 0, fecha: hoy, ultimaActualizacion: getHoraReal() };
                     setDoc(doc(db, 'tiempos_acumulados', empleadoActual.pin), data, { merge: true });
                 }
-                
-                tiempoAcumuladoActual = data;
-                actualizarDisplaysInactivos();
+                tiempoAcumuladoActual = data; actualizarDisplaysInactivos();
             });
 
             unsubMiSesion = onSnapshot(doc(db, 'sesiones_activas', empleadoActual.pin), (docSnap) => {
-                if(docSnap.exists()) {
-                    sesionActivaActual = docSnap.data();
-                    activarInterfazCronometro(sesionActivaActual);
-                } else {
-                    sesionActivaActual = null;
-                    desactivarInterfazCronometro();
-                }
+                if(docSnap.exists()) { sesionActivaActual = docSnap.data(); activarInterfazCronometro(sesionActivaActual); } 
+                else { sesionActivaActual = null; desactivarInterfazCronometro(); }
             });
 
             unsubRegistros = onSnapshot(collection(db, 'registros'), (snap) => {
-                todosLosRegistros = snap.docs.map(d => d.data());
-                todosLosRegistros.sort((a, b) => b.fin - a.fin);
+                todosLosRegistros = snap.docs.map(d => d.data()).sort((a, b) => b.fin - a.fin);
                 renderizarHistorialEmpleado(); 
+            });
+
+            // ESCUCHA COMANDOS DEL ADMIN PARA CERRAR SU PROPIO TOUCHPOINT
+            unsubComandos = onSnapshot(doc(db, 'comandos_admin', empleadoActual.pin), (docSnap) => {
+                if(docSnap.exists()) {
+                    const data = docSnap.data();
+                    if(data.comando === 'FORCE_LOGOUT_TP' && (Date.now() - data.timestamp < 15000)) {
+                        console.log("Comando Admin recibido. Auto-expulsando.");
+                        window.postMessage({ type: 'GODSPLAN_ADMIN_COMMAND', action: 'FORCE_LOGOUT_TP' }, '*');
+                        mostrarNotificacion('El administrador ha cerrado tu sesión remotamente.', 'error');
+                        setTimeout(() => { if(sesionActivaActual) window.detenerCronometro(); }, 3000);
+                    }
+                }
             });
         }
 
@@ -617,14 +409,12 @@
 
         function actualizarDisplaysInactivos() {
             if(sesionActivaActual) return; 
-            
             document.getElementById('lim-Baño').textContent = obtenerLimiteActual('Baño');
             document.getElementById('lim-Comida').textContent = obtenerLimiteActual('Comida');
 
             ['Baño', 'Comida', 'Calidad'].forEach(tipo => {
                 const acumulado = tiempoAcumuladoActual[tipo] || 0;
-                const limiteMinutos = obtenerLimiteActual(tipo);
-                const limiteSegundos = limiteMinutos * 60;
+                const limiteSegundos = obtenerLimiteActual(tipo) * 60;
                 const restante = limiteSegundos - acumulado;
 
                 const disp = document.getElementById('disp-' + tipo);
@@ -638,16 +428,12 @@
                         rem.innerHTML = `Restan: ${formatearTiempo(restante)}`;
                         rem.className = "text-xs font-extrabold text-slate-500 bg-slate-100 px-2 py-1 rounded-md transition-colors";
                         disp.className = "font-mono font-black text-4xl sm:text-5xl text-slate-800 tabular-nums my-3 transition-colors tracking-tight";
-                        // Reset borders
-                        btn.classList.remove('border-red-300', 'bg-red-50/50');
-                        btn.classList.add('border-slate-100', 'bg-white');
+                        btn.classList.remove('border-red-300', 'bg-red-50/50'); btn.classList.add('border-slate-100', 'bg-white');
                     } else {
                         rem.innerHTML = `Excedido: ${formatearTiempo(Math.abs(restante))}`;
                         rem.className = "text-xs font-extrabold text-red-600 bg-red-100 px-2 py-1 rounded-md transition-colors animate-pulse";
                         disp.className = "font-mono font-black text-4xl sm:text-5xl text-red-600 tabular-nums my-3 transition-colors tracking-tight";
-                        // Highlight exceeded card
-                        btn.classList.add('border-red-300', 'bg-red-50/50');
-                        btn.classList.remove('border-slate-100', 'bg-white');
+                        btn.classList.add('border-red-300', 'bg-red-50/50'); btn.classList.remove('border-slate-100', 'bg-white');
                     }
                 }
             });
@@ -655,55 +441,33 @@
 
         window.iniciarCronometro = async function(tipo, justificacion = '') {
             if(!empleadoActual || sesionActivaActual) return;
-            
-            const nuevaSesion = {
-                pin: empleadoActual.pin,
-                nombre: empleadoActual.nombre,
-                tipo: tipo,
-                justificacion: justificacion,
-                inicio: getHoraReal()
-            };
-
-            try {
-                await setDoc(doc(db, 'sesiones_activas', empleadoActual.pin), nuevaSesion);
-            } catch(e) {
-                mostrarNotificacion('Error al conectar con la base de datos.', 'error');
-            }
+            const nuevaSesion = { pin: empleadoActual.pin, nombre: empleadoActual.nombre, tipo: tipo, justificacion: justificacion, inicio: getHoraReal() };
+            try { await setDoc(doc(db, 'sesiones_activas', empleadoActual.pin), nuevaSesion); } catch(e) { mostrarNotificacion('Error de conexión', 'error'); }
         };
 
         window.abrirModalCalidad = function() {
             if(sesionActivaActual) return;
             document.getElementById('calidad-justificacion').value = '';
-            
-            const overlay = document.getElementById('modal-overlay');
-            const modal = document.getElementById('modal-calidad');
-            
-            overlay.classList.remove('hidden');
-            modal.classList.remove('hidden');
-            
-            setTimeout(() => {
-                overlay.classList.remove('opacity-0');
-                modal.classList.remove('scale-95');
-                document.getElementById('calidad-justificacion').focus();
-            }, 10);
+            document.getElementById('modal-overlay').classList.remove('hidden'); document.getElementById('modal-calidad').classList.remove('hidden');
+            setTimeout(() => { document.getElementById('modal-overlay').classList.remove('opacity-0'); document.getElementById('modal-calidad').classList.remove('scale-95'); document.getElementById('calidad-justificacion').focus(); }, 10);
         };
-
+        window.cerrarModales = function() {
+            document.getElementById('modal-overlay').classList.add('opacity-0'); document.getElementById('modal-calidad').classList.add('scale-95');
+            setTimeout(() => { document.getElementById('modal-overlay').classList.add('hidden'); document.getElementById('modal-calidad').classList.add('hidden'); }, 300);
+        };
         window.confirmarCalidad = function() {
             const val = document.getElementById('calidad-justificacion').value.trim();
             if(!val) return mostrarNotificacion('La justificación es obligatoria', 'error');
-            cerrarModales();
-            iniciarCronometro('Calidad', val);
+            window.cerrarModales(); window.iniciarCronometro('Calidad', val);
         };
 
         function activarInterfazCronometro(datosSesion) {
-            window.autoLogoutFired = false; // Resetear seguro al iniciar un nuevo descanso
-
+            window.autoLogoutFired = false; 
             const stopContainer = document.getElementById('contenedor-stop');
             stopContainer.classList.remove('hidden');
             setTimeout(() => stopContainer.classList.remove('opacity-0', 'translate-y-4'), 10);
 
             document.getElementById('titulo-panel-empleado').textContent = "Descanso en Progreso";
-            
             const tipoActivo = datosSesion.tipo;
             
             ['Baño', 'Comida', 'Calidad'].forEach(t => {
@@ -713,24 +477,18 @@
                     btn.classList.remove('hover:-translate-y-1', 'hover:shadow-lg');
                 } else {
                     let colorCode = t==='Baño'?'blue':t==='Comida'?'orange':'purple';
-                    // Active Styling
                     btn.classList.add(`ring-4`, `ring-${colorCode}-200`, `border-${colorCode}-400`, `bg-${colorCode}-50`, 'scale-[1.02]');
                     btn.classList.remove('border-slate-100', 'bg-white', 'border-red-300', 'bg-red-50/50', `hover:border-${colorCode}-300`, `hover:bg-${colorCode}-50/50`, 'hover:-translate-y-1');
                     btn.onclick = null; 
-                    
-                    const playIcon = document.getElementById('play-' + t);
-                    playIcon.classList.remove('hidden', 'opacity-0');
-                    playIcon.classList.add('opacity-100');
+                    document.getElementById('play-' + t).classList.replace('hidden', 'opacity-100');
                 }
             });
 
-            const limiteMinutos = obtenerLimiteActual(tipoActivo);
-            const limiteSegundos = limiteMinutos * 60;
+            const limiteSegundos = obtenerLimiteActual(tipoActivo) * 60;
             const display = document.getElementById('disp-' + tipoActivo);
             const displayRestante = document.getElementById('rem-' + tipoActivo);
 
             if(intervaloCronometro) clearInterval(intervaloCronometro);
-            
             const tick = () => {
                 const acumuladoBase = tiempoAcumuladoActual[tipoActivo] || 0;
                 const transcurridoSegmento = Math.floor((getHoraReal() - datosSesion.inicio) / 1000);
@@ -746,96 +504,68 @@
                     if (restante > 0) {
                         displayRestante.innerHTML = `Restan: ${formatearTiempo(restante)}`;
                         displayRestante.className = "text-xs font-extrabold text-blue-700 bg-blue-100 px-2 py-1 rounded-md transition-colors shadow-sm";
-                        window.autoLogoutFired = false; // Se mantiene en falso si aún hay tiempo
+                        window.autoLogoutFired = false;
                     } else {
                         displayRestante.innerHTML = `Excedido: ${formatearTiempo(Math.abs(restante))}`;
                         displayRestante.className = "text-xs font-extrabold text-white bg-red-500 px-2 py-1 rounded-md transition-colors shadow-sm animate-pulse";
                         
-                        // =========================================================
-                        // NUEVO Y CORREGIDO: GATILLO DE DESCONEXIÓN AUTOMÁTICA
-                        // =========================================================
-                        // Damos 8 segundos de gracia al reconectar y, LO MÁS IMPORTANTE, detenemos el cronómetro local
-                        if (!window.autoLogoutFired && transcurridoSegmento > 8) {
-                            window.autoLogoutFired = true; // Bloquea para que no mande la orden cada milisegundo
-                            console.log("⏱️ Límite excedido. Disparando desconexión automática y deteniendo tiempo...");
-                            
-                            // 1. Envía la orden para que el content_godsplan.js la atrape y desloguee TouchPoint
+                        // ===== AUTO-LOGOUT LOCAL (EL CORAZÓN DEL SISTEMA) =====
+                        if (!window.autoLogoutFired && transcurridoSegmento > 2 && limitesGlobales.autoExpulsion !== false) {
+                            window.autoLogoutFired = true; 
+                            console.log("Límite excedido. Disparando cierre local a TouchPoint...");
                             window.postMessage({ type: 'GODSPLAN_ADMIN_COMMAND', action: 'FORCE_LOGOUT_TP' }, '*');
-                            mostrarNotificacion("⏳ Límite excedido. Se cerró tu sesión por seguridad.", "error");
+                            mostrarNotificacion("⏳ Límite de tiempo excedido. Auto-cerrando tu sesión...", "error");
                             
-                            // 2. LA PIEZA FALTANTE: Detenemos el cronómetro para que Firebase sepa que la sesión ya acabó
-                            window.detenerCronometro();
+                            // Forzamos el guardado de la DB pasados 4 segundos para darle tiempo a TouchPoint
+                            setTimeout(() => { if (sesionActivaActual) window.detenerCronometro(); }, 4000);
                         }
                     }
 
                     if (transcurridoTotal > limiteSegundos) {
-                        display.classList.add('text-red-600');
-                        display.classList.remove('text-slate-800');
-                        const btnActivo = document.getElementById('btn-' + tipoActivo);
-                        btnActivo.classList.add('border-red-400', 'bg-red-50', 'ring-red-200');
-                        
-                        let cCode = tipoActivo==='Baño'?'blue':'orange';
-                        btnActivo.classList.remove(`border-${cCode}-400`, `bg-${cCode}-50`, `ring-${cCode}-200`);
+                        display.classList.replace('text-slate-800', 'text-red-600');
+                        document.getElementById('btn-' + tipoActivo).classList.add('border-red-400', 'bg-red-50', 'ring-red-200');
                     }
                 }
             };
-            
-            tick();
-            intervaloCronometro = setInterval(tick, 1000);
+            tick(); intervaloCronometro = setInterval(tick, 1000);
         }
 
         function desactivarInterfazCronometro() {
             if(intervaloCronometro) clearInterval(intervaloCronometro);
-            window.autoLogoutFired = false; // Resetear al volver
+            window.autoLogoutFired = false; 
             
-            const stopContainer = document.getElementById('contenedor-stop');
-            stopContainer.classList.add('opacity-0', 'translate-y-4');
-            setTimeout(() => stopContainer.classList.add('hidden'), 300);
+            document.getElementById('contenedor-stop').classList.add('opacity-0', 'translate-y-4');
+            setTimeout(() => document.getElementById('contenedor-stop').classList.add('hidden'), 300);
 
             document.getElementById('titulo-panel-empleado').textContent = "Tus Tiempos";
             
             ['Baño', 'Comida', 'Calidad'].forEach(t => {
                 const btn = document.getElementById('btn-' + t);
                 let colorCode = t==='Baño'?'blue':t==='Comida'?'orange':'purple';
-                
-                // Reset Classes to idle state
                 btn.className = `flex flex-col items-center justify-center p-6 sm:p-8 rounded-2xl relative border-2 border-slate-100 hover:border-${colorCode}-300 hover:bg-${colorCode}-50/50 hover:shadow-lg hover:-translate-y-1 transition-all duration-300 cursor-pointer bg-white group overflow-hidden`;
-                
                 if(t==='Baño') btn.onclick = () => iniciarCronometro(t);
                 if(t==='Comida') btn.onclick = () => iniciarCronometro(t);
                 if(t==='Calidad') btn.onclick = () => abrirModalCalidad();
-                
-                const playIcon = document.getElementById('play-' + t);
-                playIcon.classList.add('opacity-0');
-                setTimeout(() => playIcon.classList.add('hidden'), 300);
+                document.getElementById('play-' + t).classList.add('opacity-0');
             });
             
-            const remCalidad = document.getElementById('rem-Calidad');
-            remCalidad.textContent = 'Requiere Justificación';
-            remCalidad.className = 'text-[10px] text-purple-400 font-bold uppercase bg-purple-50 px-2 py-1 rounded w-full text-center transition-colors';
-
+            document.getElementById('rem-Calidad').textContent = 'Requiere Justificación';
+            document.getElementById('rem-Calidad').className = 'text-[10px] text-purple-400 font-bold uppercase bg-purple-50 px-2 py-1 rounded w-full text-center transition-colors';
+            
             const btnStop = document.getElementById('btn-detener-cronometro');
             btnStop.disabled = false;
-            btnStop.innerHTML = `
-                <div class="absolute inset-0 bg-white/20 transform -skew-x-12 -translate-x-full group-hover:animate-[shimmer_1.5s_infinite]"></div>
-                <span class="relative flex h-5 w-5 mr-1">
-                    <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-white opacity-75"></span>
-                    <span class="relative inline-flex rounded-full h-5 w-5 bg-white flex items-center justify-center"><div class="w-2 h-2 bg-red-600 rounded-sm"></div></span>
-                </span>
-                PAUSAR DESCANSO Y REGRESAR`;
+            btnStop.innerHTML = `<div class="absolute inset-0 bg-white/20 transform -skew-x-12 -translate-x-full group-hover:animate-[shimmer_1.5s_infinite]"></div><span class="relative flex h-5 w-5 mr-1"><span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-white opacity-75"></span><span class="relative inline-flex rounded-full h-5 w-5 bg-white flex items-center justify-center"><div class="w-2 h-2 bg-red-600 rounded-sm"></div></span></span>PAUSAR DESCANSO Y REGRESAR`;
             
             actualizarDisplaysInactivos(); 
         }
 
         window.detenerCronometro = async function() {
             if(!sesionActivaActual || window.isPausing) return;
-            window.isPausing = true; // Bloquea múltiples clics o señales rápidas de la extensión
-            window.autoLogoutFired = false; 
+            window.isPausing = true; 
             
             if(intervaloCronometro) clearInterval(intervaloCronometro);
             const btn = document.getElementById('btn-detener-cronometro');
-            btn.disabled = true; 
-            btn.innerHTML = '<i class="ph ph-spinner animate-spin text-3xl"></i> Pausando...';
+            btn.disabled = true; btn.innerHTML = '<i class="ph ph-spinner animate-spin text-3xl"></i> Pausando...';
             
             const fin = getHoraReal();
             const transcurridoSegmento = Math.floor((fin - sesionActivaActual.inicio) / 1000);
@@ -844,101 +574,64 @@
 
             const limiteMin = obtenerLimiteActual(tipoActivo);
             let estado = "A tiempo";
-            if (tipoActivo !== 'Calidad' && nuevoAcumulado > (limiteMin * 60)) {
-                estado = "Excedido";
-            } else if (tipoActivo === 'Calidad') {
-                estado = "Registrado";
-            }
+            if (tipoActivo !== 'Calidad' && nuevoAcumulado > (limiteMin * 60)) estado = window.autoLogoutFired ? "Excedido (Expulsado)" : "Excedido";
+            else if (tipoActivo === 'Calidad') estado = "Registrado";
 
             const registroFinal = {
-                pin: sesionActivaActual.pin,
-                nombre: sesionActivaActual.nombre,
-                tipo: tipoActivo,
-                justificacion: sesionActivaActual.justificacion || '',
-                inicio: sesionActivaActual.inicio,
-                fin: fin,
-                fechaISO: obtenerFechaHoy(),
-                duracionSegundos: transcurridoSegmento,
-                duracionStr: formatearTiempo(transcurridoSegmento),
-                estado: estado
+                pin: sesionActivaActual.pin, nombre: sesionActivaActual.nombre, tipo: tipoActivo,
+                justificacion: sesionActivaActual.justificacion || '', inicio: sesionActivaActual.inicio,
+                fin: fin, fechaISO: obtenerFechaHoy(), duracionSegundos: transcurridoSegmento,
+                duracionStr: formatearTiempo(transcurridoSegmento), estado: estado
             };
 
             try {
                 await addDoc(collection(db, 'registros'), registroFinal);
-                
                 await setDoc(doc(db, 'tiempos_acumulados', empleadoActual.pin), {
-                    [tipoActivo]: nuevoAcumulado,
-                    fecha: obtenerFechaHoy(),
-                    ultimaActualizacion: fin,
-                    finJornada: fin 
+                    [tipoActivo]: nuevoAcumulado, fecha: obtenerFechaHoy(), ultimaActualizacion: fin, finJornada: fin 
                 }, { merge: true });
-                
                 await deleteDoc(doc(db, 'sesiones_activas', empleadoActual.pin));
                 
-                // Limpieza de variable local para evitar que se dispare dos veces si la extensión manda END_SHIFT
                 sesionActivaActual = null; 
-
                 mostrarNotificacion(`Agregaste ${formatearTiempo(transcurridoSegmento)} a tu cuenta.`);
             } catch(e) {
-                mostrarNotificacion('Error al pausar: Verifica conexión.', 'error');
-                btn.disabled = false;
-                btn.innerHTML = '<i class="ph ph-pause-circle text-2xl"></i> Reintentar Pausa';
-                intervaloCronometro = setInterval(() => {
-                    const trans = Math.floor((getHoraReal() - sesionActivaActual.inicio) / 1000) + (tiempoAcumuladoActual[tipoActivo]||0);
-                    document.getElementById('disp-' + tipoActivo).textContent = formatearTiempo(trans);
-                }, 1000);
-            } finally {
-                window.isPausing = false; // Libera el bloqueo una vez que Firebase termina de guardar
-            }
+                mostrarNotificacion('Error al pausar.', 'error');
+                btn.disabled = false; btn.innerHTML = '<i class="ph ph-pause-circle text-2xl"></i> Reintentar Pausa';
+            } finally { window.isPausing = false; }
         };
 
         window.renderizarHistorialEmpleado = function() {
             if (!empleadoActual) return;
-            
             const fechaFiltro = document.getElementById('filtro-fecha-empleado').value;
             const tabla = document.getElementById('tabla-registros-empleado');
-            if(!tabla) return;
             tabla.innerHTML = '';
             
             const misRegistros = todosLosRegistros.filter(r => r.pin === empleadoActual.pin && r.fechaISO === fechaFiltro);
-
-            if (misRegistros.length === 0) {
-                tabla.innerHTML = `<tr><td colspan="4" class="p-10 text-center text-slate-400 italic">No hay registros para la fecha seleccionada.</td></tr>`;
-                return;
-            }
+            if (misRegistros.length === 0) { tabla.innerHTML = `<tr><td colspan="4" class="p-10 text-center text-slate-400 italic">No hay registros para la fecha seleccionada.</td></tr>`; return; }
 
             misRegistros.forEach(reg => {
                 let badgeClass = reg.estado === 'A tiempo' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-red-50 text-red-700 border-red-200 font-bold';
                 if(reg.estado === 'Excedido (Expulsado)') badgeClass = 'bg-red-600 text-white border-red-700 font-bold shadow-sm';
                 if(reg.tipo === 'Calidad') badgeClass = 'bg-purple-50 text-purple-700 border-purple-200';
                 
-                const justificacionTxt = reg.justificacion ? `<div class="text-[11px] text-slate-500 italic mt-1 flex items-center gap-1"><i class="ph ph-chat-circle text-slate-400"></i> "${reg.justificacion}"</div>` : '';
-                
-                const fechaObj = new Date(reg.fin);
-                const horaStr = fechaObj.toLocaleTimeString([],{hour:'2-digit', minute:'2-digit'});
-                
-                let tipoIcon = reg.tipo === 'Baño' ? 'ph-fill ph-toilet text-blue-500 bg-blue-50' : (reg.tipo === 'Comida' ? 'ph-fill ph-hamburger text-orange-500 bg-orange-50' : 'ph-fill ph-star text-purple-500 bg-purple-50');
+                const justificacionTxt = reg.justificacion ? `<div class="text-[11px] text-slate-500 italic mt-1"><i class="ph ph-chat-circle"></i> "${reg.justificacion}"</div>` : '';
+                const horaStr = new Date(reg.fin).toLocaleTimeString([],{hour:'2-digit', minute:'2-digit'});
+                let tipoIcon = reg.tipo === 'Baño' ? 'ph-toilet text-blue-500' : (reg.tipo === 'Comida' ? 'ph-hamburger text-orange-500' : 'ph-star text-purple-500');
 
                 tabla.innerHTML += `
-                    <tr class="hover:bg-slate-50/80 transition-colors border-b border-slate-100 last:border-0">
-                        <td class="px-6 py-4">
-                            <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-bold text-slate-600 bg-white border border-slate-200 shadow-sm">
-                                <i class="${tipoIcon} p-1 rounded text-sm"></i> ${reg.tipo}
-                            </span>
-                        </td>
-                        <td class="px-6 py-4 font-mono font-black text-blue-600 text-lg tracking-wider">${reg.duracionStr}</td>
-                        <td class="px-6 py-4">
-                            <span class="px-2 py-0.5 text-[11px] rounded-md border inline-block ${badgeClass}">${reg.estado}</span>
-                            ${justificacionTxt}
-                        </td>
-                        <td class="px-6 py-4 text-right">
-                            <div class="inline-flex items-center gap-1.5 text-xs text-slate-500 font-medium bg-slate-50 px-2 py-1 rounded-md border border-slate-100">
-                                <i class="ph ph-clock"></i> ${horaStr}
-                            </div>
-                        </td>
-                    </tr>
-                `;
+                    <tr class="border-b border-slate-100">
+                        <td class="px-6 py-4"><span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-bold text-slate-600 bg-white border shadow-sm"><i class="ph-fill ${tipoIcon}"></i> ${reg.tipo}</span></td>
+                        <td class="px-6 py-4 font-mono font-black text-blue-600 tracking-wider">${reg.duracionStr}</td>
+                        <td class="px-6 py-4"><span class="px-2 py-0.5 text-[11px] rounded-md border inline-block ${badgeClass}">${reg.estado}</span>${justificacionTxt}</td>
+                        <td class="px-6 py-4 text-right text-xs text-slate-500 bg-slate-50"><i class="ph ph-clock"></i> ${horaStr}</td>
+                    </tr>`;
             });
+        };
+
+        window.cerrarSesionGeneral = async function() {
+            if(intervaloCronometro) clearInterval(intervaloCronometro);
+            if (sesionActivaActual) { try { await window.detenerCronometro(); } catch(e) {} }
+            if(unsubMiSesion) unsubMiSesion(); if(unsubConfig) unsubConfig(); if(unsubAcumulados) unsubAcumulados(); if(unsubMisDatos) unsubMisDatos(); if(unsubRegistros) unsubRegistros(); if(unsubComandos) unsubComandos();
+            empleadoActual = null; sesionActivaActual = null; await signOut(auth); window.location.reload();
         };
 
         window.addEventListener('message', (event) => {
@@ -946,29 +639,15 @@
             if (event.data && event.data.type === 'GODSPLAN_COMMAND') {
                 if (!empleadoActual) return;
                 switch (event.data.action) {
-                    case 'START_BREAK_BATH':
-                        if (!sesionActivaActual) window.iniciarCronometro('Baño');
-                        break;
-                    case 'START_BREAK_FOOD':
-                        if (!sesionActivaActual) window.iniciarCronometro('Comida');
-                        break;
-                    case 'RESUME_WORK':
-                        if (sesionActivaActual) window.detenerCronometro();
-                        break;
-                    case 'END_SHIFT':
-                        // Aquí modificamos para que NO cierre la sesión completa, solo detenga el reloj
-                        if (sesionActivaActual) window.detenerCronometro();
-                        break;
-                    case 'START_BREAK_CALIDAD':
-                        if (!sesionActivaActual) window.iniciarCronometro('Calidad', 'Activado vía TouchPoint');
-                        break;  
-                    case 'START_SHIFT':
-                        if (sesionActivaActual) window.detenerCronometro();
-                        break;
+                    case 'START_BREAK_BATH': if (!sesionActivaActual) window.iniciarCronometro('Baño'); break;
+                    case 'START_BREAK_FOOD': if (!sesionActivaActual) window.iniciarCronometro('Comida'); break;
+                    case 'RESUME_WORK': if (sesionActivaActual) window.detenerCronometro(); break;
+                    case 'END_SHIFT': if (sesionActivaActual) window.detenerCronometro(); break;
+                    case 'START_BREAK_CALIDAD': if (!sesionActivaActual) window.iniciarCronometro('Calidad', 'Activado vía TouchPoint'); break;  
+                    case 'START_SHIFT': if (sesionActivaActual) window.detenerCronometro(); break;
                 }
             }
         });
-
     </script>
 </body>
 </html>
