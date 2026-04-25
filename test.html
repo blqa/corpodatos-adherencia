@@ -1,0 +1,264 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tracker de Tiempos - Equipo</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-100 p-6 font-sans">
+
+    <div class="max-w-3xl mx-auto bg-white p-6 rounded-lg shadow-md">
+        <div class="flex justify-between items-center mb-6">
+            <h1 class="text-2xl font-bold text-gray-800">Control de Tiempos (AUX)</h1>
+            <div class="text-right">
+                <p class="text-sm text-gray-500">Asesor actual:</p>
+                <p id="nombre-asesor-display" class="font-bold text-blue-600">No identificado</p>
+                <button onclick="cerrarSesionLocal()" class="text-xs text-red-500 underline hidden" id="btn-cerrar-sesion">Cambiar Asesor</button>
+            </div>
+        </div>
+
+        <!-- Identificación del Asesor -->
+        <div id="panel-login" class="mb-8 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+            <h3 class="font-semibold mb-2">Ingresa tu ID de asesor para comenzar:</h3>
+            <div class="flex gap-2">
+                <input type="text" id="input-id" placeholder="Ej. 1001" class="border p-2 rounded w-full">
+                <button onclick="validarID()" id="btn-login" class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 transition">Ingresar</button>
+            </div>
+            <p id="login-error" class="text-red-500 text-sm mt-2 hidden">ID no encontrado. Verifica con tu supervisor.</p>
+        </div>
+
+        <div id="panel-controles" style="display: none;">
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+                <!-- BAÑO -->
+                <div class="border p-4 rounded-lg bg-teal-50 text-center relative">
+                    <h2 class="font-bold text-teal-800 mb-2">Baño <span id="lbl-limite-bano" class="text-xs"></span></h2>
+                    <p class="text-3xl font-mono mb-2" id="tiempo-bano">00:00</p>
+                    <p id="alerta-bano" class="text-red-500 text-sm font-bold hidden mb-2">¡Límite excedido!</p>
+                    <button onclick="toggleEstado('bano')" class="bg-teal-600 text-white px-4 py-2 rounded w-full hover:bg-teal-700 transition">Iniciar/Pausar</button>
+                </div>
+
+                <!-- COMIDA -->
+                <div class="border p-4 rounded-lg bg-orange-50 text-center relative">
+                    <h2 class="font-bold text-orange-800 mb-2">Comida <span id="lbl-limite-comida" class="text-xs"></span></h2>
+                    <p class="text-3xl font-mono mb-2" id="tiempo-comida">00:00</p>
+                    <p id="alerta-comida" class="text-red-500 text-sm font-bold hidden mb-2">¡Límite excedido!</p>
+                    <button onclick="toggleEstado('comida')" class="bg-orange-600 text-white px-4 py-2 rounded w-full hover:bg-orange-700 transition">Iniciar/Pausar</button>
+                </div>
+
+                <!-- CALIDAD -->
+                <div class="border p-4 rounded-lg bg-purple-50 text-center relative">
+                    <h2 class="font-bold text-purple-800 mb-2">Calidad <span id="lbl-limite-calidad" class="text-xs"></span></h2>
+                    <p class="text-3xl font-mono mb-2" id="tiempo-calidad">00:00</p>
+                    <p id="alerta-calidad" class="text-red-500 text-sm font-bold hidden mb-2">¡Límite excedido!</p>
+                    <button onclick="toggleEstado('calidad')" class="bg-purple-600 text-white px-4 py-2 rounded w-full hover:bg-purple-700 transition">Iniciar/Pausar</button>
+                </div>
+            </div>
+
+            <!-- Indicador de Extensión -->
+            <div class="text-center text-sm text-gray-500 border-t pt-4">
+                <span id="status-extension">⏳ Esperando conexión con TouchPoint...</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Cargar Firebase como Módulo -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getFirestore, collection, addDoc, serverTimestamp, doc, getDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        // Tu configuración de Firebase
+        const firebaseConfig = {
+            apiKey: "AIzaSyDT7iPaeRjlt-WIWWzwBh3deN2z_E-b2JA",
+            authDomain: "corpodatos-935f9.firebaseapp.com",
+            projectId: "corpodatos-935f9",
+            storageBucket: "corpodatos-935f9.firebasestorage.app",
+            messagingSenderId: "634601793039",
+            appId: "1:634601793039:web:4412da30d31ff6f6e5657a"
+        };
+
+        // Inicializar Firebase
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+
+        // --- VARIABLES DE LÓGICA ---
+        let asesorDatos = JSON.parse(localStorage.getItem('asesorDatos')) || null;
+        let tiempos = { bano: 0, comida: 0, calidad: 0 };
+        let estadoActivo = null;
+        let tiempoInicio = null;
+        let intervaloReloj = null;
+        let autoLogoutDisparado = false; // Evita disparos múltiples a la extensión
+
+        // --- INICIALIZACIÓN DE UI ---
+        if (asesorDatos) {
+            iniciarInterfazAsesor();
+        }
+
+        function iniciarInterfazAsesor() {
+            document.getElementById('nombre-asesor-display').innerText = `${asesorDatos.nombre} (ID: ${asesorDatos.id})`;
+            document.getElementById('btn-cerrar-sesion').classList.remove('hidden');
+            document.getElementById('panel-login').style.display = 'none';
+            document.getElementById('panel-controles').style.display = 'block';
+
+            // Mostrar límites configurados por el Admin
+            document.getElementById('lbl-limite-bano').innerText = `(${asesorDatos.limites.bano}m max)`;
+            document.getElementById('lbl-limite-comida').innerText = `(${asesorDatos.limites.comida}m max)`;
+            document.getElementById('lbl-limite-calidad').innerText = `(${asesorDatos.limites.calidad}m max)`;
+        }
+
+        window.validarID = async function() {
+            const inputId = document.getElementById('input-id').value.trim();
+            const btn = document.getElementById('btn-login');
+            const errorMsg = document.getElementById('login-error');
+            
+            if (inputId.length > 0) {
+                btn.innerText = "Buscando...";
+                btn.disabled = true;
+                errorMsg.classList.add('hidden');
+
+                try {
+                    const docRef = doc(db, "operadores", inputId);
+                    const docSnap = await getDoc(docRef);
+
+                    if (docSnap.exists()) {
+                        asesorDatos = { id: inputId, ...docSnap.data() };
+                        localStorage.setItem('asesorDatos', JSON.stringify(asesorDatos));
+                        iniciarInterfazAsesor();
+                    } else {
+                        errorMsg.innerText = "ID no encontrado. Verifica con tu supervisor.";
+                        errorMsg.classList.remove('hidden');
+                    }
+                } catch (error) {
+                    console.error("Error Firebase:", error);
+                    errorMsg.innerText = "Error de conexión con la base de datos.";
+                    errorMsg.classList.remove('hidden');
+                } finally {
+                    btn.innerText = "Ingresar";
+                    btn.disabled = false;
+                }
+            } else {
+                alert("Por favor ingresa tu ID.");
+            }
+        };
+
+        window.cerrarSesionLocal = function() {
+            localStorage.removeItem('asesorDatos');
+            location.reload();
+        };
+
+        // --- LÓGICA DE BOTONES (MANUAL) ---
+        window.toggleEstado = function(nuevoEstado) {
+            if (!asesorDatos) return alert("Primero ingresa tu ID");
+            
+            if (estadoActivo === nuevoEstado) {
+                forzarEstado(null); // Apagar si se presiona el mismo
+            } else {
+                forzarEstado(nuevoEstado); // Cambiar a uno nuevo
+            }
+        };
+
+        // --- LÓGICA CONTROLADA (PARA EXTENSIÓN Y BOTONES) ---
+        async function forzarEstado(nuevoEstado) {
+            let ahora = new Date();
+            autoLogoutDisparado = false; // Se resetea el seguro al cambiar de estado
+
+            // Si hay un estado activo, lo detenemos y GUARDAMOS en Firebase
+            if (estadoActivo !== null) {
+                clearInterval(intervaloReloj);
+                let segundosPasados = Math.floor((ahora.getTime() - tiempoInicio.getTime()) / 1000);
+                tiempos[estadoActivo] += segundosPasados;
+                
+                // Guardar en Firebase (Solo si duró más de 5 segundos para evitar clicks accidentales)
+                if (segundosPasados > 5) {
+                    try {
+                        await addDoc(collection(db, "registros_tiempos"), {
+                            asesor_id: asesorDatos.id,
+                            asesor_nombre: asesorDatos.nombre,
+                            estado: estadoActivo,
+                            duracion_segundos: segundosPasados,
+                            fecha: serverTimestamp()
+                        });
+                        console.log("Registro guardado en Firebase");
+                    } catch (e) {
+                        console.error("Error al guardar en Firebase:", e);
+                    }
+                }
+            }
+            
+            // Iniciar el nuevo estado
+            if (nuevoEstado !== null) {
+                estadoActivo = nuevoEstado;
+                tiempoInicio = ahora;
+                intervaloReloj = setInterval(actualizarPantalla, 1000);
+            } else {
+                estadoActivo = null; // Volvió a "Disponible/Trabajo"
+            }
+
+            actualizarPantalla();
+        }
+
+        // --- ACTUALIZAR PANTALLA ---
+        function actualizarPantalla() {
+            let ahora = new Date();
+            ['bano', 'comida', 'calidad'].forEach(estado => {
+                let segundosAMostrar = tiempos[estado];
+                
+                if (estadoActivo === estado && tiempoInicio) {
+                    segundosAMostrar += Math.floor((ahora.getTime() - tiempoInicio.getTime()) / 1000);
+                    document.getElementById(`tiempo-${estado}`).parentElement.classList.add('ring-4', 'ring-opacity-50');
+                } else {
+                    document.getElementById(`tiempo-${estado}`).parentElement.classList.remove('ring-4', 'ring-opacity-50');
+                }
+
+                let minutos = Math.floor(segundosAMostrar / 60);
+                let segundos = segundosAMostrar % 60;
+                document.getElementById(`tiempo-${estado}`).innerText = 
+                    `${minutos.toString().padStart(2, '0')}:${segundos.toString().padStart(2, '0')}`;
+
+                // --- VERIFICACIÓN DE LÍMITES DINÁMICOS Y LOGOUT AUTOMÁTICO ---
+                const limiteMinutos = asesorDatos.limites[estado] || 999;
+                const limiteSegundos = limiteMinutos * 60;
+
+                if (segundosAMostrar >= limiteSegundos) {
+                    document.getElementById(`alerta-${estado}`).style.display = 'block';
+                    
+                    // Si apenas rebasó el límite estando activo, lo sacamos remotamente
+                    if (estadoActivo === estado && !autoLogoutDisparado) {
+                        autoLogoutDisparado = true;
+                        
+                        const statusEl = document.getElementById('status-extension');
+                        statusEl.innerText = `⚠️ Límite de ${limiteMinutos}m alcanzado. Desconectando TouchPoint...`;
+                        statusEl.classList.add('text-red-600', 'font-bold');
+                        
+                        // Mandar la señal secreta a la extensión para ejecutar el Click de Logout
+                        window.postMessage({ type: 'GP_SERVER_LOGOUT' }, '*');
+                    }
+                } else {
+                    document.getElementById(`alerta-${estado}`).style.display = 'none';
+                }
+            });
+        }
+
+        // --- INTEGRACIÓN CON LA EXTENSIÓN (GOD'S PLAN) ---
+        window.addEventListener('message', (event) => {
+            // Recibimos el mensaje del content_godsplan.js
+            if (event.data && event.data.type === 'GODSPLAN_COMMAND') {
+                const action = event.data.action;
+                const statusEl = document.getElementById('status-extension');
+                
+                statusEl.innerText = `🟢 Conectado con TouchPoint - Última acción: ${action}`;
+                statusEl.classList.add('text-green-600');
+                statusEl.classList.remove('text-gray-500', 'text-red-600', 'font-bold');
+
+                if (!asesorDatos) return; // Si no ha puesto su ID, la extensión no acciona nada
+
+                if (action === 'START_BREAK_BATH') forzarEstado('bano');
+                else if (action === 'START_BREAK_FOOD') forzarEstado('comida');
+                else if (action === 'START_QUALITY') forzarEstado('calidad');
+                else if (action === 'RESUME_WORK') forzarEstado(null); 
+            }
+        });
+
+    </script>
+</body>
+</html>
