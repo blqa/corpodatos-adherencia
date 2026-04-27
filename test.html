@@ -152,6 +152,7 @@
         let estadoActivo = null; 
         let tiempoInicio = null;
         let autoLogoutDisparado = false;
+        let timeoutConexion; // SOLUCIÓN: Declarado al inicio para evitar el error de inicialización
 
         // Worker para mantener precisión del cronómetro en segundo plano
         const workerCode = `
@@ -192,8 +193,8 @@
             
             actualizarPantalla();
             
-            // Iniciar monitor de conexión de la extensión
-            setInterval(verificarSaludConexion, 3000);
+            // Iniciar monitor de conexión de la extensión (CADA 2 MINUTOS = 120000ms)
+            setInterval(verificarSaludConexion, 120000);
             verificarSaludConexion(); // Primera verificación inmediata
         }
 
@@ -357,8 +358,6 @@
         }
 
         // --- 5. MONITOREO DE SALUD DE LA EXTENSIÓN (PING / PONG) ---
-        let timeoutConexion;
-        
         function verificarSaludConexion() {
             // Mandamos un Ping preguntando "¿Estás ahí?"
             window.postMessage({ type: 'GP_PING' }, '*');
