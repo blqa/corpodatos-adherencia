@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Tracker de Tiempos</title>
-    <!-- Tailwind y Phosphor Icons para diseño profesional -->
+    <!-- Tailwind y Phosphor Icons -->
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/@phosphor-icons/web"></script>
     <script>
@@ -24,7 +24,6 @@
 <body class="bg-bg p-6 font-sans min-h-screen flex flex-col">
 
     <div class="max-w-5xl mx-auto w-full">
-        
         <!-- HEADER -->
         <div class="flex flex-col md:flex-row justify-between items-center mb-6 bg-card p-4 rounded-2xl shadow-sm border border-border">
             <div>
@@ -53,17 +52,17 @@
                 <i class="ph-bold ph-identification-card text-3xl"></i>
             </div>
             <h2 class="text-xl font-bold text-text mb-2">Ingreso de Agente</h2>
-            <p class="text-sm text-text-mute mb-6">Ingresa tu ID corporativo para cargar tus límites de tiempo asignados.</p>
+            <p class="text-sm text-text-mute mb-6">Ingresa tu ID corporativo para cargar tus límites y estado actual.</p>
             <div class="flex flex-col gap-3">
                 <input type="text" id="input-id" placeholder="Ej. 1001" class="border border-border p-3 rounded-xl focus:ring-2 focus:ring-brand focus:border-brand focus:outline-none text-center font-mono text-lg shadow-inner bg-slate-50 transition-all">
                 <button onclick="validarID()" id="btn-login" class="bg-brand text-white font-bold py-3 rounded-xl hover:bg-blue-600 transition shadow-md shadow-brand/30 flex items-center justify-center gap-2">
                     Acceder <i class="ph-bold ph-arrow-right"></i>
                 </button>
             </div>
-            <p id="login-error" class="text-red-500 text-sm mt-4 font-medium hidden bg-red-50 py-2 rounded-lg border border-red-100">ID no encontrado. Verifica con tu supervisor.</p>
+            <p id="login-error" class="text-red-500 text-sm mt-4 font-medium hidden bg-red-50 py-2 rounded-lg border border-red-100"></p>
         </div>
 
-        <!-- CONTENEDOR PRINCIPAL DE RELOJES (Oculto hasta hacer login) -->
+        <!-- CONTENEDOR PRINCIPAL DE RELOJES -->
         <div id="panel-controles" class="relative" style="display: none;">
             <div id="mainLoader" class="absolute inset-0 bg-bg/80 backdrop-blur-sm flex items-center justify-center z-50 rounded-2xl hidden">
                 <div class="spinner border-4 border-brand border-t-transparent rounded-full w-10 h-10 animate-spin"></div>
@@ -72,7 +71,7 @@
             <!-- Grid de 3 Columnas -->
             <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6" id="timersDisplay">
                 
-                <!-- TARJETA: BAÑO -->
+                <!-- BAÑO -->
                 <button onclick="setEstado(estadoActivo === 'bath' ? null : 'bath')" class="flex flex-col items-center justify-center p-8 rounded-3xl border-2 border-border bg-card shadow-sm hover:shadow-md transition-all duration-300 cursor-pointer relative overflow-hidden group focus:outline-none" id="clockBathContainer" type="button">
                     <div class="text-sm font-extrabold uppercase text-text-mute mb-3 flex items-center justify-center gap-2 group-hover:text-brand transition-colors">
                         <i class="ph-bold ph-toilet text-2xl"></i> Sanitario
@@ -86,7 +85,7 @@
                     </div>
                 </button>
                 
-                <!-- TARJETA: COMIDA -->
+                <!-- COMIDA -->
                 <button onclick="setEstado(estadoActivo === 'food' ? null : 'food')" class="flex flex-col items-center justify-center p-8 rounded-3xl border-2 border-border bg-card shadow-sm hover:shadow-md transition-all duration-300 cursor-pointer relative overflow-hidden group focus:outline-none" id="clockFoodContainer" type="button">
                     <div class="text-sm font-extrabold uppercase text-text-mute mb-3 flex items-center justify-center gap-2 group-hover:text-brand transition-colors">
                         <i class="ph-bold ph-hamburger text-2xl"></i> Comida
@@ -100,7 +99,7 @@
                     </div>
                 </button>
 
-                <!-- TARJETA: CALIDAD -->
+                <!-- CALIDAD -->
                 <button onclick="setEstado(estadoActivo === 'quality' ? null : 'quality')" class="flex flex-col items-center justify-center p-8 rounded-3xl border-2 border-border bg-card shadow-sm hover:shadow-md transition-all duration-300 cursor-pointer relative overflow-hidden group focus:outline-none" id="clockQualityContainer" type="button">
                     <div class="text-sm font-extrabold uppercase text-text-mute mb-3 flex items-center justify-center gap-2 group-hover:text-brand transition-colors">
                         <i class="ph-bold ph-headset text-2xl"></i> Calidad
@@ -116,10 +115,10 @@
 
             </div>
             
-            <!-- PANEL DE CONTROL / PRUEBAS -->
+            <!-- PANEL DE CONTROL -->
             <div class="bg-card p-4 rounded-2xl shadow-sm border border-border flex justify-between items-center" id="actionButtons">
                 <span class="text-xs text-text-mute font-medium flex items-center gap-1">
-                    <i class="ph-fill ph-cloud-check text-brand text-lg"></i> Los tiempos se registran en la nube.
+                    <i class="ph-fill ph-cloud-check text-brand text-lg"></i> Estado sincronizado y a prueba de F5.
                 </span>
                 <button onclick="window.postMessage({ type: 'GP_SERVER_LOGOUT' }, '*')" class="text-sm bg-red-50 hover:bg-red-100 border border-red-200 text-red-600 font-bold py-2 px-4 rounded-xl transition flex items-center gap-2">
                     <i class="ph-bold ph-power"></i> Forzar Logout
@@ -128,12 +127,12 @@
         </div>
     </div>
 
-    <!-- Cargar Firebase como Módulo -->
+    <!-- LÓGICA CORE -->
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import { getFirestore, collection, addDoc, serverTimestamp, doc, getDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        // Importamos setDoc para guardar el estado en vivo
+        import { getFirestore, collection, addDoc, serverTimestamp, doc, getDoc, setDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
-        // Configuración de Firebase
         const firebaseConfig = {
             apiKey: "AIzaSyDT7iPaeRjlt-WIWWzwBh3deN2z_E-b2JA",
             authDomain: "corpodatos-935f9.firebaseapp.com",
@@ -146,15 +145,21 @@
         const app = initializeApp(firebaseConfig);
         const db = getFirestore(app);
 
-        // --- 1. LÓGICA DE USUARIO Y TIEMPOS ---
-        let asesorDatos = JSON.parse(localStorage.getItem('asesorDatos')) || null;
-        let tiempos = { bath: 0, food: 0, quality: 0 };
-        let estadoActivo = null; 
-        let tiempoInicio = null;
-        let autoLogoutDisparado = false;
-        let timeoutConexion; // SOLUCIÓN: Declarado al inicio para evitar el error de inicialización
+        // --- VARIABLES GLOBALES ---
+        window.asesorDatos = JSON.parse(localStorage.getItem('asesorDatos')) || null;
+        window.estadoActivo = null; 
+        
+        // La Fuente de la Verdad (Se sincroniza con Firebase)
+        let sesionFirebase = {
+            estadoActivo: null,
+            tiempoInicioEstado: null, // Guarda la hora exacta (Date.now())
+            tiemposAcumulados: { bath: 0, food: 0, quality: 0 },
+            fecha: new Date().toLocaleDateString()
+        };
 
-        // Worker para mantener precisión del cronómetro en segundo plano
+        let autoLogoutDisparado = false;
+        let timeoutConexion;
+
         const workerCode = `
             let timer;
             self.addEventListener('message', (e) => {
@@ -165,37 +170,69 @@
         const keepAliveWorker = new Worker(URL.createObjectURL(new Blob([workerCode], {type: 'application/javascript'})));
         
         keepAliveWorker.onmessage = () => {
-            if (estadoActivo) actualizarPantalla();
+            if (window.estadoActivo) actualizarPantalla();
         };
 
-        // --- 2. GESTIÓN DE LOGIN ---
-        if (asesorDatos) {
-            iniciarInterfazAsesor();
+        // --- INICIALIZACIÓN ---
+        if (window.asesorDatos) {
+            recuperarSesion(window.asesorDatos.id);
+        }
+
+        async function recuperarSesion(id) {
+            try {
+                const sessionRef = doc(db, "sesiones_activas", id);
+                const sessionSnap = await getDoc(sessionRef);
+
+                const hoy = new Date().toLocaleDateString();
+
+                if (sessionSnap.exists() && sessionSnap.data().fecha === hoy) {
+                    // Restauramos la sesión exacta desde Firebase
+                    sesionFirebase = sessionSnap.data();
+                    window.estadoActivo = sesionFirebase.estadoActivo;
+                } else {
+                    // Es un día nuevo o no existe sesión, creamos una limpia
+                    sesionFirebase = {
+                        estadoActivo: null,
+                        tiempoInicioEstado: null,
+                        tiemposAcumulados: { bath: 0, food: 0, quality: 0 },
+                        fecha: hoy
+                    };
+                    await setDoc(sessionRef, sesionFirebase);
+                }
+                
+                iniciarInterfazAsesor();
+
+                // Si recuperó un estado activo (ej: cerró la pestaña en medio del baño)
+                if (window.estadoActivo) {
+                    aplicarEstilosActivos(window.estadoActivo);
+                    keepAliveWorker.postMessage('start');
+                }
+
+            } catch (error) {
+                console.error("Error al recuperar sesión:", error);
+                alert("Hubo un problema sincronizando tu sesión con la nube.");
+            }
         }
 
         function iniciarInterfazAsesor() {
-            // Mostrar nombre y botones ocultos
             const nameDisplay = document.getElementById('nombre-asesor-display');
-            nameDisplay.innerHTML = `Asesor: <span class="font-bold text-text">${asesorDatos.nombre} (${asesorDatos.id})</span>`;
+            nameDisplay.innerHTML = `Asesor: <span class="font-bold text-text">${window.asesorDatos.nombre} (${window.asesorDatos.id})</span>`;
             nameDisplay.classList.remove('hidden');
             
             document.getElementById('btn-cerrar-sesion').classList.remove('hidden');
             document.getElementById('networkTimeBadge').classList.remove('hidden');
             
-            // Cambiar paneles
             document.getElementById('panel-login').style.display = 'none';
             document.getElementById('panel-controles').style.display = 'block';
 
-            // Colocar límites en la UI
-            document.getElementById('limBath').innerText = asesorDatos.limites.bano;
-            document.getElementById('limFood').innerText = asesorDatos.limites.comida;
-            document.getElementById('limQuality').innerText = asesorDatos.limites.calidad;
+            document.getElementById('limBath').innerText = window.asesorDatos.limites.bano;
+            document.getElementById('limFood').innerText = window.asesorDatos.limites.comida;
+            document.getElementById('limQuality').innerText = window.asesorDatos.limites.calidad;
             
             actualizarPantalla();
             
-            // Iniciar monitor de conexión de la extensión (CADA 2 MINUTOS = 120000ms)
             setInterval(verificarSaludConexion, 120000);
-            verificarSaludConexion(); // Primera verificación inmediata
+            verificarSaludConexion(); 
         }
 
         window.validarID = async function() {
@@ -213,9 +250,9 @@
                     const docSnap = await getDoc(docRef);
 
                     if (docSnap.exists()) {
-                        asesorDatos = { id: inputId, ...docSnap.data() };
-                        localStorage.setItem('asesorDatos', JSON.stringify(asesorDatos));
-                        iniciarInterfazAsesor();
+                        window.asesorDatos = { id: inputId, ...docSnap.data() };
+                        localStorage.setItem('asesorDatos', JSON.stringify(window.asesorDatos));
+                        await recuperarSesion(inputId);
                     } else {
                         errorMsg.innerText = "ID no encontrado. Verifica con tu supervisor.";
                         errorMsg.classList.remove('hidden');
@@ -238,87 +275,81 @@
             location.reload();
         };
 
-        // --- 3. FUNCIÓN PARA CAMBIAR EL ESTADO VISUAL Y GUARDAR EN NUBE ---
+        // --- EL CORAZÓN DE LA FASE 2: GUARDAR EN FIREBASE EN CADA CAMBIO ---
         window.setEstado = async function(nuevoEstado) {
-            if (!asesorDatos) return;
+            if (!window.asesorDatos) return;
 
-            let ahora = new Date();
+            let ahora = Date.now();
             autoLogoutDisparado = false;
 
-            // DETENER ESTADO ANTERIOR Y GUARDAR
-            if (estadoActivo) {
+            // 1. PROCESAR EL ESTADO ANTERIOR (Si estaba en algo)
+            if (window.estadoActivo) {
                 keepAliveWorker.postMessage('stop');
-                let segundosPasados = Math.floor((ahora.getTime() - tiempoInicio.getTime()) / 1000);
-                tiempos[estadoActivo] += segundosPasados;
                 
-                // Guardar en Firebase (Solo si duró más de 5 segundos)
+                // Calcular cuánto tiempo exacto estuvo en ese estado
+                let segundosPasados = Math.floor((ahora - sesionFirebase.tiempoInicioEstado) / 1000);
+                sesionFirebase.tiemposAcumulados[window.estadoActivo] += segundosPasados;
+                
+                // Registro histórico para reportería (solo si duró > 5 seg)
                 if (segundosPasados > 5) {
                     try {
                         addDoc(collection(db, "registros_tiempos"), {
-                            asesor_id: asesorDatos.id,
-                            asesor_nombre: asesorDatos.nombre,
-                            estado: estadoActivo, 
+                            asesor_id: window.asesorDatos.id,
+                            asesor_nombre: window.asesorDatos.nombre,
+                            estado: window.estadoActivo, 
                             duracion_segundos: segundosPasados,
                             fecha: serverTimestamp()
                         });
-                    } catch (e) {
-                        console.error("Error guardando registro:", e);
-                    }
+                    } catch (e) { console.error("Error guardando registro:", e); }
                 }
-                
-                // Remover estilos de "Activo"
-                const oldContainer = document.getElementById(`clock${capitalize(estadoActivo)}Container`);
-                if(oldContainer) {
-                    oldContainer.classList.remove('border-brand', 'bg-blue-50', 'ring-4', 'ring-brand/20', 'scale-[1.02]', 'shadow-lg');
-                    oldContainer.classList.add('border-border', 'bg-card');
-                    document.getElementById(`disp${capitalize(estadoActivo)}`).classList.remove('text-brand');
-                    document.getElementById(`disp${capitalize(estadoActivo)}`).classList.add('text-text');
-                }
+                removerEstilosActivos(window.estadoActivo);
             }
 
-            // INICIAR NUEVO ESTADO
-            estadoActivo = nuevoEstado;
+            // 2. INICIAR EL NUEVO ESTADO
+            window.estadoActivo = nuevoEstado;
+            sesionFirebase.estadoActivo = nuevoEstado;
+            sesionFirebase.tiempoInicioEstado = nuevoEstado ? ahora : null;
 
-            if (estadoActivo) {
-                tiempoInicio = ahora;
+            if (nuevoEstado) {
+                aplicarEstilosActivos(nuevoEstado);
                 keepAliveWorker.postMessage('start');
-                
-                // Aplicar estilos de "Activo"
-                const newContainer = document.getElementById(`clock${capitalize(estadoActivo)}Container`);
-                if(newContainer) {
-                    newContainer.classList.remove('border-border', 'bg-card');
-                    newContainer.classList.add('border-brand', 'bg-blue-50', 'ring-4', 'ring-brand/20', 'scale-[1.02]', 'shadow-lg');
-                    document.getElementById(`disp${capitalize(estadoActivo)}`).classList.remove('text-text');
-                    document.getElementById(`disp${capitalize(estadoActivo)}`).classList.add('text-brand');
-                }
+            }
+
+            // 3. SINCRONIZAR INMEDIATAMENTE CON FIREBASE (El escudo Anti-F5)
+            try {
+                await setDoc(doc(db, "sesiones_activas", window.asesorDatos.id), sesionFirebase);
+            } catch (e) {
+                console.error("Error al sincronizar sesión a prueba de fallos:", e);
             }
             
             actualizarPantalla();
         }
 
-        // --- 4. ACTUALIZAR LOS NÚMEROS EN LA PANTALLA ---
+        // --- ACTUALIZAR UI ---
         function actualizarPantalla() {
-            if (!asesorDatos) return;
-            let ahora = new Date();
+            if (!window.asesorDatos) return;
+            let ahora = Date.now();
 
             ['bath', 'food', 'quality'].forEach(estado => {
-                let segundosUsados = tiempos[estado] || 0;
+                // Recuperar la base de tiempo acumulado
+                let segundosUsados = sesionFirebase.tiemposAcumulados[estado] || 0;
                 
-                if (estadoActivo === estado) {
-                    segundosUsados += Math.floor((ahora.getTime() - tiempoInicio.getTime()) / 1000);
+                // Si este es el estado actual, sumarle el tiempo que lleva corriendo
+                if (window.estadoActivo === estado && sesionFirebase.tiempoInicioEstado) {
+                    segundosUsados += Math.floor((ahora - sesionFirebase.tiempoInicioEstado) / 1000);
                 }
 
-                // Actualizar contador principal
+                // Renderizar contador HH:MM
                 let m = Math.floor(segundosUsados / 60);
                 let s = segundosUsados % 60;
                 let elDisp = document.getElementById(`disp${capitalize(estado)}`);
                 if(elDisp) elDisp.innerText = `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
 
-                // Límite configurado en Firebase
+                // Validar Límite
                 const limiteMinutos = {
-                    bath: asesorDatos.limites.bano,
-                    food: asesorDatos.limites.comida,
-                    quality: asesorDatos.limites.calidad
+                    bath: window.asesorDatos.limites.bano,
+                    food: window.asesorDatos.limites.comida,
+                    quality: window.asesorDatos.limites.calidad
                 }[estado] || 999;
                 
                 let limiteSegundos = limiteMinutos * 60;
@@ -330,8 +361,8 @@
                         elRem.className = "text-sm font-bold bg-red-100 text-red-600 px-4 py-2 rounded-full w-full text-center animate-pulse";
                     }
                     
-                    // Disparar Logout automático a la extensión
-                    if (estadoActivo === estado && !autoLogoutDisparado) {
+                    // Disparar Logout Remoto
+                    if (window.estadoActivo === estado && !autoLogoutDisparado) {
                         autoLogoutDisparado = true;
                         window.postMessage({ type: 'GP_SERVER_LOGOUT' }, '*');
                     }
@@ -342,7 +373,6 @@
                     
                     if (elRem) {
                         elRem.innerText = `Restan: ${restM}m ${restS.toString().padStart(2, '0')}s`;
-                        
                         if (restantes <= 180) {
                             elRem.className = "text-sm font-bold bg-amber-100 text-amber-600 px-4 py-2 rounded-full w-full text-center transition-colors";
                         } else {
@@ -353,67 +383,63 @@
             });
         }
 
-        function capitalize(s) {
-            return s.charAt(0).toUpperCase() + s.slice(1);
+        // Utilidades UI
+        function aplicarEstilosActivos(estado) {
+            const newContainer = document.getElementById(`clock${capitalize(estado)}Container`);
+            if(newContainer) {
+                newContainer.classList.remove('border-border', 'bg-card');
+                newContainer.classList.add('border-brand', 'bg-blue-50', 'ring-4', 'ring-brand/20', 'scale-[1.02]', 'shadow-lg');
+                document.getElementById(`disp${capitalize(estado)}`).classList.remove('text-text');
+                document.getElementById(`disp${capitalize(estado)}`).classList.add('text-brand');
+            }
         }
 
-        // --- 5. MONITOREO DE SALUD DE LA EXTENSIÓN (PING / PONG) ---
+        function removerEstilosActivos(estado) {
+            const oldContainer = document.getElementById(`clock${capitalize(estado)}Container`);
+            if(oldContainer) {
+                oldContainer.classList.remove('border-brand', 'bg-blue-50', 'ring-4', 'ring-brand/20', 'scale-[1.02]', 'shadow-lg');
+                oldContainer.classList.add('border-border', 'bg-card');
+                document.getElementById(`disp${capitalize(estado)}`).classList.remove('text-brand');
+                document.getElementById(`disp${capitalize(estado)}`).classList.add('text-text');
+            }
+        }
+
+        function capitalize(s) { return s.charAt(0).toUpperCase() + s.slice(1); }
+
+        // --- PING / PONG EXTENSIÓN ---
         function verificarSaludConexion() {
-            // Mandamos un Ping preguntando "¿Estás ahí?"
             window.postMessage({ type: 'GP_PING' }, '*');
-            
-            // Si pasan 2.5 segundos sin respuesta (Pong), marcamos error
             clearTimeout(timeoutConexion);
-            timeoutConexion = setTimeout(() => {
-                actualizarBadgeConexion(false);
-            }, 2500);
+            timeoutConexion = setTimeout(() => actualizarBadgeConexion(false), 2500);
         }
 
         function actualizarBadgeConexion(estaConectado) {
             const badge = document.getElementById('networkTimeBadge');
             if (!badge) return;
-
             if (estaConectado) {
-                // Estado Verde - Sano
                 badge.className = 'text-sm font-bold bg-money/10 text-money px-4 py-2 rounded-full flex items-center gap-2 shadow-sm border border-money/20';
-                badge.innerHTML = `
-                    <span class="relative flex h-3 w-3">
-                      <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-money opacity-75"></span>
-                      <span class="relative inline-flex rounded-full h-3 w-3 bg-money"></span>
-                    </span>
-                    Conectado a TouchPoint
-                `;
+                badge.innerHTML = `<span class="relative flex h-3 w-3"><span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-money opacity-75"></span><span class="relative inline-flex rounded-full h-3 w-3 bg-money"></span></span>Conectado a TouchPoint`;
                 badge.onclick = null;
             } else {
-                // Estado Rojo - Desconectado
                 badge.className = 'text-sm font-bold bg-red-100 text-red-600 px-4 py-2 rounded-full flex items-center gap-2 shadow-sm border border-red-200 cursor-pointer hover:bg-red-200 transition-colors animate-pulse';
-                badge.innerHTML = `
-                    <i class="ph-bold ph-warning-circle text-lg"></i>
-                    Desconectado - Clic para reiniciar
-                `;
+                badge.innerHTML = `<i class="ph-bold ph-warning-circle text-lg"></i> Desconectado - Clic para reiniciar`;
                 badge.onclick = () => location.reload();
             }
         }
 
-        // --- 6. COMUNICACIÓN CENTRAL CON LA EXTENSIÓN ---
         window.addEventListener('message', (event) => {
-            // Recibir confirmación de salud
             if (event.data && event.data.type === 'GP_PONG') {
                 clearTimeout(timeoutConexion);
                 actualizarBadgeConexion(true);
             }
-            
-            // Recibir acciones de estado desde TouchPoint
             if (event.data && event.data.type === 'GODSPLAN_COMMAND') {
                 const action = event.data.action;
-                
                 if (action === 'START_BREAK_BATH') setEstado('bath');
                 else if (action === 'START_BREAK_FOOD') setEstado('food');
                 else if (action === 'START_QUALITY') setEstado('quality');
                 else if (action === 'RESUME_WORK') setEstado(null);
             }
         });
-
     </script>
 </body>
 </html>
