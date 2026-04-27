@@ -126,7 +126,8 @@
     <!-- LÓGICA CORE -->
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import { getFirestore, collection, addDoc, serverTimestamp, doc, getDoc, setDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        // AGREGADO: onSnapshot a las importaciones
+        import { getFirestore, collection, addDoc, serverTimestamp, doc, getDoc, setDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
         const firebaseConfig = {
             apiKey: "AIzaSyDT7iPaeRjlt-WIWWzwBh3deN2z_E-b2JA",
@@ -152,6 +153,7 @@
         };
 
         let autoLogoutDisparado = false;
+        let unsubscribeSesion = null; // Guardará el listener
         
         // --- WORKER PARA TIEMPO EXACTO ---
         const workerCode = `
@@ -192,6 +194,22 @@
                     aplicarEstilosActivos(window.estadoActivo);
                     keepAliveWorker.postMessage('start');
                 }
+
+                // --- NUEVO: LISTENER PARA SINCRONIZACIÓN EN TIEMPO REAL ---
+                // Esto escucha si el supervisor hizo ajustes de tiempo
+                if (unsubscribeSesion) unsubscribeSesion();
+                unsubscribeSesion = onSnapshot(sessionRef, (snapshot) => {
+                    if (snapshot.exists()) {
+                        const data = snapshot.data();
+                        if (data.fecha === hoy) {
+                            // Actualizamos los tiempos en memoria con lo que diga la base de datos
+                            sesionFirebase.tiemposAcumulados = data.tiemposAcumulados;
+                            // Forzamos que la pantalla se actualice de inmediato con los nuevos tiempos
+                            actualizarPantalla();
+                        }
+                    }
+                });
+
             } catch (error) {
                 console.error("Error al recuperar sesión:", error);
             }
@@ -246,6 +264,7 @@
         };
 
         window.cerrarSesionLocal = function() {
+            if(unsubscribeSesion) unsubscribeSesion(); // Limpiamos el listener al salir
             localStorage.removeItem('asesorDatos');
             location.reload();
         };
@@ -365,9 +384,8 @@
             }
         }
 
-        // ESCUCHA MENSAJES DESDE LA EXTENSIÓN (NUEVA LÓGICA DE CONEXIÓN)
+        // ESCUCHA MENSAJES DESDE LA EXTENSIÓN
         window.addEventListener('message', (event) => {
-            // El background nos dice si hay una pestaña con el título logueado
             if (event.data && event.data.type === 'GP_CONNECTION_STATUS') {
                 actualizarBadgeConexion(event.data.connected);
             }
