@@ -3,548 +3,399 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Corpodatos - Control de Tiempos</title>
-    
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <title>Tracker de Tiempos</title>
+    <!-- Tailwind y Phosphor Icons -->
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/@phosphor-icons/web"></script>
-    
     <script>
         tailwind.config = {
             theme: {
                 extend: {
-                    fontFamily: { sans: ['Inter', 'sans-serif'] },
-                    animation: { 'pulse-slow': 'pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite' }
+                    colors: {
+                        card: '#ffffff', border: '#e5e7eb',
+                        text: '#1f2937', 'text-mute': '#6b7280',
+                        brand: '#3b82f6', money: '#10b981', bg: '#f8fafc'
+                    }
                 }
             }
         }
     </script>
-
-    <style>
-        .loader {
-            border: 4px solid #e2e8f0; border-top: 4px solid #3b82f6; border-radius: 50%;
-            width: 40px; height: 40px; animation: spin 1s linear infinite;
-        }
-        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
-        .custom-scrollbar::-webkit-scrollbar { width: 6px; height: 6px; }
-        .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
-        .custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
-        .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
-        .glass-panel { background: rgba(255, 255, 255, 0.90); backdrop-filter: blur(12px); }
-        @keyframes shimmer { 100% { transform: translateX(200%); } }
-    </style>
 </head>
-<body class="bg-slate-50 min-h-screen font-sans text-slate-800 pb-10 selection:bg-blue-100 selection:text-blue-900 transition-colors duration-300">
+<body class="bg-bg p-6 font-sans min-h-screen flex flex-col">
 
-    <!-- AVISO DE MANTENIMIENTO -->
-    <div class="bg-amber-500 text-white px-4 py-3 shadow-md relative z-[100] flex items-center justify-center gap-3">
-        <i class="ph ph-warning-circle text-3xl"></i>
-        <div class="text-sm font-medium">
-            <strong class="font-bold text-base block sm:inline">¡Sistema en Mantenimiento!</strong> 
-            El servidor está desconectado temporalmente. Por favor, usa la herramienta de manera <strong>manual</strong> hasta nuevo aviso. 
-            <span class="opacity-80 text-xs sm:text-sm block sm:inline">(Tus datos se borrarán si recargas la página).</span>
-        </div>
-    </div>
-
-    <!-- Notificaciones -->
-    <div id="notificacion" class="fixed top-20 left-1/2 transform -translate-x-1/2 z-[100] hidden max-w-md w-full bg-slate-900 text-white shadow-2xl rounded-2xl p-4 transition-all duration-300 flex items-center gap-3 border border-slate-700">
-        <div id="notificacion-icon" class="text-2xl shrink-0"></div>
-        <p class="font-medium text-sm flex-1" id="notificacion-texto"></p>
-        <button onclick="document.getElementById('notificacion').classList.add('hidden')" class="text-slate-400 hover:text-white transition-colors"><i class="ph ph-x"></i></button>
-    </div>
-
-    <!-- Pantallas Iniciales -->
-    <div id="vista-cargando" class="hidden flex-col items-center justify-center min-h-screen bg-slate-50">
-        <div class="relative"><div class="loader mb-6 relative z-10"></div><div class="absolute inset-0 bg-blue-400 blur-xl opacity-20 rounded-full"></div></div>
-        <p class="text-slate-600 font-medium tracking-wide animate-pulse">Cargando modo manual...</p>
-    </div>
-
-    <!-- LOGIN :) -->
-    <div id="vista-login-:)" class="min-h-[90vh] flex items-center justify-center px-4 relative overflow-hidden bg-slate-50">
-        <div class="absolute top-[-10%] right-[-10%] w-96 h-96 bg-blue-400 rounded-full mix-blend-multiply filter blur-3xl opacity-10 animate-pulse-slow"></div>
-        <div class="absolute bottom-[-10%] left-[-10%] w-96 h-96 bg-amber-400 rounded-full mix-blend-multiply filter blur-3xl opacity-10 animate-pulse-slow" style="animation-delay: 2s;"></div>
-
-        <div class="bg-white p-8 md:p-10 rounded-3xl shadow-2xl border border-slate-100 w-full max-w-sm relative z-10 transform transition-all hover:scale-[1.01]">
-            <div class="w-16 h-16 bg-blue-50 rounded-2xl flex items-center justify-center mb-6 shadow-sm border border-blue-100 mx-auto transition-colors">
-                <i class="ph ph-identification-badge text-4xl text-blue-600"></i>
+    <div class="max-w-5xl mx-auto w-full">
+        <!-- HEADER -->
+        <div class="flex flex-col md:flex-row justify-between items-center mb-6 bg-card p-4 rounded-2xl shadow-sm border border-border">
+            <div>
+                <h1 class="text-2xl font-black text-text flex items-center gap-2 tracking-tight">
+                    <i class="ph-fill ph-clock-user text-brand text-3xl"></i>
+                    Panel de Adherencia
+                </h1>
+                <p id="nombre-asesor-display" class="text-sm text-text-mute font-medium mt-1 hidden">
+                    Asesor: <span class="font-bold text-text"></span>
+                </p>
             </div>
-            <h2 class="text-2xl font-bold text-slate-900 mb-1 text-center">Ingresa tu ID</h2>
-            <p class="text-slate-500 text-sm mb-8 font-medium text-center">Modo Manual Local</p>
+            <div class="flex items-center gap-4 mt-3 md:mt-0">
+                <button onclick="cerrarSesionLocal()" id="btn-cerrar-sesion" class="text-xs font-bold text-red-500 hover:text-red-700 underline hidden transition-colors">
+                    Cambiar Asesor
+                </button>
+                <div id="networkTimeBadge" class="text-sm text-slate-500 font-bold bg-slate-100 px-4 py-2 rounded-full flex items-center gap-2 shadow-sm border border-slate-200 hidden transition-all">
+                    <div class="spinner border-2 border-slate-500 border-t-transparent rounded-full w-3 h-3 animate-spin"></div>
+                    Esperando conexión...
+                </div>
+            </div>
+        </div>
+
+        <!-- PANEL DE LOGIN -->
+        <div id="panel-login" class="bg-card p-8 rounded-2xl shadow-sm border border-border max-w-md mx-auto text-center mt-10 transition-all">
+            <div class="w-16 h-16 bg-blue-50 text-brand rounded-full flex items-center justify-center mx-auto mb-4 border border-blue-100">
+                <i class="ph-bold ph-identification-card text-3xl"></i>
+            </div>
+            <h2 class="text-xl font-bold text-text mb-2">Ingreso de Agente</h2>
+            <p class="text-sm text-text-mute mb-6">Ingresa tu ID corporativo para cargar tus límites y estado actual.</p>
+            <div class="flex flex-col gap-3">
+                <input type="text" id="input-id" placeholder="Ej. 1001" class="border border-border p-3 rounded-xl focus:ring-2 focus:ring-brand focus:border-brand focus:outline-none text-center font-mono text-lg shadow-inner bg-slate-50 transition-all">
+                <button onclick="validarID()" id="btn-login" class="bg-brand text-white font-bold py-3 rounded-xl hover:bg-blue-600 transition shadow-md shadow-brand/30 flex items-center justify-center gap-2">
+                    Acceder <i class="ph-bold ph-arrow-right"></i>
+                </button>
+            </div>
+            <p id="login-error" class="text-red-500 text-sm mt-4 font-medium hidden bg-red-50 py-2 rounded-lg border border-red-100"></p>
+        </div>
+
+        <!-- CONTENEDOR PRINCIPAL DE RELOJES -->
+        <div id="panel-controles" class="relative" style="display: none;">
+            <!-- Grid de 3 Columnas -->
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6" id="timersDisplay">
+                
+                <!-- BAÑO -->
+                <button onclick="setEstado(estadoActivo === 'bath' ? null : 'bath')" class="flex flex-col items-center justify-center p-8 rounded-3xl border-2 border-border bg-card shadow-sm hover:shadow-md transition-all duration-300 cursor-pointer relative overflow-hidden group focus:outline-none" id="clockBathContainer" type="button">
+                    <div class="text-sm font-extrabold uppercase text-text-mute mb-3 flex items-center justify-center gap-2 group-hover:text-brand transition-colors">
+                        <i class="ph-bold ph-toilet text-2xl"></i> Sanitario
+                    </div>
+                    <div class="font-mono font-black text-6xl text-text tabular-nums tracking-tighter mb-4 transition-colors duration-300" id="dispBath">00:00</div>
+                    <div class="text-xs text-text-mute font-bold bg-slate-100 px-3 py-1.5 rounded-lg mb-4">
+                        Límite: <span id="limBath">-</span> min
+                    </div>
+                    <div id="remBath" class="text-sm font-bold text-money bg-money/10 px-4 py-2 rounded-full w-full text-center transition-colors">
+                        Restan: --
+                    </div>
+                </button>
+                
+                <!-- COMIDA -->
+                <button onclick="setEstado(estadoActivo === 'food' ? null : 'food')" class="flex flex-col items-center justify-center p-8 rounded-3xl border-2 border-border bg-card shadow-sm hover:shadow-md transition-all duration-300 cursor-pointer relative overflow-hidden group focus:outline-none" id="clockFoodContainer" type="button">
+                    <div class="text-sm font-extrabold uppercase text-text-mute mb-3 flex items-center justify-center gap-2 group-hover:text-brand transition-colors">
+                        <i class="ph-bold ph-hamburger text-2xl"></i> Comida
+                    </div>
+                    <div class="font-mono font-black text-6xl text-text tabular-nums tracking-tighter mb-4 transition-colors duration-300" id="dispFood">00:00</div>
+                    <div class="text-xs text-text-mute font-bold bg-slate-100 px-3 py-1.5 rounded-lg mb-4">
+                        Límite: <span id="limFood">-</span> min
+                    </div>
+                    <div id="remFood" class="text-sm font-bold text-money bg-money/10 px-4 py-2 rounded-full w-full text-center transition-colors">
+                        Restan: --
+                    </div>
+                </button>
+
+                <!-- CALIDAD -->
+                <button onclick="setEstado(estadoActivo === 'quality' ? null : 'quality')" class="flex flex-col items-center justify-center p-8 rounded-3xl border-2 border-border bg-card shadow-sm hover:shadow-md transition-all duration-300 cursor-pointer relative overflow-hidden group focus:outline-none" id="clockQualityContainer" type="button">
+                    <div class="text-sm font-extrabold uppercase text-text-mute mb-3 flex items-center justify-center gap-2 group-hover:text-brand transition-colors">
+                        <i class="ph-bold ph-headset text-2xl"></i> Calidad
+                    </div>
+                    <div class="font-mono font-black text-6xl text-text tabular-nums tracking-tighter mb-4 transition-colors duration-300" id="dispQuality">00:00</div>
+                    <div class="text-xs text-text-mute font-bold bg-slate-100 px-3 py-1.5 rounded-lg mb-4">
+                        Límite: <span id="limQuality">-</span> min
+                    </div>
+                    <div id="remQuality" class="text-sm font-bold text-money bg-money/10 px-4 py-2 rounded-full w-full text-center transition-colors">
+                        Restan: --
+                    </div>
+                </button>
+
+            </div>
             
-            <div class="relative mb-6">
-                <input type="text" id="pin-empleado" autocomplete="off" placeholder="Ej. 1234" class="w-full text-center text-xl tracking-[0.2em] font-mono border-b-2 border-slate-200 bg-slate-50/50 rounded-t-xl p-4 focus:border-blue-600 outline-none transition-all" onkeypress="if(event.key === 'Enter') loginEmpleado()">
-            </div>
-            
-            <button onclick="loginEmpleado()" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3.5 rounded-xl shadow-lg shadow-blue-200 transition-all active:scale-95 flex items-center justify-center gap-2">
-                Acceder al Portal <i class="ph ph-arrow-right font-bold"></i>
-            </button>
-        </div>
-    </div>
-
-    <!-- PANEL PRINCIPAL :) -->
-    <div id="vista-empleado" class="hidden max-w-5xl mx-auto pt-4 sm:pt-8 px-4 pb-12">
-        <header class="glass-panel flex flex-col sm:flex-row justify-between items-center mb-6 p-4 sm:px-6 sm:py-4 rounded-2xl shadow-sm border border-slate-200 gap-4">
-            <div class="flex items-center gap-4 w-full sm:w-auto">
-                <div class="w-12 h-12 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center shrink-0 border border-blue-200 shadow-inner"><i class="ph ph-user text-2xl"></i></div>
-                <div class="flex-1 min-w-0">
-                    <h1 class="text-xl font-bold text-slate-800 leading-tight truncate">Hola, <span id="nombre-empleado-display" class="text-blue-600"></span></h1>
-                    <p class="text-sm text-slate-500 font-mono mt-0.5">ID: <span id="id-empleado-display"></span> <span class="ml-2 text-xs bg-amber-100 text-amber-700 px-2 py-0.5 rounded border border-amber-200">Modo Manual</span></p>
-                </div>
-            </div>
-            <div class="flex items-center gap-4 sm:gap-6 w-full sm:w-auto justify-between sm:justify-end border-t sm:border-0 border-slate-100 pt-4 sm:pt-0">
-                <div class="flex items-center gap-3 bg-white px-4 py-2 rounded-xl border border-slate-200 shadow-sm">
-                    <span id="syncDot" class="w-2.5 h-2.5 rounded-full bg-slate-400 inline-block shadow-[0_0_8px_rgba(148,163,184,0.6)]" title="Desconectado (Local)"></span>
-                    <div id="reloj-display-empleado" class="font-mono text-sm font-bold text-slate-700 tracking-wider">--:--:--</div>
-                </div>
-                <button onclick="cerrarSesionGeneral()" class="text-slate-500 hover:text-red-600 bg-white hover:bg-red-50 p-2 sm:px-4 sm:py-2 border border-slate-200 rounded-xl transition-all flex items-center gap-2 font-semibold text-sm shadow-sm" title="Cerrar Sesión">
-                    <span class="hidden sm:inline">Salir</span> <i class="ph ph-sign-out text-xl"></i>
+            <!-- PANEL DE CONTROL -->
+            <div class="bg-card p-4 rounded-2xl shadow-sm border border-border flex justify-between items-center" id="actionButtons">
+                <span class="text-xs text-text-mute font-medium flex items-center gap-1">
+                    <i class="ph-fill ph-cloud-check text-brand text-lg"></i> Estado: Sincronizado
+                </span>
+                <button onclick="window.postMessage({ type: 'GP_SERVER_LOGOUT' }, '*')" class="text-sm bg-red-50 hover:bg-red-100 border border-red-200 text-red-600 font-bold py-2 px-4 rounded-xl transition flex items-center gap-2">
+                    <i class="ph-bold ph-power"></i> Forzar Logout
                 </button>
-            </div>
-        </header>
-
-        <div id="panel-principal" class="bg-white rounded-3xl shadow-md border border-slate-200 p-5 sm:p-8 mb-8 relative overflow-hidden transition-all duration-300">
-            <div class="absolute top-0 left-0 w-full h-1.5 bg-gradient-to-r from-blue-400 via-purple-400 to-orange-400 opacity-80"></div>
-            <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 sm:mb-8 gap-2">
-                <div>
-                    <h2 class="text-2xl font-bold text-slate-800" id="titulo-panel-empleado">Tus Tiempos</h2>
-                    <p class="text-slate-500 text-sm mt-1">Selecciona el motivo de tu descanso para iniciar el cronómetro.</p>
-                </div>
-                <div class="bg-slate-100 text-slate-600 px-3 py-1.5 rounded-lg text-xs font-bold uppercase tracking-wider flex items-center gap-2 border border-slate-200">
-                    <i class="ph ph-calendar-blank"></i> <span id="fecha-empleado-display"></span>
-                </div>
-            </div>
-
-            <div class="grid grid-cols-1 sm:grid-cols-3 gap-5 sm:gap-6">
-                <!-- Botón Baño -->
-                <button id="btn-Baño" onclick="iniciarCronometro('Baño')" class="flex flex-col items-center justify-center p-6 sm:p-8 rounded-2xl relative border-2 border-slate-100 hover:border-blue-300 hover:bg-blue-50/50 hover:shadow-lg hover:-translate-y-1 transition-all duration-300 cursor-pointer bg-white group overflow-hidden">
-                    <div class="absolute top-3 right-3 opacity-0 group-hover:opacity-100 transition-opacity hidden" id="play-Baño"><span class="relative flex h-4 w-4"><span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75"></span><span class="relative inline-flex rounded-full h-4 w-4 bg-blue-500"></span></span></div>
-                    <div class="w-14 h-14 bg-blue-50 text-blue-500 rounded-full flex items-center justify-center mb-4 group-hover:bg-blue-500 group-hover:text-white transition-colors duration-300"><i class="ph-fill ph-toilet text-3xl"></i></div>
-                    <h3 class="text-sm font-bold uppercase tracking-widest text-slate-400 mb-1 group-hover:text-blue-600 transition-colors">Baño</h3>
-                    <div class="font-mono font-black text-4xl sm:text-5xl text-slate-800 tabular-nums my-3 transition-colors tracking-tight" id="disp-Baño">00:00</div>
-                    <div class="flex items-center justify-between w-full px-2 mt-2">
-                        <div class="text-xs text-slate-400 font-medium">Límite: <span id="lim-Baño">15</span>m</div>
-                        <div id="rem-Baño" class="text-xs font-extrabold text-slate-500 bg-slate-100 px-2 py-1 rounded-md transition-colors">Restan: --</div>
-                    </div>
-                </button>
-                <!-- Botón Comida -->
-                <button id="btn-Comida" onclick="iniciarCronometro('Comida')" class="flex flex-col items-center justify-center p-6 sm:p-8 rounded-2xl relative border-2 border-slate-100 hover:border-orange-300 hover:bg-orange-50/50 hover:shadow-lg hover:-translate-y-1 transition-all duration-300 cursor-pointer bg-white group overflow-hidden">
-                    <div class="absolute top-3 right-3 opacity-0 group-hover:opacity-100 transition-opacity hidden" id="play-Comida"><span class="relative flex h-4 w-4"><span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-orange-400 opacity-75"></span><span class="relative inline-flex rounded-full h-4 w-4 bg-orange-500"></span></span></div>
-                    <div class="w-14 h-14 bg-orange-50 text-orange-500 rounded-full flex items-center justify-center mb-4 group-hover:bg-orange-500 group-hover:text-white transition-colors duration-300"><i class="ph-fill ph-hamburger text-3xl"></i></div>
-                    <h3 class="text-sm font-bold uppercase tracking-widest text-slate-400 mb-1 group-hover:text-orange-600 transition-colors">Comida</h3>
-                    <div class="font-mono font-black text-4xl sm:text-5xl text-slate-800 tabular-nums my-3 transition-colors tracking-tight" id="disp-Comida">00:00</div>
-                    <div class="flex items-center justify-between w-full px-2 mt-2">
-                        <div class="text-xs text-slate-400 font-medium">Límite: <span id="lim-Comida">30</span>m</div>
-                        <div id="rem-Comida" class="text-xs font-extrabold text-slate-500 bg-slate-100 px-2 py-1 rounded-md transition-colors">Restan: --</div>
-                    </div>
-                </button>
-                <!-- Botón Calidad -->
-                <button id="btn-Calidad" onclick="abrirModalCalidad()" class="flex flex-col items-center justify-center p-6 sm:p-8 rounded-2xl relative border-2 border-slate-100 hover:border-purple-300 hover:bg-purple-50/50 hover:shadow-lg hover:-translate-y-1 transition-all duration-300 cursor-pointer bg-white group overflow-hidden">
-                    <div class="absolute top-3 right-3 opacity-0 group-hover:opacity-100 transition-opacity hidden" id="play-Calidad"><span class="relative flex h-4 w-4"><span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-purple-400 opacity-75"></span><span class="relative inline-flex rounded-full h-4 w-4 bg-purple-500"></span></span></div>
-                    <div class="w-14 h-14 bg-purple-50 text-purple-500 rounded-full flex items-center justify-center mb-4 group-hover:bg-purple-500 group-hover:text-white transition-colors duration-300"><i class="ph-fill ph-star text-3xl"></i></div>
-                    <h3 class="text-sm font-bold uppercase tracking-widest text-slate-400 mb-1 group-hover:text-purple-600 transition-colors">Calidad</h3>
-                    <div class="font-mono font-black text-4xl sm:text-5xl text-slate-800 tabular-nums my-3 transition-colors tracking-tight" id="disp-Calidad">00:00</div>
-                    <div class="flex items-center justify-between w-full px-2 mt-2">
-                        <div class="text-[10px] text-purple-400 font-bold uppercase bg-purple-50 px-2 py-1 rounded w-full text-center" id="rem-Calidad">Requiere Justificación</div>
-                    </div>
-                </button>
-            </div>
-
-            <!-- Botón Pausar -->
-            <div id="contenedor-stop" class="mt-8 hidden opacity-0 transition-all duration-500 transform translate-y-4">
-                <button id="btn-detener-cronometro" onclick="detenerCronometro()" class="w-full py-5 bg-red-500 hover:bg-red-600 text-white font-black rounded-2xl shadow-lg shadow-red-200 transition-all active:scale-[0.98] flex items-center justify-center gap-3 text-xl border-b-4 border-red-700 hover:border-red-800 disabled:opacity-50 disabled:cursor-not-allowed relative overflow-hidden group">
-                    <div class="absolute inset-0 bg-white/20 transform -skew-x-12 -translate-x-full group-hover:animate-[shimmer_1.5s_infinite]"></div>
-                    <span class="relative flex h-5 w-5 mr-1">
-                        <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-white opacity-75"></span>
-                        <span class="relative inline-flex rounded-full h-5 w-5 bg-white flex items-center justify-center"><div class="w-2 h-2 bg-red-600 rounded-sm"></div></span>
-                    </span>
-                    PAUSAR DESCANSO Y REGRESAR
-                </button>
-            </div>
-        </div>
-
-        <!-- Historial -->
-        <div id="panel-historial-empleado" class="bg-white rounded-3xl shadow-sm border border-slate-200 overflow-hidden">
-            <div class="px-6 py-5 border-b border-slate-100 flex flex-wrap justify-between items-center gap-4 bg-slate-50/50">
-                <h2 class="text-lg font-bold text-slate-800 flex items-center gap-2"><i class="ph ph-clock-counter-clockwise text-blue-500 text-xl"></i> Mi Bitácora <span class="text-xs font-normal bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full ml-2">Local</span></h2>
-                <div class="relative group">
-                    <i class="ph ph-calendar-blank absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400"></i>
-                    <input type="date" id="filtro-fecha-empleado" class="pl-10 pr-4 py-2 border border-slate-200 bg-white rounded-xl text-sm text-slate-600 outline-none focus:ring-2 focus:ring-blue-100 transition-all cursor-pointer" onchange="renderizarHistorialEmpleado()">
-                </div>
-            </div>
-            <div class="overflow-x-auto max-h-[400px] custom-scrollbar relative">
-                <table class="w-full text-left text-sm border-collapse min-w-[700px]">
-                    <thead class="sticky top-0 bg-white/95 backdrop-blur-sm shadow-sm z-10 border-b border-slate-200">
-                        <tr class="text-slate-500 uppercase text-[11px] tracking-wider font-bold">
-                            <th class="px-6 py-4">Tipo</th><th class="px-6 py-4 text-blue-600">Tiempo</th><th class="px-6 py-4">Estado / Justificación</th><th class="px-6 py-4 text-right">Hora (Fin)</th>
-                        </tr>
-                    </thead>
-                    <tbody id="tabla-registros-empleado" class="divide-y divide-slate-100"></tbody>
-                </table>
             </div>
         </div>
     </div>
 
-    <!-- Modal Calidad -->
-    <div id="modal-overlay" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 hidden flex items-center justify-center px-4 transition-opacity duration-300 opacity-0">
-        <div id="modal-calidad" class="bg-white rounded-3xl shadow-2xl w-full max-w-sm p-6 transform scale-95 transition-transform duration-300 hidden border border-transparent">
-            <div class="w-12 h-12 rounded-full bg-purple-100 flex items-center justify-center mb-4 mx-auto"><i class="ph ph-star text-purple-600 text-2xl"></i></div>
-            <h3 class="text-xl font-bold text-slate-800 mb-2 text-center">Tiempo de Calidad</h3>
-            <p class="text-slate-500 text-sm mb-6 text-center">Ingresa el justificante para usar este tiempo.</p>
-            <textarea id="calidad-justificacion" class="w-full border border-slate-300 rounded-xl p-3.5 mb-6 focus:ring-2 focus:ring-purple-100 focus:border-purple-500 outline-none resize-none h-24 text-sm transition-all shadow-sm" placeholder="Ej. Revisión de caso especial #123..."></textarea>
-            <div class="flex gap-3">
-                <button onclick="cerrarModales()" class="flex-1 py-2.5 text-slate-600 bg-slate-100 hover:bg-slate-200 rounded-xl font-semibold transition-colors">Cancelar</button>
-                <button onclick="confirmarCalidad()" class="flex-1 py-2.5 bg-purple-600 hover:bg-purple-700 text-white rounded-xl font-semibold transition-colors shadow-sm shadow-purple-200 flex justify-center items-center gap-2">Iniciar <i class="ph ph-play"></i></button>
-            </div>
-        </div>
-    </div>
+    <!-- LÓGICA CORE -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        // AGREGADO: onSnapshot a las importaciones
+        import { getFirestore, collection, addDoc, serverTimestamp, doc, getDoc, setDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
-    <!-- SCRIPT LÓGICA MANUAL (SIN FIREBASE) -->
-    <script>
-        // Variables globales para simular base de datos en memoria
-        let limitesGlobales = { bano: 15, comida: 30, autoExpulsion: true };
-        let empleadoActual = null; 
-        let sesionActivaActual = null;
-        let tiempoAcumuladoActual = { Baño: 0, Comida: 0, Calidad: 0, fecha: '' }; 
-        let intervaloCronometro = null;
-        let todosLosRegistros = [];
+        const firebaseConfig = {
+            apiKey: "AIzaSyDT7iPaeRjlt-WIWWzwBh3deN2z_E-b2JA",
+            authDomain: "corpodatos-935f9.firebaseapp.com",
+            projectId: "corpodatos-935f9",
+            storageBucket: "corpodatos-935f9.firebasestorage.app",
+            messagingSenderId: "634601793039",
+            appId: "1:634601793039:web:4412da30d31ff6f6e5657a"
+        };
 
-        window.isPausing = false;
-        window.autoLogoutFired = false; 
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
 
-        window.addEventListener('beforeunload', (e) => {
-            if (sesionActivaActual) { e.preventDefault(); e.returnValue = "Tienes un descanso en curso. Si recargas se perderán tus datos manuales."; return e.returnValue; }
-        });
+        // --- VARIABLES GLOBALES ---
+        window.asesorDatos = JSON.parse(localStorage.getItem('asesorDatos')) || null;
+        window.estadoActivo = null; 
+        
+        let sesionFirebase = {
+            estadoActivo: null,
+            tiempoInicioEstado: null, 
+            tiemposAcumulados: { bath: 0, food: 0, quality: 0 },
+            fecha: new Date().toLocaleDateString()
+        };
 
-        function obtenerFechaHoy() {
-            const tzOffset = (new Date()).getTimezoneOffset() * 60000;
-            return (new Date(getHoraReal() - tzOffset)).toISOString().split('T')[0];
+        let autoLogoutDisparado = false;
+        let unsubscribeSesion = null; // Guardará el listener
+        
+        // --- WORKER PARA TIEMPO EXACTO ---
+        const workerCode = `
+            let timer;
+            self.addEventListener('message', (e) => {
+                if(e.data === 'start') timer = setInterval(() => self.postMessage('tick'), 1000);
+                else if(e.data === 'stop') clearInterval(timer);
+            });
+        `;
+        const keepAliveWorker = new Worker(URL.createObjectURL(new Blob([workerCode], {type: 'application/javascript'})));
+        
+        keepAliveWorker.onmessage = () => {
+            if (window.estadoActivo) actualizarPantalla();
+        };
+
+        // --- INICIALIZACIÓN ---
+        if (window.asesorDatos) {
+            recuperarSesion(window.asesorDatos.id);
         }
 
-        window.mostrarVista = function(idVista) {
-            ['vista-cargando', 'vista-login-:)', 'vista-empleado'].forEach(v => document.getElementById(v)?.classList.add('hidden'));
-            document.getElementById(idVista)?.classList.remove('hidden');
-            if (idVista === 'vista-cargando') {
-                document.getElementById(idVista)?.classList.add('flex');
-            } else {
-                document.getElementById('vista-cargando')?.classList.remove('flex');
+        async function recuperarSesion(id) {
+            try {
+                const sessionRef = doc(db, "sesiones_activas", id);
+                const sessionSnap = await getDoc(sessionRef);
+                const hoy = new Date().toLocaleDateString();
+
+                if (sessionSnap.exists() && sessionSnap.data().fecha === hoy) {
+                    sesionFirebase = sessionSnap.data();
+                    window.estadoActivo = sesionFirebase.estadoActivo;
+                } else {
+                    sesionFirebase = { estadoActivo: null, tiempoInicioEstado: null, tiemposAcumulados: { bath: 0, food: 0, quality: 0 }, fecha: hoy };
+                    await setDoc(sessionRef, sesionFirebase);
+                }
+                
+                iniciarInterfazAsesor();
+
+                if (window.estadoActivo) {
+                    aplicarEstilosActivos(window.estadoActivo);
+                    keepAliveWorker.postMessage('start');
+                }
+
+                // --- NUEVO: LISTENER PARA SINCRONIZACIÓN EN TIEMPO REAL ---
+                // Esto escucha si el supervisor hizo ajustes de tiempo
+                if (unsubscribeSesion) unsubscribeSesion();
+                unsubscribeSesion = onSnapshot(sessionRef, (snapshot) => {
+                    if (snapshot.exists()) {
+                        const data = snapshot.data();
+                        if (data.fecha === hoy) {
+                            // Actualizamos los tiempos en memoria con lo que diga la base de datos
+                            sesionFirebase.tiemposAcumulados = data.tiemposAcumulados;
+                            // Forzamos que la pantalla se actualice de inmediato con los nuevos tiempos
+                            actualizarPantalla();
+                        }
+                    }
+                });
+
+            } catch (error) {
+                console.error("Error al recuperar sesión:", error);
+            }
+        }
+
+        function iniciarInterfazAsesor() {
+            const nameDisplay = document.getElementById('nombre-asesor-display');
+            nameDisplay.innerHTML = `Asesor: <span class="font-bold text-text">${window.asesorDatos.nombre} (${window.asesorDatos.id})</span>`;
+            nameDisplay.classList.remove('hidden');
+            document.getElementById('btn-cerrar-sesion').classList.remove('hidden');
+            document.getElementById('networkTimeBadge').classList.remove('hidden');
+            document.getElementById('panel-login').style.display = 'none';
+            document.getElementById('panel-controles').style.display = 'block';
+
+            document.getElementById('limBath').innerText = window.asesorDatos.limites.bano;
+            document.getElementById('limFood').innerText = window.asesorDatos.limites.comida;
+            document.getElementById('limQuality').innerText = window.asesorDatos.limites.calidad;
+            
+            actualizarPantalla();
+        }
+
+        window.validarID = async function() {
+            const inputId = document.getElementById('input-id').value.trim();
+            const btn = document.getElementById('btn-login');
+            const errorMsg = document.getElementById('login-error');
+            
+            if (inputId.length > 0) {
+                btn.innerHTML = `<div class="spinner border-2 border-white border-t-transparent rounded-full w-5 h-5 animate-spin"></div> Buscando...`;
+                btn.disabled = true;
+                errorMsg.classList.add('hidden');
+
+                try {
+                    const docRef = doc(db, "operadores", inputId);
+                    const docSnap = await getDoc(docRef);
+
+                    if (docSnap.exists()) {
+                        window.asesorDatos = { id: inputId, ...docSnap.data() };
+                        localStorage.setItem('asesorDatos', JSON.stringify(window.asesorDatos));
+                        await recuperarSesion(inputId);
+                    } else {
+                        errorMsg.innerText = "ID no encontrado. Verifica con tu supervisor.";
+                        errorMsg.classList.remove('hidden');
+                    }
+                } catch (error) {
+                    errorMsg.innerText = "Error de conexión con la base de datos.";
+                    errorMsg.classList.remove('hidden');
+                } finally {
+                    btn.innerHTML = `Acceder <i class="ph-bold ph-arrow-right"></i>`;
+                    btn.disabled = false;
+                }
             }
         };
 
-        window.mostrarNotificacion = function(mensaje, tipo = 'exito') {
-            const noti = document.getElementById('notificacion');
-            const texto = document.getElementById('notificacion-texto');
-            const icon = document.getElementById('notificacion-icon');
-            
-            icon.innerHTML = tipo === 'error' ? '<i class="ph ph-warning-circle text-red-400"></i>' : '<i class="ph ph-check-circle text-emerald-400"></i>';
-            noti.className = `fixed top-20 left-1/2 transform -translate-x-1/2 z-[100] max-w-md w-full bg-slate-900 text-white shadow-2xl rounded-2xl p-4 flex items-center gap-3 border ${tipo === 'error' ? 'border-red-500/50' : 'border-emerald-500/50'}`;
-            texto.textContent = mensaje;
-            
-            noti.animate([{ transform: 'translate(-50%, -20px)', opacity: 0 }, { transform: 'translate(-50%, 0)', opacity: 1 }], { duration: 300, fill: 'forwards' });
-            setTimeout(() => { noti.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 300, fill: 'forwards' }).onfinish = () => noti.classList.add('hidden'); }, 3500);
+        window.cerrarSesionLocal = function() {
+            if(unsubscribeSesion) unsubscribeSesion(); // Limpiamos el listener al salir
+            localStorage.removeItem('asesorDatos');
+            location.reload();
         };
 
-        function formatearTiempo(segundos) {
-            const sign = segundos < 0 ? "-" : "";
-            segundos = Math.abs(segundos);
-            const m = Math.floor(segundos / 60).toString().padStart(2, '0');
-            const s = (segundos % 60).toString().padStart(2, '0');
-            return `${sign}${m}:${s}`;
-        }
+        window.setEstado = async function(nuevoEstado) {
+            if (!window.asesorDatos) return;
 
-        function getHoraReal() { return Date.now(); } // Sin offset, usando hora local
+            let ahora = Date.now();
+            autoLogoutDisparado = false;
 
-        setInterval(() => {
-            const ahora = new Date(getHoraReal());
-            const empDisplay = document.getElementById('reloj-display-empleado');
-            if(empDisplay) empDisplay.textContent = ahora.toLocaleTimeString('es-ES', { hour12: false });
-        }, 1000);
-
-        // LOGIN MANUAL SIMULADO
-        window.loginEmpleado = function() {
-            const pinDigitado = document.getElementById('pin-empleado').value.trim();
-            if(!pinDigitado) return mostrarNotificacion('Ingresa un ID para continuar', 'error');
-            
-            window.mostrarVista('vista-cargando');
-            
-            // Simulamos un retraso de conexión
-            setTimeout(() => {
-                const hoy = obtenerFechaHoy();
-                empleadoActual = { 
-                    docId: 'local_' + pinDigitado, 
-                    pin: pinDigitado, 
-                    nombre: ':) ' + pinDigitado,
-                    limiteBano: limitesGlobales.bano,
-                    limiteComida: limitesGlobales.comida
-                };
+            if (window.estadoActivo) {
+                keepAliveWorker.postMessage('stop');
+                let segundosPasados = Math.floor((ahora - sesionFirebase.tiempoInicioEstado) / 1000);
+                sesionFirebase.tiemposAcumulados[window.estadoActivo] += segundosPasados;
                 
-                tiempoAcumuladoActual = { Baño: 0, Comida: 0, Calidad: 0, fecha: hoy };
-
-                document.getElementById('nombre-empleado-display').textContent = empleadoActual.nombre;
-                document.getElementById('id-empleado-display').textContent = empleadoActual.pin;
-                document.getElementById('pin-empleado').value = ''; 
-                document.getElementById('fecha-empleado-display').textContent = new Date(getHoraReal()).toLocaleDateString('es-ES', { weekday: 'long', year: 'numeric', month: 'short', day: 'numeric' });
-                document.getElementById('filtro-fecha-empleado').value = hoy;
-                
-                window.mostrarVista('vista-empleado');
-                actualizarDisplaysInactivos();
-                renderizarHistorialEmpleado();
-                mostrarNotificacion('Iniciado en Modo Manual', 'exito');
-            }, 800);
-        };
-
-        function obtenerLimiteActual(tipo) {
-            if (tipo === 'Baño') return empleadoActual.limiteBano || limitesGlobales.bano;
-            if (tipo === 'Comida') return empleadoActual.limiteComida || limitesGlobales.comida;
-            return Infinity; 
-        }
-
-        function actualizarDisplaysInactivos() {
-            if(sesionActivaActual) return; 
-            document.getElementById('lim-Baño').textContent = obtenerLimiteActual('Baño');
-            document.getElementById('lim-Comida').textContent = obtenerLimiteActual('Comida');
-
-            ['Baño', 'Comida', 'Calidad'].forEach(tipo => {
-                const acumulado = tiempoAcumuladoActual[tipo] || 0;
-                const limiteSegundos = obtenerLimiteActual(tipo) * 60;
-                const restante = limiteSegundos - acumulado;
-
-                const disp = document.getElementById('disp-' + tipo);
-                const rem = document.getElementById('rem-' + tipo);
-                const btn = document.getElementById('btn-' + tipo);
-
-                disp.textContent = formatearTiempo(acumulado);
-
-                if(tipo !== 'Calidad') {
-                    if (restante > 0) {
-                        rem.innerHTML = `Restan: ${formatearTiempo(restante)}`;
-                        rem.className = "text-xs font-extrabold text-slate-500 bg-slate-100 px-2 py-1 rounded-md transition-colors";
-                        disp.className = "font-mono font-black text-4xl sm:text-5xl text-slate-800 tabular-nums my-3 transition-colors tracking-tight";
-                        btn.classList.remove('border-red-300', 'bg-red-50/50'); btn.classList.add('border-slate-100', 'bg-white');
-                    } else {
-                        rem.innerHTML = `Excedido: ${formatearTiempo(Math.abs(restante))}`;
-                        rem.className = "text-xs font-extrabold text-red-600 bg-red-100 px-2 py-1 rounded-md transition-colors animate-pulse";
-                        disp.className = "font-mono font-black text-4xl sm:text-5xl text-red-600 tabular-nums my-3 transition-colors tracking-tight";
-                        btn.classList.add('border-red-300', 'bg-red-50/50'); btn.classList.remove('border-slate-100', 'bg-white');
-                    }
+                if (segundosPasados > 5) {
+                    try {
+                        addDoc(collection(db, "registros_tiempos"), {
+                            asesor_id: window.asesorDatos.id,
+                            asesor_nombre: window.asesorDatos.nombre,
+                            estado: window.estadoActivo, 
+                            duracion_segundos: segundosPasados,
+                            fecha: serverTimestamp()
+                        });
+                    } catch (e) { }
                 }
-            });
+                removerEstilosActivos(window.estadoActivo);
+            }
+
+            window.estadoActivo = nuevoEstado;
+            sesionFirebase.estadoActivo = nuevoEstado;
+            sesionFirebase.tiempoInicioEstado = nuevoEstado ? ahora : null;
+
+            if (nuevoEstado) {
+                aplicarEstilosActivos(nuevoEstado);
+                keepAliveWorker.postMessage('start');
+            }
+
+            try {
+                await setDoc(doc(db, "sesiones_activas", window.asesorDatos.id), sesionFirebase);
+            } catch (e) { }
+            
+            actualizarPantalla();
         }
 
-        window.iniciarCronometro = function(tipo, justificacion = '') {
-            if(!empleadoActual || sesionActivaActual) return;
-            sesionActivaActual = { pin: empleadoActual.pin, nombre: empleadoActual.nombre, tipo: tipo, justificacion: justificacion, inicio: getHoraReal() };
-            activarInterfazCronometro(sesionActivaActual);
-        };
+        function actualizarPantalla() {
+            if (!window.asesorDatos) return;
+            let ahora = Date.now();
 
-        window.abrirModalCalidad = function() {
-            if(sesionActivaActual) return;
-            document.getElementById('calidad-justificacion').value = '';
-            document.getElementById('modal-overlay').classList.remove('hidden'); document.getElementById('modal-calidad').classList.remove('hidden');
-            setTimeout(() => { document.getElementById('modal-overlay').classList.remove('opacity-0'); document.getElementById('modal-calidad').classList.remove('scale-95'); document.getElementById('calidad-justificacion').focus(); }, 10);
-        };
-        
-        window.cerrarModales = function() {
-            document.getElementById('modal-overlay').classList.add('opacity-0'); document.getElementById('modal-calidad').classList.add('scale-95');
-            setTimeout(() => { document.getElementById('modal-overlay').classList.add('hidden'); document.getElementById('modal-calidad').classList.add('hidden'); }, 300);
-        };
-        
-        window.confirmarCalidad = function() {
-            const val = document.getElementById('calidad-justificacion').value.trim();
-            if(!val) return mostrarNotificacion('La justificación es obligatoria', 'error');
-            window.cerrarModales(); window.iniciarCronometro('Calidad', val);
-        };
+            ['bath', 'food', 'quality'].forEach(estado => {
+                let segundosUsados = sesionFirebase.tiemposAcumulados[estado] || 0;
+                if (window.estadoActivo === estado && sesionFirebase.tiempoInicioEstado) {
+                    segundosUsados += Math.floor((ahora - sesionFirebase.tiempoInicioEstado) / 1000);
+                }
 
-        function activarInterfazCronometro(datosSesion) {
-            window.autoLogoutFired = false; 
-            const stopContainer = document.getElementById('contenedor-stop');
-            stopContainer.classList.remove('hidden');
-            setTimeout(() => stopContainer.classList.remove('opacity-0', 'translate-y-4'), 10);
+                let m = Math.floor(segundosUsados / 60);
+                let s = segundosUsados % 60;
+                let elDisp = document.getElementById(`disp${capitalize(estado)}`);
+                if(elDisp) elDisp.innerText = `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
 
-            document.getElementById('titulo-panel-empleado').textContent = "Descanso en Progreso";
-            const tipoActivo = datosSesion.tipo;
-            
-            ['Baño', 'Comida', 'Calidad'].forEach(t => {
-                const btn = document.getElementById('btn-' + t);
-                if (t !== tipoActivo) {
-                    btn.classList.add('opacity-40', 'pointer-events-none', 'grayscale', 'scale-95');
-                    btn.classList.remove('hover:-translate-y-1', 'hover:shadow-lg');
+                const limiteMinutos = { bath: window.asesorDatos.limites.bano, food: window.asesorDatos.limites.comida, quality: window.asesorDatos.limites.calidad }[estado] || 999;
+                let limiteSegundos = limiteMinutos * 60;
+                let elRem = document.getElementById(`rem${capitalize(estado)}`);
+                
+                if (segundosUsados >= limiteSegundos) {
+                    if (elRem) {
+                        elRem.innerText = "¡TIEMPO EXCEDIDO!";
+                        elRem.className = "text-sm font-bold bg-red-100 text-red-600 px-4 py-2 rounded-full w-full text-center animate-pulse";
+                    }
+                    if (window.estadoActivo === estado && !autoLogoutDisparado) {
+                        autoLogoutDisparado = true;
+                        window.postMessage({ type: 'GP_SERVER_LOGOUT' }, '*');
+                    }
                 } else {
-                    let colorCode = t==='Baño'?'blue':t==='Comida'?'orange':'purple';
-                    btn.classList.add(`ring-4`, `ring-${colorCode}-200`, `border-${colorCode}-400`, `bg-${colorCode}-50`, 'scale-[1.02]');
-                    btn.classList.remove('border-slate-100', 'bg-white', 'border-red-300', 'bg-red-50/50', `hover:border-${colorCode}-300`, `hover:bg-${colorCode}-50/50`, 'hover:-translate-y-1');
-                    btn.onclick = null; 
-                    document.getElementById('play-' + t).classList.replace('hidden', 'opacity-100');
-                }
-            });
-
-            const limiteSegundos = obtenerLimiteActual(tipoActivo) * 60;
-            const display = document.getElementById('disp-' + tipoActivo);
-            const displayRestante = document.getElementById('rem-' + tipoActivo);
-
-            if(intervaloCronometro) clearInterval(intervaloCronometro);
-            const tick = () => {
-                const acumuladoBase = tiempoAcumuladoActual[tipoActivo] || 0;
-                const transcurridoSegmento = Math.floor((getHoraReal() - datosSesion.inicio) / 1000);
-                const transcurridoTotal = acumuladoBase + transcurridoSegmento;
-                
-                display.textContent = formatearTiempo(transcurridoTotal);
-                
-                if (tipoActivo === 'Calidad') {
-                    displayRestante.innerHTML = `<span class="truncate w-full px-2" title="${datosSesion.justificacion}">${datosSesion.justificacion}</span>`;
-                    displayRestante.className = "text-xs mt-2 text-purple-600 font-medium italic block bg-purple-100 px-2 py-1 rounded w-full text-center";
-                } else {
-                    const restante = limiteSegundos - transcurridoTotal;
-                    if (restante > 0) {
-                        displayRestante.innerHTML = `Restan: ${formatearTiempo(restante)}`;
-                        displayRestante.className = "text-xs font-extrabold text-blue-700 bg-blue-100 px-2 py-1 rounded-md transition-colors shadow-sm";
-                        window.autoLogoutFired = false;
-                    } else {
-                        displayRestante.innerHTML = `Excedido: ${formatearTiempo(Math.abs(restante))}`;
-                        displayRestante.className = "text-xs font-extrabold text-white bg-red-500 px-2 py-1 rounded-md transition-colors shadow-sm animate-pulse";
-                        
-                        // ===== AUTO-LOGOUT LOCAL =====
-                        if (!window.autoLogoutFired && transcurridoSegmento > 2 && limitesGlobales.autoExpulsion !== false) {
-                            window.autoLogoutFired = true; 
-                            console.log("Límite excedido. Disparando cierre local a TouchPoint...");
-                            window.postMessage({ type: 'GODSPLAN_ADMIN_COMMAND', action: 'FORCE_LOGOUT_TP' }, '*');
-                            mostrarNotificacion("⏳ Límite de tiempo excedido. Auto-cerrando tu sesión...", "error");
-                            
-                            setTimeout(() => { if (sesionActivaActual) window.detenerCronometro(); }, 4000);
-                        }
-                    }
-
-                    if (transcurridoTotal > limiteSegundos) {
-                        display.classList.replace('text-slate-800', 'text-red-600');
-                        document.getElementById('btn-' + tipoActivo).classList.add('border-red-400', 'bg-red-50', 'ring-red-200');
+                    let restantes = limiteSegundos - segundosUsados;
+                    let restM = Math.floor(restantes/60);
+                    let restS = restantes % 60;
+                    if (elRem) {
+                        elRem.innerText = `Restan: ${restM}m ${restS.toString().padStart(2, '0')}s`;
+                        elRem.className = restantes <= 180 ? "text-sm font-bold bg-amber-100 text-amber-600 px-4 py-2 rounded-full w-full text-center transition-colors" : "text-sm font-bold bg-money/10 text-money px-4 py-2 rounded-full w-full text-center transition-colors";
                     }
                 }
-            };
-            tick(); intervaloCronometro = setInterval(tick, 1000);
+            });
         }
 
-        function desactivarInterfazCronometro() {
-            if(intervaloCronometro) clearInterval(intervaloCronometro);
-            window.autoLogoutFired = false; 
-            
-            document.getElementById('contenedor-stop').classList.add('opacity-0', 'translate-y-4');
-            setTimeout(() => document.getElementById('contenedor-stop').classList.add('hidden'), 300);
-
-            document.getElementById('titulo-panel-empleado').textContent = "Tus Tiempos";
-            
-            ['Baño', 'Comida', 'Calidad'].forEach(t => {
-                const btn = document.getElementById('btn-' + t);
-                let colorCode = t==='Baño'?'blue':t==='Comida'?'orange':'purple';
-                btn.className = `flex flex-col items-center justify-center p-6 sm:p-8 rounded-2xl relative border-2 border-slate-100 hover:border-${colorCode}-300 hover:bg-${colorCode}-50/50 hover:shadow-lg hover:-translate-y-1 transition-all duration-300 cursor-pointer bg-white group overflow-hidden`;
-                if(t==='Baño') btn.onclick = () => iniciarCronometro(t);
-                if(t==='Comida') btn.onclick = () => iniciarCronometro(t);
-                if(t==='Calidad') btn.onclick = () => abrirModalCalidad();
-                document.getElementById('play-' + t).classList.add('opacity-0');
-            });
-            
-            document.getElementById('rem-Calidad').textContent = 'Requiere Justificación';
-            document.getElementById('rem-Calidad').className = 'text-[10px] text-purple-400 font-bold uppercase bg-purple-50 px-2 py-1 rounded w-full text-center transition-colors';
-            
-            const btnStop = document.getElementById('btn-detener-cronometro');
-            btnStop.disabled = false;
-            btnStop.innerHTML = `<div class="absolute inset-0 bg-white/20 transform -skew-x-12 -translate-x-full group-hover:animate-[shimmer_1.5s_infinite]"></div><span class="relative flex h-5 w-5 mr-1"><span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-white opacity-75"></span><span class="relative inline-flex rounded-full h-5 w-5 bg-white flex items-center justify-center"><div class="w-2 h-2 bg-red-600 rounded-sm"></div></span></span>PAUSAR DESCANSO Y REGRESAR`;
-            
-            actualizarDisplaysInactivos(); 
+        function aplicarEstilosActivos(estado) {
+            const newContainer = document.getElementById(`clock${capitalize(estado)}Container`);
+            if(newContainer) {
+                newContainer.classList.remove('border-border', 'bg-card');
+                newContainer.classList.add('border-brand', 'bg-blue-50', 'ring-4', 'ring-brand/20', 'scale-[1.02]', 'shadow-lg');
+                document.getElementById(`disp${capitalize(estado)}`).classList.remove('text-text');
+                document.getElementById(`disp${capitalize(estado)}`).classList.add('text-brand');
+            }
         }
 
-        window.detenerCronometro = function() {
-            if(!sesionActivaActual || window.isPausing) return;
-            window.isPausing = true; 
-            
-            if(intervaloCronometro) clearInterval(intervaloCronometro);
-            const btn = document.getElementById('btn-detener-cronometro');
-            btn.disabled = true; btn.innerHTML = '<i class="ph ph-spinner animate-spin text-3xl"></i> Pausando...';
-            
-            const fin = getHoraReal();
-            const transcurridoSegmento = Math.floor((fin - sesionActivaActual.inicio) / 1000);
-            const tipoActivo = sesionActivaActual.tipo;
-            const nuevoAcumulado = (tiempoAcumuladoActual[tipoActivo] || 0) + transcurridoSegmento;
+        function removerEstilosActivos(estado) {
+            const oldContainer = document.getElementById(`clock${capitalize(estado)}Container`);
+            if(oldContainer) {
+                oldContainer.classList.remove('border-brand', 'bg-blue-50', 'ring-4', 'ring-brand/20', 'scale-[1.02]', 'shadow-lg');
+                oldContainer.classList.add('border-border', 'bg-card');
+                document.getElementById(`disp${capitalize(estado)}`).classList.remove('text-brand');
+                document.getElementById(`disp${capitalize(estado)}`).classList.add('text-text');
+            }
+        }
 
-            const limiteMin = obtenerLimiteActual(tipoActivo);
-            let estado = "A tiempo";
-            if (tipoActivo !== 'Calidad' && nuevoAcumulado > (limiteMin * 60)) estado = window.autoLogoutFired ? "Excedido (Expulsado)" : "Excedido";
-            else if (tipoActivo === 'Calidad') estado = "Registrado";
+        function capitalize(s) { return s.charAt(0).toUpperCase() + s.slice(1); }
 
-            const registroFinal = {
-                pin: sesionActivaActual.pin, nombre: sesionActivaActual.nombre, tipo: tipoActivo,
-                justificacion: sesionActivaActual.justificacion || '', inicio: sesionActivaActual.inicio,
-                fin: fin, fechaISO: obtenerFechaHoy(), duracionSegundos: transcurridoSegmento,
-                duracionStr: formatearTiempo(transcurridoSegmento), estado: estado
-            };
+        function actualizarBadgeConexion(estaConectado) {
+            const badge = document.getElementById('networkTimeBadge');
+            if (!badge) return;
+            if (estaConectado) {
+                badge.className = 'text-sm font-bold bg-money/10 text-money px-4 py-2 rounded-full flex items-center gap-2 shadow-sm border border-money/20';
+                badge.innerHTML = `<span class="relative flex h-3 w-3"><span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-money opacity-75"></span><span class="relative inline-flex rounded-full h-3 w-3 bg-money"></span></span>Conectado a TouchPoint`;
+            } else {
+                badge.className = 'text-sm font-bold bg-red-100 text-red-600 px-4 py-2 rounded-full flex items-center gap-2 shadow-sm border border-red-200 cursor-help transition-colors';
+                badge.innerHTML = `<i class="ph-bold ph-warning-circle text-lg"></i> Inicia sesión en TouchPoint`;
+            }
+        }
 
-            // Lógica de guardado en memoria local
-            setTimeout(() => {
-                todosLosRegistros.push(registroFinal);
-                todosLosRegistros.sort((a, b) => b.fin - a.fin);
-                tiempoAcumuladoActual[tipoActivo] = nuevoAcumulado;
-                
-                sesionActivaActual = null; 
-                desactivarInterfazCronometro();
-                renderizarHistorialEmpleado();
-                mostrarNotificacion(`Agregaste ${formatearTiempo(transcurridoSegmento)} a tu cuenta.`);
-                
-                window.isPausing = false;
-            }, 400); // Pequeño delay simulado
-        };
-
-        window.renderizarHistorialEmpleado = function() {
-            if (!empleadoActual) return;
-            const fechaFiltro = document.getElementById('filtro-fecha-empleado').value;
-            const tabla = document.getElementById('tabla-registros-empleado');
-            tabla.innerHTML = '';
-            
-            const misRegistros = todosLosRegistros.filter(r => r.pin === empleadoActual.pin && r.fechaISO === fechaFiltro);
-            if (misRegistros.length === 0) { tabla.innerHTML = `<tr><td colspan="4" class="p-10 text-center text-slate-400 italic">No hay registros manuales para la fecha seleccionada.</td></tr>`; return; }
-
-            misRegistros.forEach(reg => {
-                let badgeClass = reg.estado === 'A tiempo' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-red-50 text-red-700 border-red-200 font-bold';
-                if(reg.estado === 'Excedido (Expulsado)') badgeClass = 'bg-red-600 text-white border-red-700 font-bold shadow-sm';
-                if(reg.tipo === 'Calidad') badgeClass = 'bg-purple-50 text-purple-700 border-purple-200';
-                
-                const justificacionTxt = reg.justificacion ? `<div class="text-[11px] text-slate-500 italic mt-1"><i class="ph ph-chat-circle"></i> "${reg.justificacion}"</div>` : '';
-                const horaStr = new Date(reg.fin).toLocaleTimeString([],{hour:'2-digit', minute:'2-digit'});
-                let tipoIcon = reg.tipo === 'Baño' ? 'ph-toilet text-blue-500' : (reg.tipo === 'Comida' ? 'ph-hamburger text-orange-500' : 'ph-star text-purple-500');
-
-                tabla.innerHTML += `
-                    <tr class="border-b border-slate-100">
-                        <td class="px-6 py-4"><span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-bold text-slate-600 bg-white border shadow-sm"><i class="ph-fill ${tipoIcon}"></i> ${reg.tipo}</span></td>
-                        <td class="px-6 py-4 font-mono font-black text-blue-600 tracking-wider">${reg.duracionStr}</td>
-                        <td class="px-6 py-4"><span class="px-2 py-0.5 text-[11px] rounded-md border inline-block ${badgeClass}">${reg.estado}</span>${justificacionTxt}</td>
-                        <td class="px-6 py-4 text-right text-xs text-slate-500 bg-slate-50"><i class="ph ph-clock"></i> ${horaStr}</td>
-                    </tr>`;
-            });
-        };
-
-        window.cerrarSesionGeneral = function() {
-            if(intervaloCronometro) clearInterval(intervaloCronometro);
-            if (sesionActivaActual) { window.detenerCronometro(); }
-            
-            setTimeout(() => {
-                empleadoActual = null; 
-                sesionActivaActual = null; 
-                todosLosRegistros = []; // Borramos memoria local al salir
-                window.location.reload();
-            }, 500);
-        };
-
+        // ESCUCHA MENSAJES DESDE LA EXTENSIÓN
         window.addEventListener('message', (event) => {
-            if (event.source !== window) return;
+            if (event.data && event.data.type === 'GP_CONNECTION_STATUS') {
+                actualizarBadgeConexion(event.data.connected);
+            }
+            
             if (event.data && event.data.type === 'GODSPLAN_COMMAND') {
-                if (!empleadoActual) return;
-                switch (event.data.action) {
-                    case 'START_BREAK_BATH': if (!sesionActivaActual) window.iniciarCronometro('Baño'); break;
-                    case 'START_BREAK_FOOD': if (!sesionActivaActual) window.iniciarCronometro('Comida'); break;
-                    case 'RESUME_WORK': if (sesionActivaActual) window.detenerCronometro(); break;
-                    case 'END_SHIFT': if (sesionActivaActual) window.detenerCronometro(); break;
-                    case 'START_BREAK_CALIDAD': if (!sesionActivaActual) window.iniciarCronometro('Calidad', 'Activado vía TouchPoint'); break;  
-                    case 'START_SHIFT': if (sesionActivaActual) window.detenerCronometro(); break;
-                }
+                const action = event.data.action;
+                if (action === 'START_BREAK_BATH') setEstado('bath');
+                else if (action === 'START_BREAK_FOOD') setEstado('food');
+                else if (action === 'START_QUALITY') setEstado('quality');
+                else if (action === 'RESUME_WORK') setEstado(null);
             }
         });
     </script>
