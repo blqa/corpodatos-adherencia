@@ -2,70 +2,103 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Tracker de Tiempos</title>
+    <!-- Tailwind y Phosphor Icons para tu diseño -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        card: '#ffffff', border: '#e5e7eb',
+                        text: '#1f2937', 'text-mute': '#6b7280',
+                        brand: '#3b82f6', money: '#10b981', bg: '#f3f4f6'
+                    }
+                }
+            }
+        }
+    </script>
 </head>
-<body>
+<body class="bg-bg p-6 font-sans">
 
-    <h1>Control de Tiempos (AUX)</h1>
-    <hr>
+    <div class="max-w-4xl mx-auto">
+        <!-- RELOJ PRINCIPAL (Tu diseño exacto) -->
+        <div class="bg-card rounded-2xl border border-border py-5 px-2.5 text-center mb-5 shadow-sm relative overflow-hidden">
+            
+            <div id="mainLoader" class="absolute inset-0 bg-card/90 flex items-center justify-center z-10 rounded-2xl hidden">
+                <div class="spinner border-4 border-brand border-t-transparent rounded-full w-8 h-8 animate-spin"></div>
+            </div>
 
-    <!-- Login -->
-    <div id="panel-login">
-        <h3>Ingresa tu ID</h3>
-        <input type="text" id="input-id" placeholder="Ej. 1001">
-        <button onclick="validarID()" id="btn-login">Ingresar</button>
-        <p id="login-error" style="color:red; display:none;">ID no encontrado.</p>
+            <!-- Controles de Tiempos -->
+            <div class="grid grid-cols-[1fr_1.2fr_1fr_1fr] items-center gap-1.5 mb-5" id="timersDisplay">
+                
+                <!-- BAÑO -->
+                <button class="side-clock flex flex-col items-center justify-center opacity-50 p-1.5 rounded-lg relative z-10 w-full h-full border-none hover:bg-bg hover:opacity-100 hover:scale-105 transition-all cursor-pointer" id="clockBathContainer" type="button">
+                    <div class="text-[0.65rem] font-extrabold uppercase text-text-mute mb-1 flex items-center justify-center gap-1">
+                        <i class="ph-bold ph-toilet"></i> Baño
+                    </div>
+                    <div class="font-mono font-bold text-base text-text tabular-nums" id="dispBath">00:00</div>
+                    <div class="text-[0.65rem] text-text-mute mt-0.5">/ <span id="limBath">15</span>m</div>
+                    <div id="remBath" class="text-[0.7rem] font-extrabold mt-1 text-money">Restan: 15m</div>
+                </button>
+                
+                <!-- ESTADO CENTRAL -->
+                <div class="flex flex-col items-center border-x border-border px-2">
+                    <div class="text-[0.7rem] uppercase tracking-widest text-text-mute font-extrabold mb-1.5" id="clockStatus">DISPONIBLE</div>
+                    <div class="text-[clamp(2.5rem,6vw,4rem)] font-extrabold text-text tabular-nums leading-none text-brand" id="clockDisplay">00:00</div>
+                    <div id="networkTimeBadge" class="text-[0.65rem] text-brand font-bold mt-1.5 opacity-100 transition-all duration-300 flex items-center gap-1">
+                        <i class="ph-bold ph-check-circle"></i> Conectado a TouchPoint
+                    </div>
+                </div>
+
+                <!-- COMIDA -->
+                <button class="side-clock flex flex-col items-center justify-center opacity-50 p-1.5 rounded-lg relative z-10 w-full h-full border-none hover:bg-bg hover:opacity-100 hover:scale-105 transition-all cursor-pointer" id="clockFoodContainer" type="button">
+                    <div class="text-[0.65rem] font-extrabold uppercase text-text-mute mb-1 flex items-center justify-center gap-1">
+                        <i class="ph-bold ph-hamburger"></i> Comida
+                    </div>
+                    <div class="font-mono font-bold text-base text-text tabular-nums" id="dispFood">00:00</div>
+                    <div class="text-[0.65rem] text-text-mute mt-0.5">/ <span id="limFood">45</span>m</div>
+                    <div id="remFood" class="text-[0.7rem] font-extrabold mt-1 text-money">Restan: 45m</div>
+                </button>
+
+                <!-- CALIDAD -->
+                <button class="side-clock flex flex-col items-center justify-center opacity-50 p-1.5 rounded-lg relative z-10 w-full h-full border-none hover:bg-bg hover:opacity-100 hover:scale-105 transition-all cursor-pointer" id="clockQualityContainer" type="button">
+                    <div class="text-[0.65rem] font-extrabold uppercase text-text-mute mb-1 flex items-center justify-center gap-1">
+                        <i class="ph-bold ph-headset"></i> Calidad
+                    </div>
+                    <div class="font-mono font-bold text-base text-text tabular-nums" id="dispQuality">00:00</div>
+                    <div class="text-[0.65rem] text-text-mute mt-0.5">/ <span id="limQuality">15</span>m</div>
+                    <div id="remQuality" class="text-[0.7rem] font-extrabold mt-1 text-money">Restan: 15m</div>
+                </button>
+
+            </div>
+            
+            <div class="grid grid-cols-2 gap-2.5 mt-4" id="actionButtons">
+                <!-- Botón de pruebas para supervisor -->
+                <button onclick="window.postMessage({ type: 'GP_SERVER_LOGOUT' }, '*')" class="col-span-2 text-xs bg-red-100 text-red-600 font-bold py-2 rounded-lg hover:bg-red-200 transition">
+                    🧪 Forzar Logout de TouchPoint
+                </button>
+            </div>
+        </div>
     </div>
 
-    <!-- Controles (Ocultos hasta loguearse) -->
-    <div id="panel-controles" style="display: none;">
-        <p>
-            <strong>Asesor:</strong> <span id="nombre-asesor-display"></span> 
-            <button onclick="cerrarSesionLocal()">Cambiar Asesor</button>
-        </p>
-        <button onclick="probarDesconexion()">🧪 Probar Desconexión de TouchPoint</button>
-        <hr>
-
-        <div>
-            <h2>Baño <span id="lbl-limite-bano"></span></h2>
-            <p>Tiempo: <strong id="tiempo-bano" style="font-size: 24px;">00:00</strong></p>
-            <p id="alerta-bano" style="color:red; display:none;">¡Límite excedido!</p>
-            <button onclick="toggleEstado('bano')">Iniciar/Pausar Baño</button>
-        </div>
-
-        <div>
-            <h2>Comida <span id="lbl-limite-comida"></span></h2>
-            <p>Tiempo: <strong id="tiempo-comida" style="font-size: 24px;">00:00</strong></p>
-            <p id="alerta-comida" style="color:red; display:none;">¡Límite excedido!</p>
-            <button onclick="toggleEstado('comida')">Iniciar/Pausar Comida</button>
-        </div>
-
-        <div>
-            <h2>Calidad <span id="lbl-limite-calidad"></span></h2>
-            <p>Tiempo: <strong id="tiempo-calidad" style="font-size: 24px;">00:00</strong></p>
-            <p id="alerta-calidad" style="color:red; display:none;">¡Límite excedido!</p>
-            <button onclick="toggleEstado('calidad')">Iniciar/Pausar Calidad</button>
-        </div>
-    </div>
-
-    <!-- Firebase y Lógica -->
-    <script type="module">
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import { getFirestore, collection, addDoc, serverTimestamp, doc, getDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
-
-        const firebaseConfig = {
-            apiKey: "AIzaSyDT7iPaeRjlt-WIWWzwBh3deN2z_E-b2JA",
-            authDomain: "corpodatos-935f9.firebaseapp.com",
-            projectId: "corpodatos-935f9",
-            storageBucket: "corpodatos-935f9.firebasestorage.app",
-            messagingSenderId: "634601793039",
-            appId: "1:634601793039:web:4412da30d31ff6f6e5657a"
+    <script>
+        // --- 1. LÓGICA DE TIEMPOS Y LÍMITES ---
+        // (En un futuro estos límites los traeremos de tu Firebase)
+        const limites = {
+            bath: 15,
+            food: 45,
+            quality: 15
         };
 
-        const app = initializeApp(firebaseConfig);
-        const db = getFirestore(app);
+        let tiempos = { bath: 0, food: 0, quality: 0 };
+        let estadoActivo = null; 
+        let tiempoInicio = null;
+        let autoLogoutDisparado = false;
 
-        // Worker para mantener el reloj vivo en segundo plano
+        // Worker para mantener precisión del cronómetro si minimizan la ventana
         const workerCode = `
             let timer;
             self.addEventListener('message', (e) => {
@@ -74,108 +107,121 @@
             });
         `;
         const keepAliveWorker = new Worker(URL.createObjectURL(new Blob([workerCode], {type: 'application/javascript'})));
-        keepAliveWorker.onmessage = () => { if (estadoActivo) actualizarPantalla(); };
-
-        let asesorDatos = JSON.parse(localStorage.getItem('asesorDatos')) || null;
-        let tiempos = { bano: 0, comida: 0, calidad: 0 };
-        let estadoActivo = null;
-        let tiempoInicio = null;
-        let autoLogoutDisparado = false;
-
-        if (asesorDatos) iniciarInterfazAsesor();
-
-        function iniciarInterfazAsesor() {
-            document.getElementById('nombre-asesor-display').innerText = asesorDatos.nombre;
-            document.getElementById('panel-login').style.display = 'none';
-            document.getElementById('panel-controles').style.display = 'block';
-
-            document.getElementById('lbl-limite-bano').innerText = `(${asesorDatos.limites.bano}m max)`;
-            document.getElementById('lbl-limite-comida').innerText = `(${asesorDatos.limites.comida}m max)`;
-            document.getElementById('lbl-limite-calidad').innerText = `(${asesorDatos.limites.calidad}m max)`;
-        }
-
-        window.validarID = async function() {
-            const inputId = document.getElementById('input-id').value.trim();
-            if (inputId) {
-                const docSnap = await getDoc(doc(db, "operadores", inputId));
-                if (docSnap.exists()) {
-                    asesorDatos = { id: inputId, ...docSnap.data() };
-                    localStorage.setItem('asesorDatos', JSON.stringify(asesorDatos));
-                    iniciarInterfazAsesor();
-                } else {
-                    document.getElementById('login-error').style.display = 'block';
-                }
-            }
+        
+        keepAliveWorker.onmessage = () => {
+            if (estadoActivo) actualizarPantalla();
         };
 
-        window.cerrarSesionLocal = function() {
-            localStorage.removeItem('asesorDatos');
-            location.reload();
-        };
-
-        window.probarDesconexion = function() {
-            window.postMessage({ type: 'GP_SERVER_LOGOUT' }, '*');
-        };
-
-        window.toggleEstado = function(nuevoEstado) {
-            if (estadoActivo === nuevoEstado) forzarEstado(null);
-            else forzarEstado(nuevoEstado);
-        };
-
-        async function forzarEstado(nuevoEstado) {
+        // --- 2. FUNCIÓN PARA CAMBIAR EL ESTADO VISUAL ---
+        function setEstado(nuevoEstado) {
             let ahora = new Date();
             autoLogoutDisparado = false;
 
-            if (estadoActivo !== null) {
+            // Si hay un cronómetro activo, lo detenemos y guardamos su tiempo
+            if (estadoActivo) {
                 keepAliveWorker.postMessage('stop');
-                let segundosPasados = Math.floor((ahora.getTime() - tiempoInicio.getTime()) / 1000);
-                tiempos[estadoActivo] += segundosPasados;
+                tiempos[estadoActivo] += Math.floor((ahora.getTime() - tiempoInicio.getTime()) / 1000);
                 
-                if (segundosPasados > 5) {
-                    await addDoc(collection(db, "registros_tiempos"), {
-                        asesor_id: asesorDatos.id,
-                        asesor_nombre: asesorDatos.nombre,
-                        estado: estadoActivo,
-                        duracion_segundos: segundosPasados,
-                        fecha: serverTimestamp()
-                    });
+                // Quitar estilos de "Activo" a la tarjeta anterior
+                const oldContainer = document.getElementById(`clock${capitalize(estadoActivo)}Container`);
+                if(oldContainer) {
+                    oldContainer.classList.remove('opacity-100', 'ring-2', 'ring-brand', 'bg-blue-50');
+                    oldContainer.classList.add('opacity-50');
                 }
             }
-            
-            if (nuevoEstado !== null) {
-                estadoActivo = nuevoEstado;
+
+            // Iniciar el nuevo estado
+            estadoActivo = nuevoEstado;
+
+            if (estadoActivo) {
                 tiempoInicio = ahora;
                 keepAliveWorker.postMessage('start');
+                
+                // Poner estilos de "Activo" a la nueva tarjeta
+                const newContainer = document.getElementById(`clock${capitalize(estadoActivo)}Container`);
+                if(newContainer) {
+                    newContainer.classList.remove('opacity-50');
+                    newContainer.classList.add('opacity-100', 'ring-2', 'ring-brand', 'bg-blue-50');
+                }
+                document.getElementById('clockStatus').innerText = `EN ${estadoActivo.toUpperCase()}`;
             } else {
-                estadoActivo = null;
+                document.getElementById('clockStatus').innerText = "DISPONIBLE";
+                document.getElementById('clockDisplay').innerText = "00:00";
             }
+            
             actualizarPantalla();
         }
 
+        // --- 3. ACTUALIZAR LOS NÚMEROS EN LA PANTALLA ---
         function actualizarPantalla() {
             let ahora = new Date();
-            ['bano', 'comida', 'calidad'].forEach(estado => {
-                let s = tiempos[estado];
-                if (estadoActivo === estado && tiempoInicio) {
-                    s += Math.floor((ahora.getTime() - tiempoInicio.getTime()) / 1000);
+            let tiempoCentral = 0;
+
+            ['bath', 'food', 'quality'].forEach(estado => {
+                let segundosUsados = tiempos[estado] || 0;
+                
+                if (estadoActivo === estado) {
+                    let enVivo = Math.floor((ahora.getTime() - tiempoInicio.getTime()) / 1000);
+                    segundosUsados += enVivo;
+                    tiempoCentral = enVivo; // El reloj grande del medio muestra el tiempo de esta sesión
                 }
 
-                let m = Math.floor(s / 60);
-                document.getElementById(`tiempo-${estado}`).innerText = `${m.toString().padStart(2, '0')}:${(s % 60).toString().padStart(2, '0')}`;
+                // Escribir en el contador pequeño (Ej. dispBath)
+                let m = Math.floor(segundosUsados / 60);
+                let s = segundosUsados % 60;
+                let elDisp = document.getElementById(`disp${capitalize(estado)}`);
+                if(elDisp) elDisp.innerText = `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
 
-                const limiteSegundos = (asesorDatos.limites[estado] || 999) * 60;
-
-                if (s >= limiteSegundos) {
-                    document.getElementById(`alerta-${estado}`).style.display = 'block';
+                // Calcular tiempo restante y escribirlo
+                let limiteSegundos = limites[estado] * 60;
+                let elRem = document.getElementById(`rem${capitalize(estado)}`);
+                
+                if (segundosUsados >= limiteSegundos) {
+                    if (elRem) {
+                        elRem.innerText = "¡EXCEDIDO!";
+                        elRem.classList.replace('text-money', 'text-red-500');
+                    }
+                    
+                    // DISPARAR EL LOGOUT A TOUCHPOINT
                     if (estadoActivo === estado && !autoLogoutDisparado) {
                         autoLogoutDisparado = true;
                         window.postMessage({ type: 'GP_SERVER_LOGOUT' }, '*');
                     }
                 } else {
-                    document.getElementById(`alerta-${estado}`).style.display = 'none';
+                    let restantes = limiteSegundos - segundosUsados;
+                    if (elRem) {
+                        elRem.innerText = `Restan: ${Math.floor(restantes/60)}m ${restantes%60}s`;
+                        elRem.classList.replace('text-red-500', 'text-money');
+                    }
                 }
             });
+
+            // Actualizar reloj central si hay un estado activo
+            if (estadoActivo) {
+                let cm = Math.floor(tiempoCentral / 60);
+                let cs = tiempoCentral % 60;
+                document.getElementById('clockDisplay').innerText = `${cm.toString().padStart(2, '0')}:${cs.toString().padStart(2, '0')}`;
+            }
         }
+
+        function capitalize(s) {
+            return s.charAt(0).toUpperCase() + s.slice(1);
+        }
+
+        // --- 4. CONEXIÓN DIRECTA CON LA EXTENSIÓN ---
+        // Escucha el grito de content_web.js y arranca los cronómetros correctos
+        window.addEventListener('message', (event) => {
+            if (event.data && event.data.type === 'GODSPLAN_COMMAND') {
+                const action = event.data.action;
+                
+                // Mapeo de la orden de TouchPoint -> a los IDs de tu nuevo HTML
+                if (action === 'START_BREAK_BATH') setEstado('bath');
+                else if (action === 'START_BREAK_FOOD') setEstado('food');
+                else if (action === 'START_QUALITY') setEstado('quality');
+                else if (action === 'RESUME_WORK') setEstado(null);
+            }
+        });
+
     </script>
 </body>
 </html>
