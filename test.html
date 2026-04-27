@@ -41,7 +41,7 @@
                 </button>
                 <div id="networkTimeBadge" class="text-sm text-slate-500 font-bold bg-slate-100 px-4 py-2 rounded-full flex items-center gap-2 shadow-sm border border-slate-200 hidden transition-all">
                     <div class="spinner border-2 border-slate-500 border-t-transparent rounded-full w-3 h-3 animate-spin"></div>
-                    Verificando conexión...
+                    Esperando conexión...
                 </div>
             </div>
         </div>
@@ -64,10 +64,6 @@
 
         <!-- CONTENEDOR PRINCIPAL DE RELOJES -->
         <div id="panel-controles" class="relative" style="display: none;">
-            <div id="mainLoader" class="absolute inset-0 bg-bg/80 backdrop-blur-sm flex items-center justify-center z-50 rounded-2xl hidden">
-                <div class="spinner border-4 border-brand border-t-transparent rounded-full w-10 h-10 animate-spin"></div>
-            </div>
-
             <!-- Grid de 3 Columnas -->
             <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6" id="timersDisplay">
                 
@@ -118,7 +114,7 @@
             <!-- PANEL DE CONTROL -->
             <div class="bg-card p-4 rounded-2xl shadow-sm border border-border flex justify-between items-center" id="actionButtons">
                 <span class="text-xs text-text-mute font-medium flex items-center gap-1">
-                    <i class="ph-fill ph-cloud-check text-brand text-lg"></i> Estado sincronizado y a prueba de F5.
+                    <i class="ph-fill ph-cloud-check text-brand text-lg"></i> Estado sincronizado con Firebase
                 </span>
                 <button onclick="window.postMessage({ type: 'GP_SERVER_LOGOUT' }, '*')" class="text-sm bg-red-50 hover:bg-red-100 border border-red-200 text-red-600 font-bold py-2 px-4 rounded-xl transition flex items-center gap-2">
                     <i class="ph-bold ph-power"></i> Forzar Logout
@@ -130,7 +126,6 @@
     <!-- LÓGICA CORE -->
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        // Importamos setDoc para guardar el estado en vivo
         import { getFirestore, collection, addDoc, serverTimestamp, doc, getDoc, setDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
         const firebaseConfig = {
@@ -149,17 +144,16 @@
         window.asesorDatos = JSON.parse(localStorage.getItem('asesorDatos')) || null;
         window.estadoActivo = null; 
         
-        // La Fuente de la Verdad (Se sincroniza con Firebase)
         let sesionFirebase = {
             estadoActivo: null,
-            tiempoInicioEstado: null, // Guarda la hora exacta (Date.now())
+            tiempoInicioEstado: null, 
             tiemposAcumulados: { bath: 0, food: 0, quality: 0 },
             fecha: new Date().toLocaleDateString()
         };
 
         let autoLogoutDisparado = false;
-        let timeoutConexion;
-
+        
+        // --- WORKER PARA TIEMPO EXACTO ---
         const workerCode = `
             let timer;
             self.addEventListener('message', (e) => {
@@ -182,35 +176,24 @@
             try {
                 const sessionRef = doc(db, "sesiones_activas", id);
                 const sessionSnap = await getDoc(sessionRef);
-
                 const hoy = new Date().toLocaleDateString();
 
                 if (sessionSnap.exists() && sessionSnap.data().fecha === hoy) {
-                    // Restauramos la sesión exacta desde Firebase
                     sesionFirebase = sessionSnap.data();
                     window.estadoActivo = sesionFirebase.estadoActivo;
                 } else {
-                    // Es un día nuevo o no existe sesión, creamos una limpia
-                    sesionFirebase = {
-                        estadoActivo: null,
-                        tiempoInicioEstado: null,
-                        tiemposAcumulados: { bath: 0, food: 0, quality: 0 },
-                        fecha: hoy
-                    };
+                    sesionFirebase = { estadoActivo: null, tiempoInicioEstado: null, tiemposAcumulados: { bath: 0, food: 0, quality: 0 }, fecha: hoy };
                     await setDoc(sessionRef, sesionFirebase);
                 }
                 
                 iniciarInterfazAsesor();
 
-                // Si recuperó un estado activo (ej: cerró la pestaña en medio del baño)
                 if (window.estadoActivo) {
                     aplicarEstilosActivos(window.estadoActivo);
                     keepAliveWorker.postMessage('start');
                 }
-
             } catch (error) {
                 console.error("Error al recuperar sesión:", error);
-                alert("Hubo un problema sincronizando tu sesión con la nube.");
             }
         }
 
@@ -218,10 +201,8 @@
             const nameDisplay = document.getElementById('nombre-asesor-display');
             nameDisplay.innerHTML = `Asesor: <span class="font-bold text-text">${window.asesorDatos.nombre} (${window.asesorDatos.id})</span>`;
             nameDisplay.classList.remove('hidden');
-            
             document.getElementById('btn-cerrar-sesion').classList.remove('hidden');
             document.getElementById('networkTimeBadge').classList.remove('hidden');
-            
             document.getElementById('panel-login').style.display = 'none';
             document.getElementById('panel-controles').style.display = 'block';
 
@@ -230,9 +211,6 @@
             document.getElementById('limQuality').innerText = window.asesorDatos.limites.calidad;
             
             actualizarPantalla();
-            
-            setInterval(verificarSaludConexion, 120000);
-            verificarSaludConexion(); 
         }
 
         window.validarID = async function() {
@@ -258,15 +236,12 @@
                         errorMsg.classList.remove('hidden');
                     }
                 } catch (error) {
-                    console.error("Error Firebase:", error);
                     errorMsg.innerText = "Error de conexión con la base de datos.";
                     errorMsg.classList.remove('hidden');
                 } finally {
                     btn.innerHTML = `Acceder <i class="ph-bold ph-arrow-right"></i>`;
                     btn.disabled = false;
                 }
-            } else {
-                alert("Por favor ingresa tu ID.");
             }
         };
 
@@ -275,22 +250,17 @@
             location.reload();
         };
 
-        // --- EL CORAZÓN DE LA FASE 2: GUARDAR EN FIREBASE EN CADA CAMBIO ---
         window.setEstado = async function(nuevoEstado) {
             if (!window.asesorDatos) return;
 
             let ahora = Date.now();
             autoLogoutDisparado = false;
 
-            // 1. PROCESAR EL ESTADO ANTERIOR (Si estaba en algo)
             if (window.estadoActivo) {
                 keepAliveWorker.postMessage('stop');
-                
-                // Calcular cuánto tiempo exacto estuvo en ese estado
                 let segundosPasados = Math.floor((ahora - sesionFirebase.tiempoInicioEstado) / 1000);
                 sesionFirebase.tiemposAcumulados[window.estadoActivo] += segundosPasados;
                 
-                // Registro histórico para reportería (solo si duró > 5 seg)
                 if (segundosPasados > 5) {
                     try {
                         addDoc(collection(db, "registros_tiempos"), {
@@ -300,12 +270,11 @@
                             duracion_segundos: segundosPasados,
                             fecha: serverTimestamp()
                         });
-                    } catch (e) { console.error("Error guardando registro:", e); }
+                    } catch (e) { }
                 }
                 removerEstilosActivos(window.estadoActivo);
             }
 
-            // 2. INICIAR EL NUEVO ESTADO
             window.estadoActivo = nuevoEstado;
             sesionFirebase.estadoActivo = nuevoEstado;
             sesionFirebase.tiempoInicioEstado = nuevoEstado ? ahora : null;
@@ -315,43 +284,29 @@
                 keepAliveWorker.postMessage('start');
             }
 
-            // 3. SINCRONIZAR INMEDIATAMENTE CON FIREBASE (El escudo Anti-F5)
             try {
                 await setDoc(doc(db, "sesiones_activas", window.asesorDatos.id), sesionFirebase);
-            } catch (e) {
-                console.error("Error al sincronizar sesión a prueba de fallos:", e);
-            }
+            } catch (e) { }
             
             actualizarPantalla();
         }
 
-        // --- ACTUALIZAR UI ---
         function actualizarPantalla() {
             if (!window.asesorDatos) return;
             let ahora = Date.now();
 
             ['bath', 'food', 'quality'].forEach(estado => {
-                // Recuperar la base de tiempo acumulado
                 let segundosUsados = sesionFirebase.tiemposAcumulados[estado] || 0;
-                
-                // Si este es el estado actual, sumarle el tiempo que lleva corriendo
                 if (window.estadoActivo === estado && sesionFirebase.tiempoInicioEstado) {
                     segundosUsados += Math.floor((ahora - sesionFirebase.tiempoInicioEstado) / 1000);
                 }
 
-                // Renderizar contador HH:MM
                 let m = Math.floor(segundosUsados / 60);
                 let s = segundosUsados % 60;
                 let elDisp = document.getElementById(`disp${capitalize(estado)}`);
                 if(elDisp) elDisp.innerText = `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
 
-                // Validar Límite
-                const limiteMinutos = {
-                    bath: window.asesorDatos.limites.bano,
-                    food: window.asesorDatos.limites.comida,
-                    quality: window.asesorDatos.limites.calidad
-                }[estado] || 999;
-                
+                const limiteMinutos = { bath: window.asesorDatos.limites.bano, food: window.asesorDatos.limites.comida, quality: window.asesorDatos.limites.calidad }[estado] || 999;
                 let limiteSegundos = limiteMinutos * 60;
                 let elRem = document.getElementById(`rem${capitalize(estado)}`);
                 
@@ -360,8 +315,6 @@
                         elRem.innerText = "¡TIEMPO EXCEDIDO!";
                         elRem.className = "text-sm font-bold bg-red-100 text-red-600 px-4 py-2 rounded-full w-full text-center animate-pulse";
                     }
-                    
-                    // Disparar Logout Remoto
                     if (window.estadoActivo === estado && !autoLogoutDisparado) {
                         autoLogoutDisparado = true;
                         window.postMessage({ type: 'GP_SERVER_LOGOUT' }, '*');
@@ -370,20 +323,14 @@
                     let restantes = limiteSegundos - segundosUsados;
                     let restM = Math.floor(restantes/60);
                     let restS = restantes % 60;
-                    
                     if (elRem) {
                         elRem.innerText = `Restan: ${restM}m ${restS.toString().padStart(2, '0')}s`;
-                        if (restantes <= 180) {
-                            elRem.className = "text-sm font-bold bg-amber-100 text-amber-600 px-4 py-2 rounded-full w-full text-center transition-colors";
-                        } else {
-                            elRem.className = "text-sm font-bold bg-money/10 text-money px-4 py-2 rounded-full w-full text-center transition-colors";
-                        }
+                        elRem.className = restantes <= 180 ? "text-sm font-bold bg-amber-100 text-amber-600 px-4 py-2 rounded-full w-full text-center transition-colors" : "text-sm font-bold bg-money/10 text-money px-4 py-2 rounded-full w-full text-center transition-colors";
                     }
                 }
             });
         }
 
-        // Utilidades UI
         function aplicarEstilosActivos(estado) {
             const newContainer = document.getElementById(`clock${capitalize(estado)}Container`);
             if(newContainer) {
@@ -406,32 +353,25 @@
 
         function capitalize(s) { return s.charAt(0).toUpperCase() + s.slice(1); }
 
-        // --- PING / PONG EXTENSIÓN ---
-        function verificarSaludConexion() {
-            window.postMessage({ type: 'GP_PING' }, '*');
-            clearTimeout(timeoutConexion);
-            timeoutConexion = setTimeout(() => actualizarBadgeConexion(false), 25);
-        }
-
         function actualizarBadgeConexion(estaConectado) {
             const badge = document.getElementById('networkTimeBadge');
             if (!badge) return;
             if (estaConectado) {
                 badge.className = 'text-sm font-bold bg-money/10 text-money px-4 py-2 rounded-full flex items-center gap-2 shadow-sm border border-money/20';
                 badge.innerHTML = `<span class="relative flex h-3 w-3"><span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-money opacity-75"></span><span class="relative inline-flex rounded-full h-3 w-3 bg-money"></span></span>Conectado a TouchPoint`;
-                badge.onclick = null;
             } else {
-                badge.className = 'text-sm font-bold bg-red-100 text-red-600 px-4 py-2 rounded-full flex items-center gap-2 shadow-sm border border-red-200 cursor-pointer hover:bg-red-200 transition-colors animate-pulse';
-                badge.innerHTML = `<i class="ph-bold ph-warning-circle text-lg"></i> Desconectado - Clic para reiniciar`;
-                badge.onclick = () => location.reload();
+                badge.className = 'text-sm font-bold bg-red-100 text-red-600 px-4 py-2 rounded-full flex items-center gap-2 shadow-sm border border-red-200 cursor-help transition-colors';
+                badge.innerHTML = `<i class="ph-bold ph-warning-circle text-lg"></i> Inicia sesión en TouchPoint`;
             }
         }
 
+        // ESCUCHA MENSAJES DESDE LA EXTENSIÓN (NUEVA LÓGICA DE CONEXIÓN)
         window.addEventListener('message', (event) => {
-            if (event.data && event.data.type === 'GP_PONG') {
-                clearTimeout(timeoutConexion);
-                actualizarBadgeConexion(true);
+            // El background nos dice si hay una pestaña con el título logueado
+            if (event.data && event.data.type === 'GP_CONNECTION_STATUS') {
+                actualizarBadgeConexion(event.data.connected);
             }
+            
             if (event.data && event.data.type === 'GODSPLAN_COMMAND') {
                 const action = event.data.action;
                 if (action === 'START_BREAK_BATH') setEstado('bath');
