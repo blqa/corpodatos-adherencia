@@ -3,598 +3,877 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Dashboard de Supervisión - Adherencia</title>
+    <title>Dashboard Admin - Control de Tiempos</title>
+    
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/@phosphor-icons/web"></script>
+    
     <script>
         tailwind.config = {
             theme: {
                 extend: {
-                    colors: {
-                        card: '#ffffff', border: '#e5e7eb',
-                        text: '#1f2937', 'text-mute': '#6b7280',
-                        brand: '#3b82f6', money: '#10b981', bg: '#f1f5f9',
-                        warning: '#f59e0b', danger: '#ef4444'
-                    }
+                    fontFamily: { sans: ['Inter', 'sans-serif'] },
+                    animation: { 'pulse-slow': 'pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite' }
                 }
             }
         }
     </script>
+
     <style>
-        .agent-card { transition: all 0.3s ease; }
-        .pulse-danger { animation: pulse-red 2s infinite; }
-        @keyframes pulse-red {
-            0% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.4); }
-            70% { box-shadow: 0 0 0 10px rgba(239, 68, 68, 0); }
-            100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); }
+        .loader {
+            border: 3px solid #e2e8f0; border-top: 3px solid #0f172a; border-radius: 50%;
+            width: 32px; height: 32px; animation: spin 0.8s linear infinite;
         }
-        /* Custom Scrollbar for modal */
-        .custom-scroll::-webkit-scrollbar { width: 6px; }
-        .custom-scroll::-webkit-scrollbar-track { background: #f1f5f9; border-radius: 4px; }
-        .custom-scroll::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        .custom-scrollbar::-webkit-scrollbar { width: 6px; height: 6px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+        input[type=number]::-webkit-inner-spin-button, 
+        input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
+        .glass-panel { background: rgba(255, 255, 255, 0.90); backdrop-filter: blur(12px); }
     </style>
 </head>
-<body class="bg-bg font-sans min-h-screen flex flex-col text-text overflow-x-hidden">
+<body class="bg-slate-50 min-h-screen text-slate-800 pb-10 antialiased selection:bg-blue-100 selection:text-blue-900 transition-colors duration-300 overflow-x-hidden">
 
-    <!-- BARRA DE NAVEGACIÓN SUPERIOR -->
-    <nav class="bg-card border-b border-border px-6 py-4 shadow-sm sticky top-0 z-40">
-        <div class="max-w-7xl mx-auto flex flex-col sm:flex-row justify-between items-center gap-4">
-            <div class="flex items-center gap-3">
-                <div class="bg-brand text-white p-2 rounded-lg shadow-sm">
-                    <i class="ph-bold ph-chart-line-up text-2xl"></i>
-                </div>
-                <div>
-                    <h1 class="text-xl font-black tracking-tight leading-none">Centro de Comando</h1>
-                    <p class="text-xs font-semibold text-text-mute mt-1 uppercase tracking-wider">Monitor de Adherencia</p>
-                </div>
-            </div>
-            <div class="flex items-center gap-4 w-full sm:w-auto justify-between sm:justify-end">
-                <button onclick="toggleAdminModal()" class="bg-slate-800 hover:bg-slate-900 text-white px-4 py-2 rounded-xl text-sm font-bold shadow-md transition flex items-center gap-2">
-                    <i class="ph-bold ph-user-gear text-lg"></i> Administrar Agentes
-                </button>
-                <div class="text-right hidden sm:block border-l border-border pl-4">
-                    <p class="text-sm font-bold text-brand" id="current-time">--:--:--</p>
-                    <p class="text-xs text-text-mute" id="current-date">Cargando...</p>
-                </div>
-            </div>
-        </div>
-    </nav>
+    <!-- Notificación Global -->
+    <div id="notificacion" class="fixed top-6 left-1/2 transform -translate-x-1/2 z-[100] hidden max-w-md w-full bg-slate-900 text-white shadow-2xl rounded-2xl p-4 transition-all duration-300 flex items-center gap-3 border border-slate-700">
+        <div id="notificacion-icon" class="text-2xl shrink-0"></div>
+        <p class="font-medium text-sm flex-1" id="notificacion-texto"></p>
+        <button onclick="document.getElementById('notificacion').classList.add('hidden')" class="text-slate-400 hover:text-white transition-colors">
+            <i class="ph ph-x"></i>
+        </button>
+    </div>
 
-    <div class="max-w-7xl mx-auto w-full p-6 flex-grow flex flex-col">
+    <!-- Modales -->
+    <div id="modal-overlay" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 hidden flex items-center justify-center px-4 transition-opacity duration-300 opacity-0">
         
-        <!-- CARGADOR INICIAL -->
-        <div id="loader" class="flex-grow flex flex-col items-center justify-center">
-            <div class="spinner border-4 border-brand border-t-transparent rounded-full w-12 h-12 animate-spin mb-4"></div>
-            <p class="text-text-mute font-medium animate-pulse">Sincronizando con Firebase...</p>
+        <div id="modal-confirm" class="bg-white rounded-3xl shadow-2xl w-full max-w-sm p-6 transform scale-95 transition-transform duration-300 hidden border border-transparent">
+            <div class="w-12 h-12 rounded-full bg-red-100 flex items-center justify-center mb-4 mx-auto"><i class="ph ph-trash text-red-600 text-2xl"></i></div>
+            <h3 class="text-xl font-bold text-slate-800 mb-2 text-center">¿Eliminar Colaborador?</h3>
+            <p class="text-slate-500 text-sm mb-6 text-center">Esta acción es irreversible. Se borrarán sus accesos y configuraciones del sistema.</p>
+            <div class="flex gap-3">
+                <button onclick="cerrarModales()" class="flex-1 py-2.5 text-slate-600 bg-slate-100 hover:bg-slate-200 rounded-xl font-semibold transition-colors">Cancelar</button>
+                <button id="btn-confirmar-eliminar" class="flex-1 py-2.5 bg-red-600 hover:bg-red-700 text-white rounded-xl font-semibold transition-colors shadow-sm shadow-red-200">Sí, Eliminar</button>
+            </div>
         </div>
 
-        <div id="dashboard-content" class="hidden">
-            <!-- TARJETAS DE RESUMEN (KPIs) -->
-            <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
-                <div class="bg-card p-5 rounded-2xl border border-border shadow-sm flex items-center gap-4">
-                    <div class="w-12 h-12 rounded-full bg-blue-50 text-brand flex items-center justify-center text-2xl"><i class="ph-fill ph-users"></i></div>
-                    <div>
-                        <p class="text-sm text-text-mute font-bold">Total Registrados</p>
-                        <p class="text-2xl font-black" id="kpi-total">0</p>
-                    </div>
-                </div>
-                <div class="bg-card p-5 rounded-2xl border border-border shadow-sm flex items-center gap-4">
-                    <div class="w-12 h-12 rounded-full bg-green-50 text-money flex items-center justify-center text-2xl"><i class="ph-fill ph-check-circle"></i></div>
-                    <div>
-                        <p class="text-sm text-text-mute font-bold">Trabajando</p>
-                        <p class="text-2xl font-black" id="kpi-trabajando">0</p>
-                    </div>
-                </div>
-                <div class="bg-card p-5 rounded-2xl border border-border shadow-sm flex items-center gap-4">
-                    <div class="w-12 h-12 rounded-full bg-amber-50 text-warning flex items-center justify-center text-2xl"><i class="ph-fill ph-coffee"></i></div>
-                    <div>
-                        <p class="text-sm text-text-mute font-bold">En Pausa</p>
-                        <p class="text-2xl font-black" id="kpi-pausa">0</p>
-                    </div>
-                </div>
-                <div class="bg-card p-5 rounded-2xl border border-border shadow-sm flex items-center gap-4 relative overflow-hidden group">
-                    <div class="absolute inset-0 bg-red-50 opacity-0 group-hover:opacity-100 transition-opacity z-0"></div>
-                    <div class="w-12 h-12 rounded-full bg-red-50 text-danger flex items-center justify-center text-2xl z-10"><i class="ph-fill ph-warning-octagon"></i></div>
-                    <div class="z-10">
-                        <p class="text-sm text-text-mute font-bold">Excedidos</p>
-                        <p class="text-2xl font-black text-danger" id="kpi-excedidos">0</p>
-                    </div>
-                </div>
+        <div id="modal-confirm-reset" class="bg-white rounded-3xl shadow-2xl w-full max-w-sm p-6 transform scale-95 transition-transform duration-300 hidden border border-transparent">
+            <div class="w-12 h-12 rounded-full bg-orange-100 flex items-center justify-center mb-4 mx-auto"><i class="ph ph-warning-circle text-orange-600 text-2xl"></i></div>
+            <h3 class="text-xl font-bold text-slate-800 mb-2 text-center">¿Reiniciar todos los tiempos?</h3>
+            <p class="text-slate-500 text-sm mb-6 text-center">Esto pondrá en 00:00 los consumos de HOY para todos los colaboradores. ¿Estás seguro?</p>
+            <div class="flex gap-3">
+                <button onclick="cerrarModales()" class="flex-1 py-2.5 text-slate-600 bg-slate-100 hover:bg-slate-200 rounded-xl font-semibold transition-colors">Cancelar</button>
+                <button id="btn-confirmar-reset" class="flex-1 py-2.5 bg-orange-600 hover:bg-orange-700 text-white rounded-xl font-semibold transition-colors shadow-sm shadow-orange-200">Reiniciar</button>
             </div>
+        </div>
 
-            <!-- FILTROS Y BÚSQUEDA -->
-            <div class="flex flex-col sm:flex-row justify-between items-center mb-4 gap-4">
-                <h2 class="text-lg font-bold flex items-center gap-2">
-                    <i class="ph-bold ph-monitor text-brand"></i> Panel en Vivo
-                </h2>
-                <div class="flex gap-2 w-full sm:w-auto">
-                    <div class="relative w-full sm:w-64">
-                        <i class="ph-bold ph-magnifying-glass absolute left-3 top-1/2 transform -translate-y-1/2 text-text-mute"></i>
-                        <input type="text" id="search-input" placeholder="Buscar asesor o ID..." class="w-full pl-10 pr-4 py-2 text-sm border border-border rounded-xl focus:ring-2 focus:ring-brand focus:outline-none shadow-sm bg-card">
-                    </div>
-                    <select id="filter-status" class="border border-border rounded-xl px-4 py-2 text-sm focus:ring-2 focus:ring-brand focus:outline-none shadow-sm bg-card cursor-pointer font-medium">
-                        <option value="all">Todos los estados</option>
-                        <option value="excedidos">⚠️ Excedidos</option>
-                        <option value="available">🟢 Trabajando</option>
-                        <option value="bath">🚽 En Sanitario</option>
-                        <option value="food">🍔 En Comida</option>
-                        <option value="quality">🎧 En Calidad</option>
-                        <option value="offline">⚪ Desconectados</option>
-                    </select>
-                </div>
-            </div>
-
-            <!-- GRID DE AGENTES -->
-            <div id="agents-grid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 pb-10">
-                <!-- Las tarjetas se generan dinámicamente con JS -->
+        <div id="modal-editar" class="bg-white rounded-3xl shadow-2xl w-full max-w-md p-6 transform scale-95 transition-transform duration-300 hidden max-h-[90vh] overflow-y-auto custom-scrollbar border border-transparent">
+            <div class="flex items-center justify-between mb-5">
+                <h3 class="text-lg font-bold text-slate-800 flex items-center gap-2">
+                    <div class="p-2 bg-blue-100 text-blue-600 rounded-lg"><i class="ph ph-sliders-horizontal"></i></div> Ajustes de <span id="edit-nombre" class="text-blue-600"></span>
+                </h3>
+                <button onclick="cerrarModales()" class="text-slate-400 hover:text-slate-600 bg-slate-100 p-1.5 rounded-full"><i class="ph ph-x"></i></button>
             </div>
             
-            <!-- ESTADO VACÍO -->
-            <div id="empty-state" class="hidden flex-col items-center justify-center py-20 text-center bg-card rounded-2xl border border-dashed border-border">
-                <div class="w-20 h-20 bg-slate-50 rounded-full flex items-center justify-center text-slate-300 mb-4 text-4xl">
-                    <i class="ph-fill ph-ghost"></i>
+            <p class="text-slate-500 text-sm mb-5 leading-relaxed">Modifica el consumo de <strong class="text-slate-700">HOY</strong> o define límites específicos. <span class="text-blue-600 bg-blue-50 px-1 rounded">Deja en blanco o 0 para usar los globales.</span></p>
+            
+            <div class="space-y-5">
+                <div class="p-4 rounded-2xl border border-slate-200 bg-white shadow-sm">
+                    <h4 class="font-semibold text-xs uppercase tracking-wider text-slate-400 mb-3 flex items-center gap-2"><i class="ph ph-clock"></i> Consumido Hoy</h4>
+                    <div class="grid grid-cols-3 gap-3">
+                        <div class="relative">
+                            <label class="block text-[10px] uppercase font-semibold text-slate-500 mb-1">Baño</label>
+                            <div class="relative"><i class="ph ph-toilet absolute left-2.5 top-2.5 text-slate-400"></i><input type="text" id="edit-consumido-bano" placeholder="00:00" class="w-full border border-slate-300 bg-transparent rounded-xl pl-8 pr-2 py-2 text-sm font-mono focus:border-blue-500 focus:ring-2 focus:ring-blue-100 outline-none transition-all"></div>
+                        </div>
+                        <div class="relative">
+                            <label class="block text-[10px] uppercase font-semibold text-slate-500 mb-1">Comida</label>
+                            <div class="relative"><i class="ph ph-fork-knife absolute left-2.5 top-2.5 text-slate-400"></i><input type="text" id="edit-consumido-comida" placeholder="00:00" class="w-full border border-slate-300 bg-transparent rounded-xl pl-8 pr-2 py-2 text-sm font-mono focus:border-orange-500 focus:ring-2 focus:ring-orange-100 outline-none transition-all"></div>
+                        </div>
+                        <div class="relative">
+                            <label class="block text-[10px] uppercase font-semibold text-slate-500 mb-1">Calidad</label>
+                            <div class="relative"><i class="ph ph-star absolute left-2.5 top-2.5 text-slate-400"></i><input type="text" id="edit-consumido-calidad" placeholder="00:00" class="w-full border border-slate-300 bg-transparent rounded-xl pl-8 pr-2 py-2 text-sm font-mono focus:border-purple-500 focus:ring-2 focus:ring-purple-100 outline-none transition-all"></div>
+                        </div>
+                    </div>
                 </div>
-                <h3 class="text-lg font-bold text-text mb-1">Ningún agente coincide</h3>
-                <p class="text-sm text-text-mute">Intenta cambiar los filtros de búsqueda.</p>
+
+                <div class="p-4 rounded-2xl border border-slate-200 bg-white shadow-sm">
+                    <h4 class="font-semibold text-xs uppercase tracking-wider text-slate-400 mb-3 flex items-center gap-2"><i class="ph ph-lock-key"></i> Límites Individuales (Min)</h4>
+                    <div class="grid grid-cols-2 gap-3">
+                        <div class="relative">
+                            <label class="block text-[10px] uppercase font-semibold text-slate-500 mb-1">Límite Baño</label>
+                            <input type="number" id="edit-limite-bano" class="w-full border border-slate-300 bg-transparent rounded-xl p-2.5 text-sm focus:border-blue-500 focus:ring-2 focus:ring-blue-100 outline-none transition-all font-mono" placeholder="Ej: 15 (Vacío = Global)">
+                        </div>
+                        <div class="relative">
+                            <label class="block text-[10px] uppercase font-semibold text-slate-500 mb-1">Límite Comida</label>
+                            <input type="number" id="edit-limite-comida" class="w-full border border-slate-300 bg-transparent rounded-xl p-2.5 text-sm focus:border-orange-500 focus:ring-2 focus:ring-orange-100 outline-none transition-all font-mono" placeholder="Ej: 30 (Vacío = Global)">
+                        </div>
+                        <div class="col-span-2 relative">
+                            <label class="block text-[10px] uppercase font-semibold text-slate-500 mb-1">Límite Calidad</label>
+                            <input type="number" id="edit-limite-calidad" class="w-full border border-slate-300 bg-transparent rounded-xl p-2.5 text-sm focus:border-purple-500 focus:ring-2 focus:ring-purple-100 outline-none transition-all font-mono" placeholder="Ej: 20 (Vacío = Global)">
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="flex gap-3 mt-6 pt-4 border-t border-slate-100">
+                <button onclick="cerrarModales()" class="flex-1 px-4 py-2.5 text-slate-600 bg-slate-100 hover:bg-slate-200 rounded-xl font-medium transition-colors">Cancelar</button>
+                <button onclick="guardarEdicionTiempoYLimites()" class="flex-[2] px-4 py-2.5 bg-slate-900 hover:bg-slate-800 text-white rounded-xl font-medium transition-colors shadow-md flex justify-center items-center gap-2">
+                    <i class="ph ph-floppy-disk"></i> Guardar Cambios
+                </button>
             </div>
         </div>
     </div>
 
-    <!-- MODAL DE ADMINISTRACIÓN DE AGENTES -->
-    <div id="admin-modal" class="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 hidden opacity-0 transition-opacity duration-300 flex items-center justify-center p-4">
-        <div class="bg-bg w-full max-w-5xl h-[85vh] rounded-3xl shadow-2xl flex flex-col overflow-hidden transform scale-95 transition-transform duration-300 border border-slate-200" id="admin-modal-content">
+    <!-- PANEL LATERAL CONFIGURACIÓN -->
+    <div id="panel-config-overlay" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 hidden transition-opacity duration-300 opacity-0" onclick="cerrarConfig()">
+        <div class="absolute inset-y-0 right-0 w-full max-w-md bg-white shadow-2xl transform translate-x-full transition-transform duration-300 ease-in-out flex flex-col border-l border-slate-200" id="panel-config" onclick="event.stopPropagation()">
             
-            <!-- Cabecera del Modal -->
-            <div class="px-6 py-4 border-b border-border bg-card flex justify-between items-center z-10 shadow-sm">
-                <div class="flex items-center gap-3">
-                    <div class="bg-brand/10 text-brand p-2 rounded-lg"><i class="ph-bold ph-users-three text-xl"></i></div>
-                    <h2 class="text-lg font-bold text-text">Administración de Agentes</h2>
-                </div>
-                <button onclick="toggleAdminModal()" class="text-text-mute hover:text-danger bg-slate-100 hover:bg-red-50 p-2 rounded-full transition-colors">
-                    <i class="ph-bold ph-x text-lg"></i>
-                </button>
+            <div class="p-5 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
+                <h2 class="text-lg font-bold text-slate-800 flex items-center gap-2"><i class="ph ph-gear text-blue-500 text-xl"></i> Ajustes del Sistema</h2>
+                <button onclick="cerrarConfig()" class="text-slate-400 hover:text-slate-600 bg-white p-2 rounded-full border border-slate-200 shadow-sm transition-colors"><i class="ph ph-x"></i></button>
             </div>
 
-            <!-- Cuerpo del Modal (2 Columnas) -->
-            <div class="flex-grow flex flex-col md:flex-row overflow-hidden">
+            <div class="flex-1 overflow-y-auto p-5 space-y-6 custom-scrollbar bg-slate-50/30">
                 
-                <!-- Columna Izquierda: Formulario -->
-                <div class="w-full md:w-1/3 bg-card border-r border-border p-6 overflow-y-auto custom-scroll flex flex-col">
-                    <div class="flex justify-between items-center mb-6">
-                        <h3 class="font-bold text-brand flex items-center gap-2" id="form-title">
-                            <i class="ph-bold ph-user-plus"></i> Registrar Nuevo
-                        </h3>
-                        <button onclick="resetAdminForm()" class="text-xs font-bold text-text-mute hover:text-brand underline hidden" id="btn-cancel-edit">Cancelar Edición</button>
+                <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-5">
+                    <h3 class="font-bold text-slate-800 mb-4 flex items-center gap-2 text-sm border-b border-slate-100 pb-2">
+                        <i class="ph ph-robot text-purple-500"></i> Asistente Automático
+                    </h3>
+                    <div class="flex items-center justify-between">
+                        <div class="pr-4">
+                            <p class="text-sm font-bold text-slate-800">Botar Automático</p>
+                            <p class="text-[10px] text-slate-500 mt-1 leading-tight">Envía un comando a TouchPoint para desconectar al asesor al exceder su tiempo.</p>
+                        </div>
+                        <label class="relative inline-flex items-center cursor-pointer shrink-0">
+                            <input type="checkbox" id="toggle-auto-expulsion" class="sr-only peer" onchange="guardarAutoExpulsion()">
+                            <div class="w-11 h-6 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-purple-600"></div>
+                        </label>
                     </div>
+                </div>
 
-                    <form id="agent-form" class="flex flex-col gap-4 flex-grow">
-                        <div>
-                            <label class="block text-xs font-bold text-text-mute mb-1 uppercase tracking-wider">ID Corporativo</label>
-                            <input type="text" id="admin-id" required placeholder="Ej. 1001" class="w-full border border-border rounded-xl px-4 py-2.5 text-sm focus:ring-2 focus:ring-brand focus:outline-none bg-slate-50 font-mono font-bold transition-all">
-                        </div>
-                        <div>
-                            <label class="block text-xs font-bold text-text-mute mb-1 uppercase tracking-wider">Nombre del Agente</label>
-                            <input type="text" id="admin-nombre" required placeholder="Ej. Juan Pérez" class="w-full border border-border rounded-xl px-4 py-2.5 text-sm focus:ring-2 focus:ring-brand focus:outline-none bg-slate-50 transition-all">
-                        </div>
-
-                        <div class="border-t border-border pt-4 mt-2">
-                            <label class="block text-xs font-black text-text mb-3 uppercase tracking-wider flex items-center gap-1"><i class="ph-bold ph-timer text-brand"></i> Límites de Tiempo (Minutos)</label>
-                            
-                            <div class="grid grid-cols-2 gap-3">
-                                <div>
-                                    <label class="block text-[10px] font-bold text-text-mute mb-1"><i class="ph-fill ph-toilet text-warning"></i> Sanitario</label>
-                                    <input type="number" id="admin-bano" required min="1" value="15" class="w-full border border-border rounded-xl px-3 py-2 text-sm focus:ring-2 focus:ring-warning focus:outline-none text-center font-bold">
-                                </div>
-                                <div>
-                                    <label class="block text-[10px] font-bold text-text-mute mb-1"><i class="ph-fill ph-hamburger text-warning"></i> Comida</label>
-                                    <input type="number" id="admin-comida" required min="1" value="30" class="w-full border border-border rounded-xl px-3 py-2 text-sm focus:ring-2 focus:ring-warning focus:outline-none text-center font-bold">
-                                </div>
-                                <div class="col-span-2">
-                                    <label class="block text-[10px] font-bold text-text-mute mb-1"><i class="ph-fill ph-headset text-brand"></i> Calidad / Feedback</label>
-                                    <input type="number" id="admin-calidad" required min="1" value="20" class="w-full border border-border rounded-xl px-3 py-2 text-sm focus:ring-2 focus:ring-brand focus:outline-none text-center font-bold">
-                                </div>
+                <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-5">
+                    <h3 class="font-bold text-slate-800 mb-4 flex items-center gap-2 text-sm border-b border-slate-100 pb-2">
+                        <i class="ph ph-timer text-slate-400"></i> Políticas Globales
+                    </h3>
+                    <p class="text-xs text-slate-500 mb-4 leading-relaxed">Establece los límites predeterminados para todos los empleados que no tengan límites personalizados.</p>
+                    <div class="grid grid-cols-2 gap-3 mb-4">
+                        <div class="relative">
+                            <label class="block text-[10px] uppercase text-slate-500 font-bold mb-1.5 ml-1">Baño (min)</label>
+                            <div class="relative">
+                                <i class="ph ph-toilet absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400"></i>
+                                <input type="number" id="limit-bano" class="w-full border border-slate-200 rounded-xl pl-9 pr-3 py-2 text-sm font-mono focus:border-slate-800 outline-none transition-all bg-slate-50">
                             </div>
                         </div>
-
-                        <div class="mt-auto pt-6">
-                            <button type="submit" id="btn-save-agent" class="w-full bg-brand hover:bg-blue-600 text-white font-bold py-3 px-4 rounded-xl shadow-md transition-colors flex items-center justify-center gap-2">
-                                <i class="ph-bold ph-floppy-disk"></i> Guardar Agente
-                            </button>
-                            <p id="admin-msg" class="text-xs text-center font-bold mt-3 hidden"></p>
+                        <div class="relative">
+                            <label class="block text-[10px] uppercase text-slate-500 font-bold mb-1.5 ml-1">Comida (min)</label>
+                            <div class="relative">
+                                <i class="ph ph-fork-knife absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400"></i>
+                                <input type="number" id="limit-comida" class="w-full border border-slate-200 rounded-xl pl-9 pr-3 py-2 text-sm font-mono focus:border-slate-800 outline-none transition-all bg-slate-50">
+                            </div>
                         </div>
-                    </form>
-                </div>
-
-                <!-- Columna Derecha: Lista de Agentes -->
-                <div class="w-full md:w-2/3 bg-bg p-6 flex flex-col overflow-hidden">
-                    <div class="flex justify-between items-end mb-4">
-                        <div>
-                            <h3 class="font-bold text-text">Directorio Activo</h3>
-                            <p class="text-xs text-text-mute">Base de datos de operadores autorizados.</p>
-                        </div>
-                        <div class="relative w-48">
-                            <i class="ph-bold ph-magnifying-glass absolute left-3 top-1/2 transform -translate-y-1/2 text-text-mute"></i>
-                            <input type="text" id="admin-search" placeholder="Buscar..." class="w-full pl-9 pr-3 py-1.5 text-xs border border-border rounded-lg focus:ring-2 focus:ring-brand focus:outline-none bg-card shadow-sm">
+                        <div class="col-span-2 relative">
+                            <label class="block text-[10px] uppercase text-slate-500 font-bold mb-1.5 ml-1">Calidad (min)</label>
+                            <div class="relative">
+                                <i class="ph ph-star absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400"></i>
+                                <input type="number" id="limit-calidad" class="w-full border border-slate-200 rounded-xl pl-9 pr-3 py-2 text-sm font-mono focus:border-slate-800 outline-none transition-all bg-slate-50">
+                            </div>
                         </div>
                     </div>
-
-                    <div class="flex-grow bg-card rounded-2xl border border-border overflow-hidden flex flex-col shadow-sm">
-                        <!-- Cabecera Tabla -->
-                        <div class="grid grid-cols-12 gap-2 bg-slate-50 p-3 border-b border-border text-[10px] font-black text-text-mute uppercase tracking-wider">
-                            <div class="col-span-2">ID</div>
-                            <div class="col-span-4">Nombre</div>
-                            <div class="col-span-4 text-center">Límites (Baño/Com/Cal)</div>
-                            <div class="col-span-2 text-center">Acciones</div>
-                        </div>
-                        <!-- Lista Scrollable -->
-                        <div id="admin-list" class="overflow-y-auto custom-scroll flex-grow p-2">
-                            <!-- Los items se generan por JS -->
-                        </div>
-                    </div>
+                    <button onclick="guardarConfiguracionGlobal()" class="w-full bg-slate-100 hover:bg-slate-200 text-slate-800 text-xs font-bold py-2.5 rounded-xl transition-colors flex items-center justify-center gap-2"><i class="ph ph-check-circle"></i> Aplicar Límites</button>
                 </div>
 
+                <div class="bg-slate-900 rounded-2xl shadow-sm border border-slate-800 p-5 text-white">
+                    <h3 class="font-bold mb-4 flex items-center gap-2 text-sm border-b border-slate-700 pb-2">
+                        <i class="ph ph-user-plus text-blue-400"></i> Alta de Empleado
+                    </h3>
+                    <div class="space-y-3 mb-4">
+                        <input type="text" id="nuevo-pin" placeholder="PIN / ID Único" class="w-full border border-slate-700 rounded-xl bg-slate-800/50 p-2.5 text-sm outline-none focus:border-blue-500 transition-all font-mono text-white">
+                        <input type="text" id="nuevo-nombre" placeholder="Nombre Completo" class="w-full border border-slate-700 rounded-xl bg-slate-800/50 p-2.5 text-sm outline-none focus:border-blue-500 transition-all text-white">
+                    </div>
+                    <button onclick="agregarColaborador()" class="w-full bg-blue-600 hover:bg-blue-500 text-white text-sm font-bold py-2.5 rounded-xl transition-colors flex justify-center items-center gap-2 shadow-sm shadow-blue-900/50">
+                        Registrar Empleado <i class="ph ph-plus-bold"></i>
+                    </button>
+                </div>
             </div>
         </div>
     </div>
 
-    <!-- SCRIPT PRINCIPAL -->
+    <!-- Pantallas de Estado y Login -->
+    <div id="vista-cargando" class="flex flex-col items-center justify-center min-h-screen bg-slate-50">
+        <div class="relative"><div class="loader mb-6 relative z-10"></div><div class="absolute inset-0 bg-blue-400 blur-xl opacity-20 rounded-full"></div></div>
+        <p class="text-slate-600 font-medium tracking-wide animate-pulse">Conectando al servidor...</p>
+    </div>
+
+    <div id="vista-error" class="hidden flex flex-col items-center justify-center min-h-screen px-4 text-center bg-slate-50">
+        <div class="p-6 bg-red-100 rounded-full mb-6"><i class="ph ph-shield-warning text-5xl text-red-600"></i></div>
+        <h2 class="text-3xl font-bold text-slate-900 mb-3">Conexión Interrumpida</h2>
+        <p class="text-slate-500 mb-6 max-w-md">No hemos podido establecer conexión. Verifica tus permisos de Firebase.</p>
+        <button onclick="window.location.reload()" class="px-8 py-3 bg-slate-900 text-white font-semibold rounded-xl hover:bg-slate-800 transition-colors shadow-lg flex items-center gap-2"><i class="ph ph-arrows-clockwise"></i> Reintentar</button>
+    </div>
+
+    <div id="vista-login-admin" class="hidden min-h-screen flex items-center justify-center px-4 relative overflow-hidden bg-slate-50">
+        <div class="absolute top-[-10%] left-[-10%] w-96 h-96 bg-blue-400 rounded-full mix-blend-multiply filter blur-3xl opacity-10 animate-pulse-slow"></div>
+        <div class="absolute bottom-[-10%] right-[-10%] w-96 h-96 bg-purple-400 rounded-full mix-blend-multiply filter blur-3xl opacity-10 animate-pulse-slow" style="animation-delay: 2s;"></div>
+
+        <div class="bg-white p-8 md:p-10 rounded-3xl shadow-2xl border border-slate-100 w-full max-w-sm relative z-10 transform transition-all hover:scale-[1.01]">
+            <div class="w-16 h-16 bg-slate-900 rounded-2xl flex items-center justify-center mb-6 shadow-lg shadow-slate-200"><i class="ph ph-fingerprint text-3xl text-white"></i></div>
+            <h2 class="text-2xl font-bold text-slate-900 mb-1">Acceso Root</h2>
+            <p class="text-slate-500 text-sm mb-8 font-medium">Panel de administración central</p>
+            
+            <div class="relative mb-6">
+                <input type="password" id="pin-admin" autocomplete="off" placeholder="Palabra clave maestra" class="w-full text-center text-lg tracking-[0.3em] font-mono border-b-2 border-slate-200 bg-slate-50/50 rounded-t-xl p-4 focus:border-slate-900 outline-none transition-all" onkeypress="if(event.key === 'Enter') loginAdmin()">
+            </div>
+            
+            <button onclick="loginAdmin()" class="w-full bg-slate-900 hover:bg-slate-800 text-white font-semibold py-3.5 rounded-xl shadow-lg shadow-slate-200 transition-all active:scale-95 flex items-center justify-center gap-2">Autenticar <i class="ph ph-arrow-right font-bold"></i></button>
+        </div>
+    </div>
+
+    <!-- PANTALLA DASHBOARD ADMIN -->
+    <div id="vista-admin" class="hidden min-h-screen flex flex-col">
+        <nav class="glass-panel sticky top-0 z-40 px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between border-b border-slate-200 shadow-sm">
+            <div class="flex items-center gap-3">
+                <div class="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center shadow-inner"><i class="ph ph-chart-polar text-white text-lg"></i></div>
+                <div>
+                    <h1 class="text-lg font-bold text-slate-900 leading-tight">Admin<span class="text-blue-600">Dash</span></h1>
+                    <p class="text-[10px] text-slate-500 font-medium tracking-wide" id="fecha-admin-display">Cargando fecha...</p>
+                </div>
+            </div>
+            
+            <div class="flex items-center gap-3 sm:gap-5">
+                <div class="hidden sm:flex items-center gap-2 bg-slate-100 px-3 py-1.5 rounded-lg border border-slate-200">
+                    <span id="syncDotAdmin" class="w-2 h-2 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.6)]"></span>
+                    <span class="text-xs font-mono font-bold text-slate-600" id="reloj-display-admin">--:--:--</span>
+                </div>
+                <button onclick="abrirModalReset()" class="text-slate-600 hover:text-orange-600 bg-white hover:bg-orange-50 border border-slate-200 p-2 sm:px-3 sm:py-1.5 rounded-lg transition-colors flex items-center gap-2 shadow-sm text-sm font-medium" title="Reiniciar Todos los Tiempos de Hoy"><i class="ph ph-arrow-counter-clockwise text-lg"></i> <span class="hidden sm:inline">Reset Día</span></button>
+                <div class="w-px h-6 bg-slate-200 hidden sm:block"></div>
+                <button onclick="abrirConfig()" class="text-slate-500 hover:text-slate-800 p-2 rounded-lg transition-colors flex items-center justify-center" title="Configuración"><i class="ph ph-gear text-xl"></i></button>
+                <button onclick="cerrarSesionAdmin()" class="text-slate-500 hover:text-red-600 p-2 sm:px-3 sm:py-1.5 rounded-lg transition-colors flex items-center gap-2 text-sm font-medium" title="Cerrar Sesión"><span class="hidden sm:inline">Salir</span> <i class="ph ph-sign-out text-lg"></i></button>
+            </div>
+        </nav>
+
+        <main class="max-w-[1400px] w-full mx-auto p-4 sm:p-6 lg:p-8 space-y-8 flex-1">
+            
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4 lg:gap-6">
+                <div class="bg-white rounded-3xl shadow-sm border border-slate-200 p-6 flex items-center gap-5 relative overflow-hidden">
+                    <div class="absolute -right-4 -top-4 w-24 h-24 bg-blue-50 rounded-full opacity-50 pointer-events-none"></div>
+                    <div class="w-14 h-14 rounded-2xl bg-gradient-to-br from-blue-500 to-blue-600 text-white flex items-center justify-center shadow-lg shadow-blue-200 shrink-0"><i class="ph ph-users text-2xl"></i></div>
+                    <div><p class="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">Personal Total</p><p class="text-3xl font-black text-slate-800 leading-none" id="kpi-total">0</p></div>
+                </div>
+                <div class="bg-white rounded-3xl shadow-sm border border-slate-200 p-6 flex items-center gap-5 relative overflow-hidden">
+                    <div class="absolute -right-4 -top-4 w-24 h-24 bg-emerald-50 rounded-full opacity-50 pointer-events-none"></div>
+                    <div class="w-14 h-14 rounded-2xl bg-gradient-to-br from-emerald-400 to-emerald-500 text-white flex items-center justify-center shadow-lg shadow-emerald-200 shrink-0 relative"><div class="absolute inset-0 border-2 border-white/50 rounded-2xl animate-ping opacity-20"></div><i class="ph ph-broadcast text-2xl"></i></div>
+                    <div><p class="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">Trabajando</p><p class="text-3xl font-black text-slate-800 leading-none" id="kpi-activos">0</p></div>
+                </div>
+                <div class="bg-white rounded-3xl shadow-sm border border-slate-200 p-6 flex items-center gap-5 relative overflow-hidden">
+                    <div class="absolute -right-4 -top-4 w-24 h-24 bg-red-50 rounded-full opacity-50 pointer-events-none"></div>
+                    <div class="w-14 h-14 rounded-2xl bg-gradient-to-br from-red-500 to-red-600 text-white flex items-center justify-center shadow-lg shadow-red-200 shrink-0"><i class="ph ph-warning text-2xl"></i></div>
+                    <div><p class="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">Excedidos Hoy</p><p class="text-3xl font-black text-red-600 leading-none" id="kpi-excedidos">0</p></div>
+                </div>
+            </div>
+
+            <section class="bg-white rounded-3xl shadow-sm border border-slate-200 overflow-hidden flex flex-col">
+                <div class="px-6 py-5 border-b border-slate-100 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-slate-50/50">
+                    <div>
+                        <h2 class="font-bold text-slate-800 flex items-center gap-2 text-lg">
+                            <span class="relative flex h-3 w-3"><span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span><span class="relative inline-flex rounded-full h-3 w-3 bg-emerald-500"></span></span>
+                            Monitor de Personal <span class="bg-slate-200 text-slate-600 text-[10px] px-2 py-0.5 rounded-full uppercase tracking-wider ml-2">Hoy</span>
+                        </h2>
+                        <p class="text-xs text-slate-500 mt-1">Supervisa en tiempo real el estado y consumo acumulado de todos tus asesores.</p>
+                    </div>
+                    <div class="relative w-full sm:w-64 group">
+                        <i class="ph ph-magnifying-glass absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400 group-focus-within:text-blue-500 transition-colors"></i>
+                        <input type="text" id="search-monitor" onkeyup="renderizarMonitorLive()" placeholder="Buscar colaborador..." class="w-full border border-slate-200 rounded-xl pl-10 pr-4 py-2.5 text-sm focus:border-blue-500 focus:ring-2 focus:ring-blue-100 outline-none transition-all shadow-sm bg-white">
+                    </div>
+                </div>
+                <div class="p-6 bg-slate-50/30 flex-1">
+                    <div id="lista-activos" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5"></div>
+                </div>
+            </section>
+
+            <section class="bg-white rounded-3xl shadow-sm border border-slate-200 overflow-hidden">
+                <div class="px-6 py-5 border-b border-slate-100 flex flex-wrap justify-between items-center gap-4 bg-slate-50/50">
+                    <h2 class="font-bold text-slate-800 flex items-center gap-2 text-lg"><i class="ph ph-clock-counter-clockwise text-blue-500 text-xl"></i> Bitácora de Movimientos</h2>
+                    <div class="relative">
+                        <i class="ph ph-calendar-blank absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400"></i>
+                        <input type="date" id="filtro-fecha-historial" onchange="renderizarHistorial()" class="pl-10 pr-4 py-2 border border-slate-200 bg-white rounded-xl text-sm text-slate-600 font-medium outline-none focus:border-blue-500 transition-all cursor-pointer">
+                    </div>
+                </div>
+                <div class="overflow-x-auto max-h-[500px] custom-scrollbar relative">
+                    <table class="w-full text-left border-collapse min-w-[900px]">
+                        <thead class="sticky top-0 bg-slate-50 shadow-sm z-10 backdrop-blur-md bg-white/90 border-b border-slate-200">
+                            <tr class="text-slate-500 text-[11px] uppercase tracking-wider">
+                                <th class="px-6 py-4 font-bold rounded-tl-lg">Colaborador</th><th class="px-6 py-4 font-bold">Tipo</th><th class="px-6 py-4 font-bold text-blue-600">Tiempo Consumido</th><th class="px-6 py-4 font-bold">Estado / Justificación</th><th class="px-6 py-4 font-bold rounded-tr-lg">Hora (Fin)</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tabla-registros-global" class="divide-y divide-slate-100 text-sm"></tbody>
+                    </table>
+                </div>
+            </section>
+
+        </main>
+    </div>
+
+    <!-- Scripts -->
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        // Añadimos setDoc y deleteDoc para la administración
-        import { getFirestore, collection, onSnapshot, doc, setDoc, deleteDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, collection, doc, setDoc, addDoc, onSnapshot, deleteDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
-        const firebaseConfig = {
-            apiKey: "AIzaSyDT7iPaeRjlt-WIWWzwBh3deN2z_E-b2JA",
-            authDomain: "corpodatos-935f9.firebaseapp.com",
-            projectId: "corpodatos-935f9",
-            storageBucket: "corpodatos-935f9.firebasestorage.app",
-            messagingSenderId: "634601793039",
-            appId: "1:634601793039:web:4412da30d31ff6f6e5657a"
-        };
+        let app, auth, db;
+        let conectado = false;
+        const EMAIL_ADMIN = "admin@corpodatos.com";
 
-        const app = initializeApp(firebaseConfig);
-        const db = getFirestore(app);
-
-        // Bases de datos locales en memoria
-        let operadoresInfo = {}; 
-        let sesionesActivas = {}; 
-        
-        const STATUS_CONFIG = {
-            'available': { icon: 'ph-check-circle', color: 'text-money', bg: 'bg-green-50', label: 'Trabajando', border: 'border-green-200' },
-            'bath': { icon: 'ph-toilet', color: 'text-warning', bg: 'bg-amber-50', label: 'Sanitario', border: 'border-amber-200' },
-            'food': { icon: 'ph-hamburger', color: 'text-warning', bg: 'bg-amber-50', label: 'Comida', border: 'border-amber-200' },
-            'quality': { icon: 'ph-headset', color: 'text-brand', bg: 'bg-blue-50', label: 'Calidad', border: 'border-blue-200' },
-            'offline': { icon: 'ph-power', color: 'text-text-mute', bg: 'bg-slate-100', label: 'Desconectado', border: 'border-slate-200' }
-        };
-
-        // Reloj de la Cabecera
-        setInterval(() => {
-            const now = new Date();
-            document.getElementById('current-time').innerText = now.toLocaleTimeString('es-MX', { hour12: false });
-            document.getElementById('current-date').innerText = now.toLocaleDateString('es-MX', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
-        }, 1000);
-
-        // --- INICIALIZACIÓN ---
-        function initDashboard() {
-            // 1. Escuchar Operadores en Tiempo Real (¡Nuevo!)
-            onSnapshot(collection(db, "operadores"), (snapshot) => {
-                operadoresInfo = {};
-                snapshot.forEach(doc => {
-                    operadoresInfo[doc.id] = doc.data();
-                });
-                renderizarAgentes(); // Actualiza el dashboard principal
-                renderizarAdminList(); // Actualiza la tabla del modal
-            }, (error) => {
-                console.error("Error cargando operadores:", error);
-                document.getElementById('loader').innerHTML = `<p class="text-danger font-bold">Error de permisos. Configura las reglas de Firestore.</p>`;
-            });
-
-            // 2. Escuchar Sesiones Activas en Tiempo Real
-            onSnapshot(collection(db, "sesiones_activas"), (snapshot) => {
-                const hoy = new Date().toLocaleDateString();
-                snapshot.forEach(doc => {
-                    const data = doc.data();
-                    if (data.fecha === hoy) {
-                        sesionesActivas[doc.id] = data;
-                    } else {
-                        sesionesActivas[doc.id] = { estadoActivo: null, offline: true };
-                    }
-                });
-                
-                document.getElementById('loader').classList.add('hidden');
-                document.getElementById('dashboard-content').classList.remove('hidden');
-                renderizarAgentes();
-            });
+        try {
+            const firebaseConfig = {
+                apiKey: "AIzaSyDT7iPaeRjlt-WIWWzwBh3deN2z_E-b2JA",
+                authDomain: "corpodatos-935f9.firebaseapp.com",
+                projectId: "corpodatos-935f9",
+                storageBucket: "corpodatos-935f9.firebasestorage.app",
+                messagingSenderId: "634601793039",
+                appId: "1:634601793039:web:4412da30d31ff6f6e5657a"
+            };
+            app = initializeApp(firebaseConfig);
+            auth = getAuth(app);
+            db = getFirestore(app);
+            conectado = true;
+        } catch (error) {
+            ['vista-cargando', 'vista-login-admin', 'vista-admin'].forEach(v => document.getElementById(v)?.classList.add('hidden'));
+            document.getElementById('vista-error')?.classList.remove('hidden');
         }
 
-        // --- DASHBOARD PRINCIPAL ---
-        function renderizarAgentes() {
-            const grid = document.getElementById('agents-grid');
-            if(!grid) return;
-            const searchVal = document.getElementById('search-input').value.toLowerCase();
-            const filterVal = document.getElementById('filter-status').value;
-            
-            grid.innerHTML = '';
-            let kpi = { total: 0, trabajando: 0, pausa: 0, excedidos: 0 };
-            let visibleCount = 0;
+        let alertas1MinEnviadas = {}; 
+        let logoutsNotificados = {};
+        let timeoutModales = null;
 
-            // Iteramos sobre TODOS los operadores registrados, no solo las sesiones activas
-            const operadoresArray = Object.keys(operadoresInfo).map(id => ({ id, ...operadoresInfo[id] }));
-            
-            operadoresArray.forEach(opData => {
-                const id = opData.id;
-                const sesion = sesionesActivas[id] || { estadoActivo: null, offline: true }; // Si no tiene sesión, está offline
-                
-                const nombre = opData.nombre;
-                const estado = sesion.offline ? 'offline' : (sesion.estadoActivo || 'available');
-                
-                const limiteKeyMap = { 'bath': 'bano', 'food': 'comida', 'quality': 'calidad' };
-                const limiteMinutos = estado !== 'available' && estado !== 'offline' ? (opData.limites[limiteKeyMap[estado]] || 999) : 0;
-                const limiteSegundos = limiteMinutos * 60;
-
-                // Actualizar KPIs Globales
-                kpi.total++;
-                if (estado === 'available') kpi.trabajando++;
-                else if (estado !== 'offline') kpi.pausa++;
-
-                // Búsqueda
-                if (!nombre.toLowerCase().includes(searchVal) && !id.toLowerCase().includes(searchVal)) return;
-
-                // Validación de Excedido
-                let estaExcedido = false;
-                if (estado !== 'offline' && estado !== 'available' && sesion.tiempoInicioEstado) {
-                    const segundosActuales = Math.floor((Date.now() - sesion.tiempoInicioEstado) / 1000) + (sesion.tiemposAcumulados[estado] || 0);
-                    if (segundosActuales > limiteSegundos) estaExcedido = true;
-                }
-
-                // Filtros
-                if (filterVal === 'excedidos' && !estaExcedido) return;
-                if (filterVal !== 'all' && filterVal !== 'excedidos' && estado !== filterVal) return;
-
-                visibleCount++;
-
-                let conf = STATUS_CONFIG[estado];
-
-                const card = document.createElement('div');
-                // Se agregó h-full para igualar alturas
-                card.className = `agent-card bg-card border-2 ${conf.border} rounded-2xl p-5 shadow-sm relative overflow-hidden flex flex-col h-full`;
-                card.id = `agent-card-${id}`;
-                
-                card.dataset.id = id;
-                card.dataset.estado = estado;
-                card.dataset.inicio = sesion.tiempoInicioEstado || 0;
-                card.dataset.acumulado = sesion.tiemposAcumulados?.[estado] || 0;
-                card.dataset.limite = limiteSegundos;
-
-                card.innerHTML = `
-                    <div class="flex justify-between items-start mb-4">
-                        <div class="flex items-center gap-3 w-3/4">
-                            <div class="w-10 h-10 rounded-full ${conf.bg} ${conf.color} flex-shrink-0 flex items-center justify-center text-xl shadow-inner">
-                                <i class="ph-fill ${conf.icon}"></i>
-                            </div>
-                            <div class="min-w-0">
-                                <h3 class="font-bold text-sm text-text truncate" title="${nombre}">${nombre}</h3>
-                                <p class="text-xs text-text-mute font-mono">ID: ${id}</p>
-                            </div>
-                        </div>
-                        <div class="text-[10px] font-bold uppercase tracking-wider px-2 py-1 rounded-md ${conf.bg} ${conf.color} whitespace-nowrap">
-                            ${conf.label}
-                        </div>
-                    </div>
-                    
-                    <div class="mt-auto border-t border-border pt-3 flex flex-col">
-                        ${estado !== 'offline' && estado !== 'available' ? `
-                            <div class="flex justify-between items-end">
-                                <div>
-                                    <p class="text-[10px] font-bold text-text-mute uppercase tracking-wider mb-0.5">Reloj En Vivo</p>
-                                    <p class="text-3xl font-black font-mono tabular-nums leading-none tracking-tighter text-text" id="timer-disp-${id}">00:00</p>
-                                </div>
-                                <div class="text-right bg-slate-50 px-3 py-1.5 rounded-lg border border-border">
-                                    <p class="text-[9px] font-bold text-text-mute uppercase">Límite asignado</p>
-                                    <p class="text-sm font-black text-brand">${limiteMinutos} min</p>
-                                </div>
-                            </div>
-                        ` : `
-                            <div class="flex items-center justify-center gap-2 text-sm font-medium py-2 bg-slate-50 rounded-xl border border-border ${estado === 'offline' ? 'text-text-mute' : 'text-money'}">
-                                <i class="ph-bold ${estado === 'offline' ? 'ph-moon' : 'ph-check-circle text-lg'}"></i> 
-                                ${estado === 'offline' ? 'Sin iniciar sesión hoy' : 'Agente Operando en Línea'}
-                            </div>
-                        `}
-                    </div>
-                `;
-                
-                grid.appendChild(card);
-            });
-
-            document.getElementById('empty-state').classList.toggle('hidden', visibleCount !== 0);
-            document.getElementById('kpi-total').innerText = kpi.total;
-            document.getElementById('kpi-trabajando').innerText = kpi.trabajando;
-            document.getElementById('kpi-pausa').innerText = kpi.pausa;
+        function reproducirBeepCorto() {
+            try {
+                const ctx = new (window.AudioContext || window.webkitAudioContext)();
+                const osc = ctx.createOscillator(); const gain = ctx.createGain();
+                osc.connect(gain); gain.connect(ctx.destination);
+                osc.type = 'sine'; osc.frequency.setValueAtTime(880, ctx.currentTime);
+                gain.gain.setValueAtTime(0.2, ctx.currentTime); osc.start();
+                gain.gain.exponentialRampToValueAtTime(0.00001, ctx.currentTime + 0.5);
+                osc.stop(ctx.currentTime + 0.5);
+            } catch(e) { }
         }
 
-        // --- RELOJ EN VIVO ---
-        setInterval(() => {
-            let totalExcedidos = 0;
-            const now = Date.now();
-            const activeCards = document.querySelectorAll('.agent-card[data-estado="bath"], .agent-card[data-estado="food"], .agent-card[data-estado="quality"]');
+        function solicitarPermisosNotificacion() {
+            if ("Notification" in window && Notification.permission !== "granted" && Notification.permission !== "denied") {
+                Notification.requestPermission();
+            }
+        }
+
+        function enviarNotificacionEscritorio(titulo, cuerpo) {
+            if ("Notification" in window && Notification.permission === "granted") {
+                new Notification(titulo, { body: cuerpo, icon: "https://cdn-icons-png.flaticon.com/512/1827/1827370.png" });
+            }
+        }
+
+        function obtenerFechaHoy() {
+            return new Date().toLocaleDateString('en-US'); // Guardado universal para validación fácil
+        }
+
+        // --- WEB WORKER EXCLUSIVAMENTE VISUAL Y ALERTAS SONORAS ---
+        const workerBlob = new Blob([`setInterval(() => { postMessage('tick'); }, 1000);`], { type: 'application/javascript' });
+        const motorReloj = new Worker(URL.createObjectURL(workerBlob));
+
+        motorReloj.onmessage = function() {
+            const ahoraMs = Date.now();
+            const admDisplay = document.getElementById('reloj-display-admin');
+            if(admDisplay) admDisplay.textContent = new Date(ahoraMs).toLocaleTimeString('es-ES', { hour12: false });
+
+            // Iteramos sobre las tarjetas en DOM que tienen data-receso="true"
+            const activeCards = document.querySelectorAll('.agent-card[data-receso="true"]');
             
             activeCards.forEach(card => {
-                const id = card.dataset.id;
+                const pin = card.dataset.id;
+                const nombre = card.dataset.nombre;
+                const tipo = card.dataset.tipo; // 'Baño', 'Comida', 'Calidad'
                 const inicio = parseInt(card.dataset.inicio);
-                const acumulado = parseInt(card.dataset.acumulado) || 0;
-                const limite = parseInt(card.dataset.limite);
-                
-                if (!inicio) return;
+                const baseAcum = parseInt(card.dataset.acumulado) || 0;
+                const limiteSeg = parseInt(card.dataset.limite);
 
-                const segundosActuales = Math.floor((now - inicio) / 1000) + acumulado;
-                const m = Math.floor(segundosActuales / 60).toString().padStart(2, '0');
-                const s = (segundosActuales % 60).toString().padStart(2, '0');
-                
-                const disp = document.getElementById(`timer-disp-${id}`);
-                if (disp) disp.innerText = `${m}:${s}`;
+                const elTimer = document.getElementById(`timer-admin-${pin}`);
+                const elTotal = document.getElementById(`total-admin-${pin}`);
+                const elProg = document.getElementById(`prog-admin-${pin}`);
 
-                if (segundosActuales > limite) {
-                    totalExcedidos++;
-                    card.classList.add('pulse-danger', 'border-danger');
-                    card.classList.remove('border-amber-200', 'border-blue-200'); 
-                    if(disp) disp.classList.add('text-danger');
-                } else {
-                    card.classList.remove('pulse-danger', 'border-danger');
-                    if(disp) disp.classList.remove('text-danger');
+                if (elTimer && inicio) {
+                    const transcurrido = Math.floor((ahoraMs - inicio) / 1000);
+                    elTimer.textContent = formatearTiempo(transcurrido);
+                    
+                    if (elTotal) {
+                        const totalActual = baseAcum + transcurrido;
+                        elTotal.textContent = formatearTiempo(totalActual);
+
+                        if (elProg && limiteSeg && limiteSeg !== Infinity) {
+                            let pct = (totalActual / limiteSeg) * 100;
+                            if (pct > 100) pct = 100;
+                            elProg.style.width = `${pct}%`;
+
+                            const tiempoRestante = limiteSeg - totalActual;
+
+                            if (tiempoRestante <= 60 && tiempoRestante > 0) {
+                                elTotal.classList.add('text-orange-500', 'animate-pulse'); elTotal.classList.remove('text-slate-700');
+                                elProg.classList.add('bg-orange-500'); elProg.classList.remove('bg-blue-500');
+                                
+                                const alertaKey = pin + inicio;
+                                if (!alertas1MinEnviadas[alertaKey]) {
+                                    alertas1MinEnviadas[alertaKey] = true;
+                                    reproducirBeepCorto();
+                                    enviarNotificacionEscritorio("¡Atención de Tiempo!", `⏳ ${nombre} tiene solo 1 MINUTO restante de ${tipo}.`);
+                                }
+                            }
+
+                            if (totalActual >= (limiteSeg - 2)) {
+                                elTotal.classList.add('text-red-600', 'font-black');
+                                elTotal.classList.remove('text-slate-700', 'font-bold', 'text-orange-500', 'animate-pulse');
+                                if(elTotal.parentElement) {
+                                    elTotal.parentElement.classList.add('bg-red-50', 'border-red-200', 'text-red-700');
+                                    elTotal.parentElement.classList.remove('bg-slate-50', 'border-slate-100');
+                                }
+                                elProg.classList.add('bg-red-500'); elProg.classList.remove('bg-blue-500', 'bg-orange-500');
+
+                                if (limitesGlobales.autoExpulsion !== false && !logoutsNotificados[pin]) {
+                                    logoutsNotificados[pin] = true;
+                                    // Forzar desconexión grabando en comandos_admin (Asume que TP está escuchando en ese entorno, o sirve visual)
+                                    forzarDesconexionTouchpointSilencioso(pin);
+                                    mostrarNotificacion(`¡${nombre} llegó al límite! Autodesconexión ejecutada.`, 'error');
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        };
+
+        // --- VARIABLES ADMIN ---
+        let limitesGlobales = { bano: 15, comida: 30, calidad: 20, autoExpulsion: true }; 
+        let datosColaboradoresRaw = [];
+        let sesionesActivasGlobal = {};
+        let todosLosRegistros = [];
+        let idColaboradorAEliminar = null, pinEditando = null, idDocEditando = null;
+        let unsubConfig, unsubColaboradores, unsubRegistros, unsubActivas;
+
+        // Mapeo unificado entre Frontend Español y Firebase Inglés
+        const DB_KEYS = { 'Baño': 'bath', 'Comida': 'food', 'Calidad': 'quality' };
+        const DB_LIMIT_KEYS = { 'bath': 'bano', 'food': 'comida', 'quality': 'calidad' };
+
+        window.mostrarVista = function(idVista) {
+            ['vista-cargando', 'vista-error', 'vista-login-admin', 'vista-admin'].forEach(v => document.getElementById(v)?.classList.add('hidden'));
+            const target = document.getElementById(idVista);
+            if (target) { target.classList.remove('hidden'); if(idVista === 'vista-login-admin') setTimeout(()=> document.getElementById('pin-admin').focus(), 100); }
+        };
+
+        window.mostrarNotificacion = function(mensaje, tipo = 'exito') {
+            const noti = document.getElementById('notificacion');
+            const icon = document.getElementById('notificacion-icon');
+            
+            icon.innerHTML = tipo === 'error' ? '<i class="ph ph-warning-circle text-red-400"></i>' : (tipo === 'info' ? '<i class="ph ph-info text-blue-400"></i>' : '<i class="ph ph-check-circle text-emerald-400"></i>');
+            noti.className = `fixed top-6 left-1/2 transform -translate-x-1/2 z-[100] max-w-md w-full bg-slate-900 text-white shadow-2xl rounded-2xl p-4 flex items-center gap-3 border ${tipo === 'error' ? 'border-red-500/50' : (tipo==='info'?'border-blue-500/50':'border-emerald-500/50')}`;
+            document.getElementById('notificacion-texto').textContent = mensaje;
+            noti.classList.remove('hidden'); noti.style.top = '20px';
+            noti.animate([{ transform: 'translate(-50%, -20px)', opacity: 0 }, { transform: 'translate(-50%, 0)', opacity: 1 }], { duration: 300, fill: 'forwards' });
+            setTimeout(() => { noti.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 300, fill: 'forwards' }).onfinish = () => noti.classList.add('hidden'); }, 4000);
+        }
+
+        function formatearTiempo(segundos) {
+            const sign = segundos < 0 ? "-" : ""; segundos = Math.abs(segundos);
+            const m = Math.floor(segundos / 60).toString().padStart(2, '0');
+            const s = (segundos % 60).toString().padStart(2, '0');
+            return `${sign}${m}:${s}`;
+        }
+
+        function tiempoASegundos(tiempoStr) {
+            if (!tiempoStr) return 0;
+            const partes = tiempoStr.toString().trim().split(':');
+            return partes.length === 2 ? (parseInt(partes[0]) || 0) * 60 + (parseInt(partes[1]) || 0) : Math.floor((parseFloat(tiempoStr) || 0) * 60);
+        }
+
+        function formatInputTimer(e) {
+            let val = e.target.value.replace(/\D/g, '');
+            if(val.length > 4) val = val.substring(0,4);
+            if(val.length >= 3) val = val.substring(0, val.length-2) + ':' + val.substring(val.length-2);
+            e.target.value = val;
+        }
+        ['edit-consumido-bano','edit-consumido-comida','edit-consumido-calidad'].forEach(id => document.getElementById(id).addEventListener('input', formatInputTimer));
+
+        if (conectado) {
+            window.mostrarVista('vista-cargando');
+            onAuthStateChanged(auth, async (user) => {
+                if (user && user.email === EMAIL_ADMIN) { cargarAdminViews(); } 
+                else { if(user) await signOut(auth); window.mostrarVista('vista-login-admin'); }
+            });
+        }
+
+        window.loginAdmin = async function() {
+            const pinInput = document.getElementById('pin-admin');
+            const pin = pinInput.value.trim();
+            if(!pin) return mostrarNotificacion('Ingresa la contraseña maestra', 'error');
+            
+            pinInput.blur(); window.mostrarVista('vista-cargando');
+            if (pin.toLowerCase() === 'blqa') {
+                try {
+                    await signInWithEmailAndPassword(auth, EMAIL_ADMIN, 'admin123');
+                    solicitarPermisosNotificacion();
+                } catch (error) {
+                    window.mostrarVista('vista-login-admin'); mostrarNotificacion('Error en autenticación.', 'error');
+                }
+                pinInput.value = '';
+            } else {
+                window.mostrarVista('vista-login-admin'); mostrarNotificacion('Contraseña denegada.', 'error');
+            }
+        };
+
+        window.cerrarSesionAdmin = async function() {
+            if(unsubConfig) unsubConfig(); if(unsubColaboradores) unsubColaboradores(); if(unsubRegistros) unsubRegistros(); if(unsubActivas) unsubActivas();
+            await signOut(auth); mostrarNotificacion('Sesión cerrada correctamente', 'info');
+        };
+
+        function cargarAdminViews() {
+            window.mostrarVista('vista-admin'); 
+            
+            // Fix para fechas inputs
+            const hoyInput = new Date();
+            const tzOffset = hoyInput.getTimezoneOffset() * 60000;
+            const formatHoyInput = (new Date(Date.now() - tzOffset)).toISOString().split('T')[0];
+            document.getElementById('filtro-fecha-historial').value = formatHoyInput;
+            
+            const fechaString = new Date().toLocaleDateString('es-ES', { weekday: 'long', year: 'numeric', month: 'short', day: 'numeric' });
+            document.getElementById('fecha-admin-display').textContent = fechaString.charAt(0).toUpperCase() + fechaString.slice(1);
+            
+            unsubConfig = onSnapshot(doc(db, 'config', 'global'), (docSnap) => {
+                if(docSnap.exists()){
+                    limitesGlobales = { autoExpulsion: true, bano: 15, comida: 30, calidad: 20, ...docSnap.data() }; 
+                    document.getElementById('limit-bano').value = limitesGlobales.bano; 
+                    document.getElementById('limit-comida').value = limitesGlobales.comida;
+                    document.getElementById('limit-calidad').value = limitesGlobales.calidad;
+                    const toggleAuto = document.getElementById('toggle-auto-expulsion'); if(toggleAuto) toggleAuto.checked = limitesGlobales.autoExpulsion;
                 }
             });
 
-            document.getElementById('kpi-excedidos').innerText = totalExcedidos;
-        }, 1000);
+            // 1. Escuchar a Operadores
+            unsubColaboradores = onSnapshot(collection(db, 'operadores'), (snap) => {
+                datosColaboradoresRaw = snap.docs.map(d => ({id: d.id, ...d.data()}));
+                renderizarMonitorLive();
+            });
 
-        // --- MODAL DE ADMINISTRACIÓN Y CRUD ---
-        window.toggleAdminModal = function() {
-            const modal = document.getElementById('admin-modal');
-            const content = document.getElementById('admin-modal-content');
-            
-            if (modal.classList.contains('hidden')) {
-                modal.classList.remove('hidden');
-                setTimeout(() => {
-                    modal.classList.remove('opacity-0');
-                    content.classList.remove('scale-95');
-                }, 10);
-                renderizarAdminList();
-            } else {
-                modal.classList.add('opacity-0');
-                content.classList.add('scale-95');
-                setTimeout(() => { modal.classList.add('hidden'); resetAdminForm(); }, 300);
-            }
-        }
+            // 2. Escuchar a Sesiones Activas unificadas
+            unsubActivas = onSnapshot(collection(db, 'sesiones_activas'), (snap) => {
+                const hoyStr = obtenerFechaHoy();
+                sesionesActivasGlobal = {}; 
+                const pinesEnReceso = [];
+                
+                snap.forEach(d => { 
+                    const act = d.data(); 
+                    if(act.fecha === hoyStr || act.fecha === formatHoyInput) {
+                        sesionesActivasGlobal[d.id] = act; 
+                        if(act.estadoActivo) pinesEnReceso.push(d.id);
+                    }
+                });
 
-        function renderizarAdminList() {
-            const list = document.getElementById('admin-list');
-            const searchVal = document.getElementById('admin-search').value.toLowerCase();
-            list.innerHTML = '';
+                // Limpiar notificaciones fantasma si ya no están en receso
+                Object.keys(logoutsNotificados).forEach(pinBl => {
+                    if (!pinesEnReceso.includes(pinBl)) delete logoutsNotificados[pinBl];
+                });
+                renderizarMonitorLive();
+            });
 
-            const operadoresArray = Object.keys(operadoresInfo).map(id => ({ id, ...operadoresInfo[id] }));
-            
-            operadoresArray.forEach(op => {
-                if (!op.nombre.toLowerCase().includes(searchVal) && !op.id.toLowerCase().includes(searchVal)) return;
-
-                const row = document.createElement('div');
-                row.className = 'grid grid-cols-12 gap-2 items-center p-3 border-b border-border hover:bg-slate-50 transition-colors group';
-                row.innerHTML = `
-                    <div class="col-span-2 text-xs font-mono font-bold text-text">${op.id}</div>
-                    <div class="col-span-4 text-xs font-bold text-text truncate pr-2" title="${op.nombre}">${op.nombre}</div>
-                    <div class="col-span-4 flex justify-center gap-2">
-                        <span class="text-[10px] bg-amber-50 text-warning px-2 py-1 rounded border border-amber-100" title="Baño"><i class="ph-fill ph-toilet"></i> ${op.limites.bano}</span>
-                        <span class="text-[10px] bg-amber-50 text-warning px-2 py-1 rounded border border-amber-100" title="Comida"><i class="ph-fill ph-hamburger"></i> ${op.limites.comida}</span>
-                        <span class="text-[10px] bg-blue-50 text-brand px-2 py-1 rounded border border-blue-100" title="Calidad"><i class="ph-fill ph-headset"></i> ${op.limites.calidad}</span>
-                    </div>
-                    <div class="col-span-2 flex justify-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                        <button type="button" onclick="editAgent('${op.id}')" class="bg-blue-100 text-brand hover:bg-brand hover:text-white p-1.5 rounded transition-colors" title="Editar">
-                            <i class="ph-bold ph-pencil-simple"></i>
-                        </button>
-                        <button type="button" onclick="deleteAgent('${op.id}')" class="bg-red-100 text-danger hover:bg-danger hover:text-white p-1.5 rounded transition-colors" title="Eliminar">
-                            <i class="ph-bold ph-trash"></i>
-                        </button>
-                    </div>
-                `;
-                list.appendChild(row);
+            // 3. Escuchar Bitácora
+            unsubRegistros = onSnapshot(collection(db, 'registros_tiempos'), (snap) => {
+                todosLosRegistros = snap.docs.map(d => {
+                    const data = d.data();
+                    const fechaObj = data.fecha ? data.fecha.toDate() : new Date();
+                    return {
+                        ...data,
+                        fin: fechaObj.getTime(),
+                        fechaISO: new Date(fechaObj.getTime() - (fechaObj.getTimezoneOffset() * 60000)).toISOString().split('T')[0]
+                    };
+                }).sort((a, b) => b.fin - a.fin);
+                renderizarHistorial(); 
             });
         }
 
-        // Búsqueda en el modal
-        document.getElementById('admin-search').addEventListener('input', renderizarAdminList);
+        async function forzarDesconexionTouchpointSilencioso(pin) {
+            try { await setDoc(doc(db, 'comandos_admin', pin), { comando: 'FORCE_LOGOUT_TP', timestamp: Date.now() }); } catch(e) {}
+        }
 
-        // Guardar/Actualizar Agente
-        document.getElementById('agent-form').addEventListener('submit', async (e) => {
-            e.preventDefault();
-            const btn = document.getElementById('btn-save-agent');
-            const msg = document.getElementById('admin-msg');
-            
-            const id = document.getElementById('admin-id').value.trim();
-            const nombre = document.getElementById('admin-nombre').value.trim();
-            const bano = parseInt(document.getElementById('admin-bano').value) || 15;
-            const comida = parseInt(document.getElementById('admin-comida').value) || 30;
-            const calidad = parseInt(document.getElementById('admin-calidad').value) || 20;
-
-            btn.disabled = true;
-            btn.innerHTML = `<div class="spinner border-2 border-white border-t-transparent rounded-full w-5 h-5 animate-spin"></div> Guardando...`;
-
+        window.forzarDesconexionTouchpoint = async function(pin, nombre) {
+            if(!confirm(`¿Forzar desconexión de TouchPoint a ${nombre}?`)) return;
             try {
-                // Guarda directamente en la colección 'operadores'
-                await setDoc(doc(db, "operadores", id), {
-                    id: id,
-                    nombre: nombre,
-                    limites: { bano, comida, calidad }
-                });
-                
-                msg.className = "text-xs text-center font-bold mt-3 text-money bg-green-50 py-2 rounded-lg";
-                msg.innerText = "¡Agente guardado exitosamente!";
-                msg.classList.remove('hidden');
-                
-                setTimeout(() => { resetAdminForm(); }, 1500);
-            } catch (error) {
-                console.error("Error guardando agente:", error);
-                msg.className = "text-xs text-center font-bold mt-3 text-danger bg-red-50 py-2 rounded-lg";
-                msg.innerText = "Error al guardar. Revisa conexión o permisos.";
-                msg.classList.remove('hidden');
-                btn.disabled = false;
-                btn.innerHTML = `<i class="ph-bold ph-floppy-disk"></i> Guardar Agente`;
+                await setDoc(doc(db, 'comandos_admin', pin), { comando: 'FORCE_LOGOUT_TP', timestamp: Date.now() });
+                mostrarNotificacion(`Comando remoto enviado a la máquina de ${nombre}.`);
+            } catch(e) { mostrarNotificacion('Error de conexión.', 'error'); }
+        };
+        
+        function generarTarjeta(colab, estado) {
+            // Variables de colabContext mapeadas
+            const { id, nombre, estadoActivo, limitesPersonales, acumuladosHoy, inicioReceso, actConfig } = colab;
+            const pin = id;
+            let statusHtml = ''; let timerHtml = '';
+            let opacityClass = estado === 'desconectado' ? 'opacity-60 grayscale-[20%] bg-slate-50/50' : 'bg-white shadow-sm';
+
+            if(estado === 'receso') {
+                let bgStr = actConfig.bgKey;
+                let iconStr = actConfig.iconKey;
+                let isReceso = true;
+
+                statusHtml = `<span class="px-2.5 py-1 bg-${bgStr}-100 text-${bgStr}-700 text-[10px] font-bold rounded-lg flex items-center gap-1.5 shrink-0 border border-${bgStr}-200"><span class="w-1.5 h-1.5 bg-${bgStr}-500 rounded-full animate-pulse"></span> ${actConfig.label}</span>`;
+                timerHtml = `
+                    <div class="agent-card bg-${bgStr}-50 rounded-2xl p-4 flex flex-col items-center justify-center border border-${bgStr}-100 relative overflow-hidden mb-4 group-hover:border-${bgStr}-200 transition-colors" 
+                        data-receso="true" data-id="${pin}" data-nombre="${nombre}" data-tipo="${actConfig.label}" data-inicio="${inicioReceso}" data-acumulado="${acumuladosHoy[estadoActivo] || 0}" data-limite="${actConfig.limiteSeg}">
+                        <div class="absolute bottom-0 left-0 h-1.5 bg-${bgStr}-200 w-full opacity-50"><div id="prog-admin-${pin}" class="h-full bg-${bgStr}-500 transition-all duration-1000" style="width:0%"></div></div>
+                        <span id="timer-admin-${pin}" class="text-${bgStr}-600 font-mono text-3xl font-black tracking-wider drop-shadow-sm">00:00</span>
+                        <span class="text-${bgStr}-500 text-[9px] font-bold uppercase tracking-widest mt-1 opacity-80">Tiempo en Curso</span>
+                    </div>`;
+            } else if (estado === 'operando') {
+                statusHtml = `<span class="px-2.5 py-1 bg-emerald-100 text-emerald-700 text-[10px] font-bold rounded-lg flex items-center gap-1.5 shrink-0 border border-emerald-200"><span class="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse"></span> Operando</span>`;
+                timerHtml = `<div class="bg-slate-50 rounded-2xl p-4 flex flex-col items-center justify-center border border-slate-100 mb-4 h-[84px]"><span class="text-slate-400 font-medium text-sm flex items-center gap-2"><i class="ph ph-check-circle text-emerald-500 text-xl"></i> En línea</span></div>`;
+            } else {
+                statusHtml = `<span class="px-2.5 py-1 bg-slate-200 text-slate-500 text-[10px] font-bold rounded-lg flex items-center gap-1.5 shrink-0"><i class="ph ph-moon"></i> Desconectado</span>`;
+                timerHtml = `<div class="bg-slate-50 rounded-2xl p-4 flex flex-col items-center justify-center border border-slate-100 mb-4 h-[84px]"><span class="text-slate-400 font-medium text-sm flex items-center gap-2"><i class="ph ph-moon text-slate-400 text-xl"></i> Sin conexión</span></div>`;
             }
+
+            const limB = limitesPersonales.bano ? `${limitesPersonales.bano}m` : `Global`;
+            const limC = limitesPersonales.comida ? `${limitesPersonales.comida}m` : `Global`;
+            const limCal = limitesPersonales.calidad ? `${limitesPersonales.calidad}m` : `Global`;
+            
+            const minBano = acumuladosHoy.bath || 0;
+            const minComida = acumuladosHoy.food || 0;
+            const minCalidad = acumuladosHoy.quality || 0;
+            
+            const banoExcedido = minBano > (limitesPersonales.bano || limitesGlobales.bano) * 60;
+            const comidaExcedida = minComida > (limitesPersonales.comida || limitesGlobales.comida) * 60;
+            const calidadExcedida = minCalidad > (limitesPersonales.calidad || limitesGlobales.calidad) * 60;
+
+            let banoBoxClass = banoExcedido ? 'bg-red-50 border-red-200 text-red-700' : 'bg-slate-50 border-slate-100 text-slate-700';
+            let comidaBoxClass = comidaExcedida ? 'bg-red-50 border-red-200 text-red-700' : 'bg-slate-50 border-slate-100 text-slate-700';
+            let calidadBoxClass = calidadExcedida ? 'bg-red-50 border-red-200 text-red-700' : 'bg-slate-50 border-slate-100 text-slate-700';
+
+            return `
+                <div class="${opacityClass} rounded-3xl p-5 border border-slate-200 flex flex-col hover:shadow-lg hover:border-blue-200 transition-all relative group h-full">
+                    <div class="absolute top-4 right-4 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity z-10 bg-white/90 backdrop-blur-md rounded-xl p-1 shadow-sm border border-slate-200">
+                        ${estado === 'receso' ? `<button onclick="forzarDesconexionTouchpoint('${pin}', '${nombre}')" class="text-slate-500 hover:text-orange-500 p-1.5 rounded-lg hover:bg-orange-50 transition-colors" title="Desconectar Forzado TP"><i class="ph ph-plug text-base"></i></button>` : ''}
+                        <button onclick="abrirModalEditar('${pin}', '${nombre}', '${id}')" class="text-slate-500 hover:text-blue-600 p-1.5 rounded-lg hover:bg-blue-50 transition-colors" title="Ajustar Tiempos"><i class="ph ph-sliders-horizontal text-base"></i></button>
+                        <button onclick="eliminarColaborador('${id}')" class="text-slate-500 hover:text-red-600 p-1.5 rounded-lg hover:bg-red-50 transition-colors" title="Borrar Empleado"><i class="ph ph-trash text-base"></i></button>
+                    </div>
+                    <div class="flex justify-between items-start mb-5 pr-16"><div class="min-w-0"><h3 class="font-bold text-slate-800 text-base leading-tight truncate mb-1" title="${nombre}">${nombre}</h3><span class="text-[10px] text-slate-400 font-mono tracking-wider bg-slate-100 px-1.5 py-0.5 rounded">ID: ${pin}</span></div></div>
+                    ${timerHtml}
+                    <div class="flex justify-between items-end mb-3 mt-auto pt-2 border-t border-slate-100">${statusHtml}<span class="text-[9px] text-slate-400 font-bold uppercase tracking-widest bg-slate-100 px-2 py-1 rounded-md">Consumo Hoy</span></div>
+                    <div class="grid grid-cols-3 gap-2">
+                        <div class="flex flex-col items-center justify-center rounded-2xl p-2.5 border ${banoBoxClass} transition-colors"><i class="ph ph-toilet ${banoExcedido ? 'text-red-500' : 'text-blue-500'} mb-1.5 text-xl"></i><span ${(estadoActivo === 'bath') ? `id="total-admin-${pin}"` : ''} class="text-xs font-mono font-bold leading-none mb-1 ${banoExcedido ? 'text-red-600' : 'text-slate-700'}">${formatearTiempo(minBano)}</span><span class="text-[9px] opacity-70 font-medium">/ ${limB}</span></div>
+                        <div class="flex flex-col items-center justify-center rounded-2xl p-2.5 border ${comidaBoxClass} transition-colors"><i class="ph ph-fork-knife ${comidaExcedida ? 'text-red-500' : 'text-orange-500'} mb-1.5 text-xl"></i><span ${(estadoActivo === 'food') ? `id="total-admin-${pin}"` : ''} class="text-xs font-mono font-bold leading-none mb-1 ${comidaExcedida ? 'text-red-600' : 'text-slate-700'}">${formatearTiempo(minComida)}</span><span class="text-[9px] opacity-70 font-medium">/ ${limC}</span></div>
+                        <div class="flex flex-col items-center justify-center rounded-2xl p-2.5 border ${calidadBoxClass} transition-colors"><i class="ph ph-star ${calidadExcedida ? 'text-red-500' : 'text-purple-500'} mb-1.5 text-xl"></i><span ${(estadoActivo === 'quality') ? `id="total-admin-${pin}"` : ''} class="text-xs font-mono font-bold leading-none mb-1 ${calidadExcedida ? 'text-red-600' : 'text-slate-700'}">${formatearTiempo(minCalidad)}</span><span class="text-[9px] opacity-70 font-medium">/ ${limCal}</span></div>
+                    </div>
+                </div>`;
+        }
+
+        window.renderizarMonitorLive = function() {
+            const contenedor = document.getElementById('lista-activos'); if(!contenedor) return;
+            const searchInput = document.getElementById('search-monitor'); const term = searchInput ? searchInput.value.toLowerCase() : '';
+            let enReceso = [], operando = [], desconectados = [], excedidosCount = 0; 
+            
+            datosColaboradoresRaw.forEach(c => {
+                if(term && !c.nombre.toLowerCase().includes(term) && !c.id.includes(term)) return;
+                
+                const sesion = sesionesActivasGlobal[c.id] || { estadoActivo: null, offline: true, tiemposAcumulados: {} };
+                const isOffline = sesion.offline;
+                const estadoActivo = sesion.estadoActivo;
+                const acumuladosHoy = sesion.tiemposAcumulados || {};
+                const limitesPersonales = c.limites || {};
+
+                // Calculo estático inicial de consumido para color de cajas
+                const minBano = acumuladosHoy.bath || 0; 
+                const minComida = acumuladosHoy.food || 0; 
+                const minCalidad = acumuladosHoy.quality || 0;
+                
+                const limBNum = limitesPersonales.bano ? limitesPersonales.bano : limitesGlobales.bano; 
+                const limCNum = limitesPersonales.comida ? limitesPersonales.comida : limitesGlobales.comida;
+                const limCalNum = limitesPersonales.calidad ? limitesPersonales.calidad : limitesGlobales.calidad;
+                
+                const banoExcedido = minBano > limBNum * 60; 
+                const comidaExcedida = minComida > limCNum * 60;
+                
+                if(!isOffline && (banoExcedido || comidaExcedida)) excedidosCount++;
+
+                let actConfig = {};
+                if(estadoActivo) {
+                    if(estadoActivo === 'bath') actConfig = { bgKey: 'blue', iconKey: 'ph-toilet', label: 'Baño', limiteSeg: limBNum * 60 };
+                    if(estadoActivo === 'food') actConfig = { bgKey: 'orange', iconKey: 'ph-fork-knife', label: 'Comida', limiteSeg: limCNum * 60 };
+                    if(estadoActivo === 'quality') actConfig = { bgKey: 'purple', iconKey: 'ph-star', label: 'Calidad', limiteSeg: limCalNum * 60 };
+                }
+
+                const colabContext = { ...c, limitesPersonales, acumuladosHoy, estadoActivo, isOffline, inicioReceso: sesion.tiempoInicioEstado, actConfig };
+
+                if(estadoActivo) enReceso.push(colabContext);
+                else if (!isOffline) operando.push(colabContext);
+                else desconectados.push(colabContext);
+            });
+
+            document.getElementById('kpi-total').textContent = datosColaboradoresRaw.length;
+            document.getElementById('kpi-activos').textContent = operando.length + enReceso.length; // Los online
+            document.getElementById('kpi-excedidos').textContent = excedidosCount;
+
+            if (datosColaboradoresRaw.length === 0) { contenedor.innerHTML = `<div class="col-span-full py-16 text-center flex flex-col items-center justify-center"><div class="w-20 h-20 bg-slate-100 rounded-full flex items-center justify-center mb-4"><i class="ph ph-users text-4xl text-slate-300"></i></div><p class="text-slate-500 font-medium text-lg mb-1">Directorio Vacío</p><p class="text-slate-400 text-sm">Registra a tu primer empleado desde configuración.</p></div>`; return; }
+            if(enReceso.length === 0 && operando.length === 0 && desconectados.length === 0) { contenedor.innerHTML = '<div class="col-span-full py-10 text-center text-slate-400 italic">No hay coincidencias con tu búsqueda.</div>'; return; }
+
+            let html = '';
+            enReceso.forEach(c => html += generarTarjeta(c, 'receso')); 
+            operando.forEach(c => html += generarTarjeta(c, 'operando')); 
+            desconectados.forEach(c => html += generarTarjeta(c, 'desconectado'));
+            contenedor.innerHTML = html;
+        };
+
+        window.abrirConfig = function() {
+            const overlay = document.getElementById('panel-config-overlay'); const panel = document.getElementById('panel-config');
+            overlay.classList.remove('hidden'); setTimeout(() => { overlay.classList.remove('opacity-0'); panel.classList.remove('translate-x-full'); }, 10);
+        };
+        window.cerrarConfig = function() {
+            const overlay = document.getElementById('panel-config-overlay'); const panel = document.getElementById('panel-config');
+            overlay.classList.add('opacity-0'); panel.classList.add('translate-x-full'); setTimeout(() => { overlay.classList.add('hidden'); }, 300);
+        };
+
+        function prepararAperturaModal() {
+            if (timeoutModales) clearTimeout(timeoutModales);
+            ['modal-confirm', 'modal-editar', 'modal-confirm-reset'].forEach(id => { const el = document.getElementById(id); if(el) { el.classList.add('hidden', 'scale-95'); } });
+            document.getElementById('modal-overlay').classList.remove('hidden'); idColaboradorAEliminar = null; pinEditando = null; idDocEditando = null;
+        }
+
+        window.abrirModalReset = function() {
+            prepararAperturaModal(); const modal = document.getElementById('modal-confirm-reset'); const overlay = document.getElementById('modal-overlay');
+            setTimeout(() => { overlay.classList.remove('opacity-0'); modal.classList.remove('hidden', 'scale-95'); }, 10);
+        }
+
+        window.abrirModalEditar = function(pin, nombre, docId) {
+            prepararAperturaModal(); pinEditando = pin; idDocEditando = docId;
+            const sesion = sesionesActivasGlobal[pin] || {};
+            const colab = datosColaboradoresRaw.find(c => c.id === docId) || {};
+            const acumulado = sesion.tiemposAcumulados || {};
+            const limites = colab.limites || {};
+            
+            document.getElementById('edit-nombre').textContent = nombre;
+            document.getElementById('edit-consumido-bano').value = formatearTiempo(acumulado.bath || 0);
+            document.getElementById('edit-consumido-comida').value = formatearTiempo(acumulado.food || 0);
+            document.getElementById('edit-consumido-calidad').value = formatearTiempo(acumulado.quality || 0);
+            document.getElementById('edit-limite-bano').value = limites.bano || ''; 
+            document.getElementById('edit-limite-comida').value = limites.comida || '';
+            document.getElementById('edit-limite-calidad').value = limites.calidad || '';
+            
+            const modal = document.getElementById('modal-editar'); const overlay = document.getElementById('modal-overlay');
+            setTimeout(() => { overlay.classList.remove('opacity-0'); modal.classList.remove('hidden', 'scale-95'); }, 10);
+        };
+
+        window.eliminarColaborador = function(docId) {
+            prepararAperturaModal(); idColaboradorAEliminar = docId;
+            const modal = document.getElementById('modal-confirm'); const overlay = document.getElementById('modal-overlay');
+            setTimeout(() => { overlay.classList.remove('opacity-0'); modal.classList.remove('hidden', 'scale-95'); }, 10);
+        };
+
+        window.cerrarModales = function() {
+            const overlay = document.getElementById('modal-overlay'); const modales = ['modal-confirm', 'modal-editar', 'modal-confirm-reset'];
+            overlay.classList.add('opacity-0'); modales.forEach(id => { const el = document.getElementById(id); if(el && !el.classList.contains('hidden')) el.classList.add('scale-95'); });
+            if(timeoutModales) clearTimeout(timeoutModales);
+            timeoutModales = setTimeout(() => {
+                overlay.classList.add('hidden'); modales.forEach(id => document.getElementById(id).classList.add('hidden'));
+                idColaboradorAEliminar = null; pinEditando = null; idDocEditando = null;
+            }, 300);
+        };
+
+        document.getElementById('btn-confirmar-reset').addEventListener('click', async () => {
+            cerrarModales();
+            try {
+                const hoy = obtenerFechaHoy();
+                const promises = datosColaboradoresRaw.map(c => {
+                    return setDoc(doc(db, 'sesiones_activas', c.id), { tiemposAcumulados: { bath: 0, food: 0, quality: 0 }, fecha: hoy }, { merge: true });
+                });
+                await Promise.all(promises); mostrarNotificacion('Todos los tiempos de hoy se han reiniciado a cero exitosamente.');
+            } catch(e) { mostrarNotificacion('Error al reiniciar los tiempos.', 'error'); }
         });
 
-        // Cargar datos al formulario para editar
-        window.editAgent = function(id) {
-            const op = operadoresInfo[id];
-            if(!op) return;
+        document.getElementById('btn-confirmar-eliminar').addEventListener('click', async () => {
+            if(idColaboradorAEliminar) { try { await deleteDoc(doc(db, 'operadores', idColaboradorAEliminar)); mostrarNotificacion('Colaborador eliminado.'); } catch(e) { mostrarNotificacion('Error.', 'error'); } }
+            cerrarModales();
+        });
 
-            document.getElementById('form-title').innerHTML = `<i class="ph-bold ph-pencil-simple text-brand"></i> Editando a ${op.nombre}`;
-            document.getElementById('admin-id').value = op.id;
-            document.getElementById('admin-id').readOnly = true; // No permitir cambiar ID
-            document.getElementById('admin-id').classList.add('opacity-50', 'cursor-not-allowed');
+        window.renderizarHistorial = function() {
+            const fechaFiltro = document.getElementById('filtro-fecha-historial').value; const tabla = document.getElementById('tabla-registros-global'); if(!tabla) return;
+            tabla.innerHTML = '';
             
-            document.getElementById('admin-nombre').value = op.nombre;
-            document.getElementById('admin-bano').value = op.limites.bano;
-            document.getElementById('admin-comida').value = op.limites.comida;
-            document.getElementById('admin-calidad').value = op.limites.calidad;
+            const registrosFiltrados = todosLosRegistros.filter(r => r.fechaISO === fechaFiltro);
+            if(registrosFiltrados.length === 0) { tabla.innerHTML = `<tr><td colspan="5" class="py-16 text-center text-slate-400 italic font-medium">No hay actividad registrada en esta fecha.</td></tr>`; return; }
 
-            document.getElementById('btn-cancel-edit').classList.remove('hidden');
-            document.getElementById('btn-save-agent').innerHTML = `<i class="ph-bold ph-check-circle"></i> Actualizar Agente`;
+            registrosFiltrados.forEach(reg => {
+                // Adaptamos el mapeo para el diseño de tu tabla
+                let nombreDisplay = reg.asesor_nombre || 'Desconocido';
+                let idDisplay = reg.asesor_id || 'N/A';
+                let estadoStr = reg.estado === 'bath' ? 'Baño' : (reg.estado === 'food' ? 'Comida' : 'Calidad');
+                let tipoIcon = reg.estado === 'bath' ? 'ph-toilet text-blue-500 bg-blue-50' : (reg.estado === 'food' ? 'ph-fork-knife text-orange-500 bg-orange-50' : 'ph-star text-purple-500 bg-purple-50');
+                
+                // Determinamos límite cruzando datos (historico es mas dificil, estimamos base config general o actual)
+                const colabMatch = datosColaboradoresRaw.find(c => c.id === idDisplay);
+                const limitesAct = colabMatch?.limites || {};
+                const limitCalc = (estadoStr === 'Baño' ? (limitesAct.bano || limitesGlobales.bano) : (estadoStr === 'Comida' ? (limitesAct.comida || limitesGlobales.comida) : (limitesAct.calidad || limitesGlobales.calidad))) * 60;
+                
+                const duracionSeg = reg.duracion_segundos || 0;
+                const excedido = duracionSeg > limitCalc;
+                
+                let badgeClass = excedido ? 'bg-red-100 text-red-700 border-red-200 font-bold' : 'bg-emerald-100 text-emerald-700 border-emerald-200';
+                if(estadoStr === 'Calidad') badgeClass = 'bg-purple-100 text-purple-700 border-purple-200';
+                
+                const estadoStatus = excedido ? 'Excedió su tiempo' : 'En tiempo';
+
+                const horaStr = new Date(reg.fin).toLocaleTimeString([], {hour: '2-digit', minute: '2-digit'});
+
+                tabla.innerHTML += `<tr class="hover:bg-slate-50/80 transition-colors border-b border-slate-100 last:border-0 group"><td class="px-6 py-4"><div class="font-bold text-slate-800">${nombreDisplay}</div><div class="text-[10px] font-mono text-slate-400 mt-0.5 tracking-wider">ID: ${idDisplay}</div></td><td class="px-6 py-4"><span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-bold text-slate-600 bg-slate-50 border border-slate-200"><i class="ph ${tipoIcon} p-0.5 rounded text-sm"></i> ${estadoStr}</span></td><td class="px-6 py-4 font-mono font-black text-blue-600 text-lg tracking-wider">${formatearTiempo(duracionSeg)}</td><td class="px-6 py-4"><span class="px-2 py-0.5 text-[11px] rounded-md border inline-block ${badgeClass}">${estadoStatus}</span></td><td class="px-6 py-4 text-xs text-slate-500 font-medium whitespace-nowrap bg-slate-50/30 group-hover:bg-slate-100/50 transition-colors"><div class="flex items-center gap-1.5"><i class="ph ph-clock text-slate-400"></i> ${horaStr}</div></td></tr>`;
+            });
         }
 
-        // Restablecer formulario
-        window.resetAdminForm = function() {
-            document.getElementById('agent-form').reset();
-            document.getElementById('form-title').innerHTML = `<i class="ph-bold ph-user-plus text-brand"></i> Registrar Nuevo`;
-            document.getElementById('admin-id').readOnly = false;
-            document.getElementById('admin-id').classList.remove('opacity-50', 'cursor-not-allowed');
-            document.getElementById('btn-cancel-edit').classList.add('hidden');
+        window.guardarAutoExpulsion = async function() {
+            const toggle = document.getElementById('toggle-auto-expulsion'); const autoExpulsion = toggle.checked;
+            try { await setDoc(doc(db, 'config', 'global'), { autoExpulsion }, { merge: true }); mostrarNotificacion(autoExpulsion ? 'Asistente Automático: ACTIVADO' : 'Asistente Automático: DESACTIVADO', 'info'); } 
+            catch(e) { mostrarNotificacion('Error al cambiar ajuste.', 'error'); toggle.checked = !autoExpulsion; }
+        };
+
+        window.guardarEdicionTiempoYLimites = async function() {
+            if(!pinEditando || !idDocEditando) return;
+            const segBano = tiempoASegundos(document.getElementById('edit-consumido-bano').value);
+            const segComida = tiempoASegundos(document.getElementById('edit-consumido-comida').value);
+            const segCalidad = tiempoASegundos(document.getElementById('edit-consumido-calidad').value);
+            const limBano = parseInt(document.getElementById('edit-limite-bano').value) || null;
+            const limComida = parseInt(document.getElementById('edit-limite-comida').value) || null;
+            const limCalidad = parseInt(document.getElementById('edit-limite-calidad').value) || null;
             
-            const btn = document.getElementById('btn-save-agent');
-            btn.disabled = false;
-            btn.innerHTML = `<i class="ph-bold ph-floppy-disk"></i> Guardar Agente`;
-            
-            document.getElementById('admin-msg').classList.add('hidden');
-        }
+            try {
+                // Actualiza tiempos consumidos HOY
+                await setDoc(doc(db, 'sesiones_activas', pinEditando), { tiemposAcumulados: { bath: segBano, food: segComida, quality: segCalidad } }, { merge: true });
+                // Actualiza limites personales
+                await setDoc(doc(db, 'operadores', idDocEditando), { limites: { bano: limBano, comida: limComida, calidad: limCalidad } }, { merge: true });
+                mostrarNotificacion('Actualizado correctamente.'); cerrarModales();
+            } catch(e) { mostrarNotificacion('Error.', 'error'); }
+        };
 
-        // Eliminar Agente
-        window.deleteAgent = async function(id) {
-            // El iframe restringe confirm(), así que usamos una doble validación visual si es necesario, 
-            // pero para este entorno usamos un borrado directo o confirmación personalizada (aquí directo por limpieza)
-            if(confirm(`¿Estás seguro de que deseas eliminar al agente con ID ${id}?`)) {
-                try {
-                    await deleteDoc(doc(db, "operadores", id));
-                    // No necesitamos recargar nada, onSnapshot se encargará de borrarlo de la lista y el dashboard
-                } catch (e) {
-                    console.error("Error eliminando:", e);
-                    alert("Error eliminando agente.");
-                }
-            }
-        }
+        window.guardarConfiguracionGlobal = async function() {
+            const bano = parseInt(document.getElementById('limit-bano').value) || 15; 
+            const comida = parseInt(document.getElementById('limit-comida').value) || 30;
+            const calidad = parseInt(document.getElementById('limit-calidad').value) || 20;
+            try { await setDoc(doc(db, 'config', 'global'), { bano, comida, calidad }, { merge: true }); mostrarNotificacion('Políticas globales actualizadas.'); } catch(e) { mostrarNotificacion('Error', 'error'); }
+        };
 
-        // Escuchar Filtros principales
-        document.getElementById('search-input').addEventListener('input', renderizarAgentes);
-        document.getElementById('filter-status').addEventListener('change', renderizarAgentes);
+        window.agregarColaborador = async function() {
+            const pin = document.getElementById('nuevo-pin').value.trim(); const nombre = document.getElementById('nuevo-nombre').value.trim();
+            if(!pin || !nombre) return mostrarNotificacion('El ID y Nombre son obligatorios.', 'info');
+            if(datosColaboradoresRaw.some(c => c.id === pin)) return mostrarNotificacion('Este PIN ya está en uso.', 'error');
 
-        // Arrancar
-        initDashboard();
+            try { 
+                await setDoc(doc(db, 'operadores', pin), { id: pin, nombre, limites: { bano: null, comida: null, calidad: null } }); 
+                document.getElementById('nuevo-pin').value = ''; document.getElementById('nuevo-nombre').value = ''; 
+                cerrarConfig(); mostrarNotificacion(`Registrado con éxito.`); 
+            } 
+            catch(e) { mostrarNotificacion('Error.', 'error'); }
+        };
 
     </script>
 </body>
