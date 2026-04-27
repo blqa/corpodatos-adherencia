@@ -410,7 +410,7 @@
         function verificarSaludConexion() {
             window.postMessage({ type: 'GP_PING' }, '*');
             clearTimeout(timeoutConexion);
-            timeoutConexion = setTimeout(() => actualizarBadgeConexion(false), 2500);
+            timeoutConexion = setTimeout(() => actualizarBadgeConexion(false), 25);
         }
 
         function actualizarBadgeConexion(estaConectado) {
