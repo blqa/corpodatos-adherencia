@@ -3,8 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Tracker de Tiempos</title>
-    <!-- Tailwind y Phosphor Icons -->
+    <title>Mi Panel de Adherencia</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/@phosphor-icons/web"></script>
     <script>
@@ -14,120 +13,155 @@
                     colors: {
                         card: '#ffffff', border: '#e5e7eb',
                         text: '#1f2937', 'text-mute': '#6b7280',
-                        brand: '#3b82f6', money: '#10b981', bg: '#f8fafc'
+                        brand: '#3b82f6', money: '#10b981', bg: '#f8fafc',
+                        bath: '#a855f7', food: '#f97316', quality: '#3b82f6'
                     }
                 }
             }
         }
     </script>
+    <style>
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
+        .progress-bar { transition: width 1s ease-in-out; }
+    </style>
 </head>
-<body class="bg-bg p-6 font-sans min-h-screen flex flex-col">
+<body class="bg-bg font-sans min-h-screen text-text p-4 md:p-8 flex flex-col items-center">
 
-    <div class="max-w-5xl mx-auto w-full">
+    <div class="max-w-6xl w-full">
         <!-- HEADER -->
-        <div class="flex flex-col md:flex-row justify-between items-center mb-6 bg-card p-4 rounded-2xl shadow-sm border border-border">
-            <div>
-                <h1 class="text-2xl font-black text-text flex items-center gap-2 tracking-tight">
-                    <i class="ph-fill ph-clock-user text-brand text-3xl"></i>
-                    Panel de Adherencia
-                </h1>
-                <p id="nombre-asesor-display" class="text-sm text-text-mute font-medium mt-1 hidden">
-                    Asesor: <span class="font-bold text-text"></span>
-                </p>
-            </div>
-            <div class="flex items-center gap-4 mt-3 md:mt-0">
-                <button onclick="cerrarSesionLocal()" id="btn-cerrar-sesion" class="text-xs font-bold text-red-500 hover:text-red-700 underline hidden transition-colors">
-                    Cambiar Asesor
-                </button>
-                <div id="networkTimeBadge" class="text-sm text-slate-500 font-bold bg-slate-100 px-4 py-2 rounded-full flex items-center gap-2 shadow-sm border border-slate-200 hidden transition-all">
-                    <div class="spinner border-2 border-slate-500 border-t-transparent rounded-full w-3 h-3 animate-spin"></div>
-                    Esperando conexión...
+        <header class="bg-card p-6 rounded-2xl shadow-sm border border-border flex flex-col md:flex-row justify-between items-center mb-8 gap-4">
+            <div class="flex items-center gap-4">
+                <div class="w-12 h-12 bg-blue-50 text-brand rounded-xl flex items-center justify-center border border-blue-100">
+                    <i class="ph-fill ph-user-circle text-3xl"></i>
+                </div>
+                <div>
+                    <h1 class="text-2xl font-black leading-tight">Adherencia</h1>
+                    <p class="text-sm text-text-mute font-medium" id="fecha-actual"></p>
                 </div>
             </div>
-        </div>
+            <div class="flex items-center gap-4" id="header-user-info" style="display: none;">
+                <div class="text-right">
+                    <p class="font-bold text-lg leading-tight" id="agente-nombre-display">Cargando...</p>
+                    <p class="text-xs text-text-mute font-mono">ID: <span id="agente-id-display"></span></p>
+                </div>
+                <button onclick="cerrarSesion()" class="bg-red-50 text-red-600 hover:bg-red-100 border border-red-200 p-2 rounded-xl transition" title="Cambiar Agente">
+                    <i class="ph-bold ph-sign-out text-xl"></i>
+                </button>
+            </div>
+        </header>
 
         <!-- PANEL DE LOGIN -->
         <div id="panel-login" class="bg-card p-8 rounded-2xl shadow-sm border border-border max-w-md mx-auto text-center mt-10 transition-all">
             <div class="w-16 h-16 bg-blue-50 text-brand rounded-full flex items-center justify-center mx-auto mb-4 border border-blue-100">
                 <i class="ph-bold ph-identification-card text-3xl"></i>
             </div>
-            <h2 class="text-xl font-bold text-text mb-2">Ingreso de Agente</h2>
-            <p class="text-sm text-text-mute mb-6">Ingresa tu ID corporativo para cargar tus límites y estado actual.</p>
+            <h2 class="text-xl font-bold text-text mb-2">Consulta tu Dashboard</h2>
+            <p class="text-sm text-text-mute mb-6">Ingresa tu ID para ver tus tiempos de hoy.</p>
             <div class="flex flex-col gap-3">
-                <input type="text" id="input-id" placeholder="Ej. 1001" class="border border-border p-3 rounded-xl focus:ring-2 focus:ring-brand focus:border-brand focus:outline-none text-center font-mono text-lg shadow-inner bg-slate-50 transition-all">
-                <button onclick="validarID()" id="btn-login" class="bg-brand text-white font-bold py-3 rounded-xl hover:bg-blue-600 transition shadow-md shadow-brand/30 flex items-center justify-center gap-2">
-                    Acceder <i class="ph-bold ph-arrow-right"></i>
+                <input type="text" id="input-id" placeholder="Ej. 1001" class="border border-border p-3 rounded-xl focus:ring-2 focus:ring-brand focus:border-brand focus:outline-none text-center font-mono text-lg shadow-inner bg-slate-50">
+                <button onclick="iniciarDashboard()" id="btn-login" class="bg-brand text-white font-bold py-3 rounded-xl hover:bg-blue-600 transition shadow-md shadow-brand/30">
+                    Ver mis tiempos
                 </button>
             </div>
             <p id="login-error" class="text-red-500 text-sm mt-4 font-medium hidden bg-red-50 py-2 rounded-lg border border-red-100"></p>
         </div>
 
-        <!-- CONTENEDOR PRINCIPAL DE RELOJES -->
-        <div id="panel-controles" class="relative" style="display: none;">
-            <!-- Grid de 3 Columnas -->
-            <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6" id="timersDisplay">
+        <!-- DASHBOARD VISUAL (Oculto hasta loguearse) -->
+        <div id="panel-dashboard" style="display: none;">
+            
+            <!-- TARJETAS DE PROGRESO -->
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
                 
                 <!-- BAÑO -->
-                <button onclick="setEstado(estadoActivo === 'bath' ? null : 'bath')" class="flex flex-col items-center justify-center p-8 rounded-3xl border-2 border-border bg-card shadow-sm hover:shadow-md transition-all duration-300 cursor-pointer relative overflow-hidden group focus:outline-none" id="clockBathContainer" type="button">
-                    <div class="text-sm font-extrabold uppercase text-text-mute mb-3 flex items-center justify-center gap-2 group-hover:text-brand transition-colors">
-                        <i class="ph-bold ph-toilet text-2xl"></i> Sanitario
+                <div class="bg-card p-6 rounded-2xl shadow-sm border border-border relative overflow-hidden group" id="card-bath">
+                    <div class="flex justify-between items-start mb-4">
+                        <div class="flex items-center gap-2 text-purple-600 font-black uppercase text-sm tracking-wider">
+                            <i class="ph-fill ph-toilet text-2xl"></i> Sanitario
+                        </div>
+                        <div class="text-right">
+                            <span class="text-3xl font-black font-mono tracking-tighter" id="disp-bath">00:00</span>
+                            <span class="text-xs text-text-mute font-bold block" id="limit-bath">/ 00:00 min</span>
+                        </div>
                     </div>
-                    <div class="font-mono font-black text-6xl text-text tabular-nums tracking-tighter mb-4 transition-colors duration-300" id="dispBath">00:00</div>
-                    <div class="text-xs text-text-mute font-bold bg-slate-100 px-3 py-1.5 rounded-lg mb-4">
-                        Límite: <span id="limBath">-</span> min
+                    <!-- Barra de progreso -->
+                    <div class="w-full bg-slate-100 h-3 rounded-full overflow-hidden border border-slate-200">
+                        <div id="bar-bath" class="bg-purple-500 h-full progress-bar w-0 rounded-full"></div>
                     </div>
-                    <div id="remBath" class="text-sm font-bold text-money bg-money/10 px-4 py-2 rounded-full w-full text-center transition-colors">
-                        Restan: --
-                    </div>
-                </button>
-                
+                    <p class="text-xs font-bold text-text-mute mt-3 text-center" id="rem-bath">Restan: --</p>
+                </div>
+
                 <!-- COMIDA -->
-                <button onclick="setEstado(estadoActivo === 'food' ? null : 'food')" class="flex flex-col items-center justify-center p-8 rounded-3xl border-2 border-border bg-card shadow-sm hover:shadow-md transition-all duration-300 cursor-pointer relative overflow-hidden group focus:outline-none" id="clockFoodContainer" type="button">
-                    <div class="text-sm font-extrabold uppercase text-text-mute mb-3 flex items-center justify-center gap-2 group-hover:text-brand transition-colors">
-                        <i class="ph-bold ph-hamburger text-2xl"></i> Comida
+                <div class="bg-card p-6 rounded-2xl shadow-sm border border-border relative overflow-hidden group" id="card-food">
+                    <div class="flex justify-between items-start mb-4">
+                        <div class="flex items-center gap-2 text-orange-600 font-black uppercase text-sm tracking-wider">
+                            <i class="ph-fill ph-hamburger text-2xl"></i> Comida
+                        </div>
+                        <div class="text-right">
+                            <span class="text-3xl font-black font-mono tracking-tighter" id="disp-food">00:00</span>
+                            <span class="text-xs text-text-mute font-bold block" id="limit-food">/ 00:00 min</span>
+                        </div>
                     </div>
-                    <div class="font-mono font-black text-6xl text-text tabular-nums tracking-tighter mb-4 transition-colors duration-300" id="dispFood">00:00</div>
-                    <div class="text-xs text-text-mute font-bold bg-slate-100 px-3 py-1.5 rounded-lg mb-4">
-                        Límite: <span id="limFood">-</span> min
+                    <!-- Barra de progreso -->
+                    <div class="w-full bg-slate-100 h-3 rounded-full overflow-hidden border border-slate-200">
+                        <div id="bar-food" class="bg-orange-500 h-full progress-bar w-0 rounded-full"></div>
                     </div>
-                    <div id="remFood" class="text-sm font-bold text-money bg-money/10 px-4 py-2 rounded-full w-full text-center transition-colors">
-                        Restan: --
-                    </div>
-                </button>
+                    <p class="text-xs font-bold text-text-mute mt-3 text-center" id="rem-food">Restan: --</p>
+                </div>
 
                 <!-- CALIDAD -->
-                <button onclick="setEstado(estadoActivo === 'quality' ? null : 'quality')" class="flex flex-col items-center justify-center p-8 rounded-3xl border-2 border-border bg-card shadow-sm hover:shadow-md transition-all duration-300 cursor-pointer relative overflow-hidden group focus:outline-none" id="clockQualityContainer" type="button">
-                    <div class="text-sm font-extrabold uppercase text-text-mute mb-3 flex items-center justify-center gap-2 group-hover:text-brand transition-colors">
-                        <i class="ph-bold ph-headset text-2xl"></i> Calidad
+                <div class="bg-card p-6 rounded-2xl shadow-sm border border-border relative overflow-hidden group" id="card-quality">
+                    <div class="flex justify-between items-start mb-4">
+                        <div class="flex items-center gap-2 text-blue-600 font-black uppercase text-sm tracking-wider">
+                            <i class="ph-fill ph-headset text-2xl"></i> Calidad
+                        </div>
+                        <div class="text-right">
+                            <span class="text-3xl font-black font-mono tracking-tighter" id="disp-quality">00:00</span>
+                            <span class="text-xs text-text-mute font-bold block" id="limit-quality">/ 00:00 min</span>
+                        </div>
                     </div>
-                    <div class="font-mono font-black text-6xl text-text tabular-nums tracking-tighter mb-4 transition-colors duration-300" id="dispQuality">00:00</div>
-                    <div class="text-xs text-text-mute font-bold bg-slate-100 px-3 py-1.5 rounded-lg mb-4">
-                        Límite: <span id="limQuality">-</span> min
+                    <!-- Barra de progreso -->
+                    <div class="w-full bg-slate-100 h-3 rounded-full overflow-hidden border border-slate-200">
+                        <div id="bar-quality" class="bg-blue-500 h-full progress-bar w-0 rounded-full"></div>
                     </div>
-                    <div id="remQuality" class="text-sm font-bold text-money bg-money/10 px-4 py-2 rounded-full w-full text-center transition-colors">
-                        Restan: --
-                    </div>
-                </button>
+                    <p class="text-xs font-bold text-text-mute mt-3 text-center" id="rem-quality">Restan: --</p>
+                </div>
 
             </div>
-            
-            <!-- PANEL DE CONTROL -->
-            <div class="bg-card p-4 rounded-2xl shadow-sm border border-border flex justify-between items-center" id="actionButtons">
-                <span class="text-xs text-text-mute font-medium flex items-center gap-1">
-                    <i class="ph-fill ph-cloud-check text-brand text-lg"></i> Estado: Sincronizado
-                </span>
-                <button onclick="window.postMessage({ type: 'GP_SERVER_LOGOUT' }, '*')" class="text-sm bg-red-50 hover:bg-red-100 border border-red-200 text-red-600 font-bold py-2 px-4 rounded-xl transition flex items-center gap-2">
-                    <i class="ph-bold ph-power"></i> Forzar Logout
-                </button>
+
+            <!-- HISTORIAL DETALLADO -->
+            <div class="bg-card rounded-2xl shadow-sm border border-border overflow-hidden">
+                <div class="p-6 border-b border-border bg-slate-50 flex justify-between items-center">
+                    <h3 class="text-lg font-black flex items-center gap-2">
+                        <i class="ph-bold ph-list-bullets text-brand"></i> Historial de Hoy
+                    </h3>
+                    <span class="text-xs font-bold text-text-mute bg-white px-3 py-1 rounded-full border border-border shadow-sm"></span>
+                </div>
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left border-collapse">
+                        <thead>
+                            <tr class="bg-white border-b border-border text-xs text-text-mute uppercase tracking-widest font-bold">
+                                <th class="p-4">Hora de Registro</th>
+                                <th class="p-4">Tipo de Pausa</th>
+                                <th class="p-4 text-right">Duración Exacta</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tabla-historial" class="divide-y divide-border bg-white">
+                            <!-- Filas dinámicas -->
+                            <tr><td colspan="3" class="text-center p-8 text-text-mute">No hay registros hoy. ¡Excelente trabajo!</td></tr>
+                        </tbody>
+                    </table>
+                </div>
             </div>
+
         </div>
     </div>
 
-    <!-- LÓGICA CORE -->
+    <!-- FIREBASE Y LÓGICA -->
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        // AGREGADO: onSnapshot a las importaciones
-        import { getFirestore, collection, addDoc, serverTimestamp, doc, getDoc, setDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import { getFirestore, collection, onSnapshot, doc, getDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
         const firebaseConfig = {
             apiKey: "AIzaSyDT7iPaeRjlt-WIWWzwBh3deN2z_E-b2JA",
@@ -141,263 +175,216 @@
         const app = initializeApp(firebaseConfig);
         const db = getFirestore(app);
 
-        // --- VARIABLES GLOBALES ---
-        window.asesorDatos = JSON.parse(localStorage.getItem('asesorDatos')) || null;
-        window.estadoActivo = null; 
-        
-        let sesionFirebase = {
-            estadoActivo: null,
-            tiempoInicioEstado: null, 
-            tiemposAcumulados: { bath: 0, food: 0, quality: 0 },
-            fecha: new Date().toLocaleDateString()
+        // Variables Globales
+        let asesorDatos = JSON.parse(localStorage.getItem('asesorDashboard')) || null;
+        let sesionFirebase = { tiemposAcumulados: { bath: 0, food: 0, quality: 0 }, estadoActivo: null, tiempoInicioEstado: null };
+        let timerRelojes = null;
+        let diaInicial = new Date().toLocaleDateString();
+
+        // Mapeo visual de estados
+        const metaEstado = {
+            'bath': { icon: 'ph-toilet text-purple-600', bg: 'bg-purple-100', label: 'Sanitario' },
+            'food': { icon: 'ph-hamburger text-orange-600', bg: 'bg-orange-100', label: 'Comida' },
+            'quality': { icon: 'ph-headset text-blue-600', bg: 'bg-blue-100', label: 'Calidad' }
         };
 
-        let autoLogoutDisparado = false;
-        let unsubscribeSesion = null; // Guardará el listener
-        
-        // --- WORKER PARA TIEMPO EXACTO ---
-        const workerCode = `
-            let timer;
-            self.addEventListener('message', (e) => {
-                if(e.data === 'start') timer = setInterval(() => self.postMessage('tick'), 1000);
-                else if(e.data === 'stop') clearInterval(timer);
-            });
-        `;
-        const keepAliveWorker = new Worker(URL.createObjectURL(new Blob([workerCode], {type: 'application/javascript'})));
-        
-        keepAliveWorker.onmessage = () => {
-            if (window.estadoActivo) actualizarPantalla();
-        };
+        // Mostrar fecha actual
+        const opcionesFecha = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
+        document.getElementById('fecha-actual').innerText = new Date().toLocaleDateString('es-ES', opcionesFecha);
 
-        // --- INICIALIZACIÓN ---
-        if (window.asesorDatos) {
-            recuperarSesion(window.asesorDatos.id);
+        // --- SISTEMA DE CORTE DIARIO A MEDIANOCHE ---
+        setInterval(() => {
+            const diaActual = new Date().toLocaleDateString();
+            if (diaActual !== diaInicial) {
+                // Si el día cambió, recargamos la página forzosamente para resetear a 0
+                location.reload();
+            }
+        }, 60000); // Revisa cada minuto
+
+        // --- LOGIN ---
+        if (asesorDatos) {
+            cargarInterfazDashboard();
         }
 
-        async function recuperarSesion(id) {
+        window.iniciarDashboard = async function() {
+            const inputId = document.getElementById('input-id').value.trim();
+            const btn = document.getElementById('btn-login');
+            const errorMsg = document.getElementById('login-error');
+
+            if (!inputId) return;
+
+            btn.innerHTML = `<div class="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin mx-auto"></div>`;
+            btn.disabled = true;
+            errorMsg.classList.add('hidden');
+
             try {
-                const sessionRef = doc(db, "sesiones_activas", id);
-                const sessionSnap = await getDoc(sessionRef);
-                const hoy = new Date().toLocaleDateString();
-
-                if (sessionSnap.exists() && sessionSnap.data().fecha === hoy) {
-                    sesionFirebase = sessionSnap.data();
-                    window.estadoActivo = sesionFirebase.estadoActivo;
+                const docSnap = await getDoc(doc(db, "operadores", inputId));
+                if (docSnap.exists()) {
+                    asesorDatos = { id: inputId, ...docSnap.data() };
+                    localStorage.setItem('asesorDashboard', JSON.stringify(asesorDatos));
+                    cargarInterfazDashboard();
                 } else {
-                    sesionFirebase = { estadoActivo: null, tiempoInicioEstado: null, tiemposAcumulados: { bath: 0, food: 0, quality: 0 }, fecha: hoy };
-                    await setDoc(sessionRef, sesionFirebase);
+                    errorMsg.innerText = "ID no encontrado en el sistema.";
+                    errorMsg.classList.remove('hidden');
                 }
+            } catch (error) {
+                errorMsg.innerText = "Error al conectar con la base de datos.";
+                errorMsg.classList.remove('hidden');
+            } finally {
+                btn.innerHTML = `Ver mis tiempos`;
+                btn.disabled = false;
+            }
+        };
+
+        window.cerrarSesion = function() {
+            localStorage.removeItem('asesorDashboard');
+            location.reload();
+        };
+
+        // --- INTERFAZ PRINCIPAL ---
+        function cargarInterfazDashboard() {
+            document.getElementById('panel-login').style.display = 'none';
+            document.getElementById('panel-dashboard').style.display = 'block';
+            document.getElementById('header-user-info').style.display = 'flex';
+            
+            document.getElementById('agente-nombre-display').innerText = asesorDatos.nombre;
+            document.getElementById('agente-id-display').innerText = asesorDatos.id;
+
+            // Configurar límites en la UI
+            document.getElementById('limit-bath').innerText = `/ ${asesorDatos.limites?.bano || 0} min`;
+            document.getElementById('limit-food').innerText = `/ ${asesorDatos.limites?.comida || 0} min`;
+            document.getElementById('limit-quality').innerText = `/ ${asesorDatos.limites?.calidad || 0} min`;
+
+            escucharSesionActiva();
+            escucharHistorialHoy();
+            
+            if(timerRelojes) clearInterval(timerRelojes);
+            timerRelojes = setInterval(actualizarCronometrosVisuales, 1000);
+        }
+
+        // --- ESCUCHA DE TIEMPOS ACUMULADOS EN VIVO ---
+        function escucharSesionActiva() {
+            onSnapshot(doc(db, "sesiones_activas", asesorDatos.id), (docSnap) => {
+                const data = docSnap.exists() ? docSnap.data() : null;
+                if (data && data.fecha === diaInicial) {
+                    sesionFirebase = data;
+                } else {
+                    sesionFirebase = { tiemposAcumulados: { bath: 0, food: 0, quality: 0 }, estadoActivo: null, tiempoInicioEstado: null };
+                }
+                actualizarCronometrosVisuales();
+            });
+        }
+
+        function actualizarCronometrosVisuales() {
+            if (!asesorDatos) return;
+            const ahora = Date.now();
+
+            ['bath', 'food', 'quality'].forEach(estado => {
+                let segundosUsados = sesionFirebase.tiemposAcumulados[estado] || 0;
                 
-                iniciarInterfazAsesor();
-
-                if (window.estadoActivo) {
-                    aplicarEstilosActivos(window.estadoActivo);
-                    keepAliveWorker.postMessage('start');
+                if (sesionFirebase.estadoActivo === estado && sesionFirebase.tiempoInicioEstado) {
+                    segundosUsados += Math.floor((ahora - sesionFirebase.tiempoInicioEstado) / 1000);
                 }
 
-                // --- NUEVO: LISTENER PARA SINCRONIZACIÓN EN TIEMPO REAL ---
-                // Esto escucha si el supervisor hizo ajustes de tiempo
-                if (unsubscribeSesion) unsubscribeSesion();
-                unsubscribeSesion = onSnapshot(sessionRef, (snapshot) => {
-                    if (snapshot.exists()) {
-                        const data = snapshot.data();
-                        if (data.fecha === hoy) {
-                            // Actualizamos los tiempos en memoria con lo que diga la base de datos
-                            sesionFirebase.tiemposAcumulados = data.tiemposAcumulados;
-                            // Forzamos que la pantalla se actualice de inmediato con los nuevos tiempos
-                            actualizarPantalla();
+                // Actualizar Texto (MM:SS)
+                const m = Math.floor(segundosUsados / 60);
+                const s = segundosUsados % 60;
+                document.getElementById(`disp-${estado}`).innerText = `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
+
+                // Calcular Progreso de la Barra
+                const limiteMinutos = (estado === 'bath' ? asesorDatos.limites.bano : (estado === 'food' ? asesorDatos.limites.comida : asesorDatos.limites.calidad)) || 999;
+                const limiteSegundos = limiteMinutos * 60;
+                let porcentaje = (segundosUsados / limiteSegundos) * 100;
+                if (porcentaje > 100) porcentaje = 100;
+                
+                const barra = document.getElementById(`bar-${estado}`);
+                const caja = document.getElementById(`card-${estado}`);
+                const textoRestante = document.getElementById(`rem-${estado}`);
+
+                barra.style.width = `${porcentaje}%`;
+
+                // Colores y Alertas Visuales
+                if (segundosUsados >= limiteSegundos) {
+                    // Corrección: Usar className de forma segura para evitar fallos con los tokens
+                    barra.className = 'progress-bar h-full rounded-full bg-red-500';
+                    caja.classList.add('border-red-400', 'bg-red-50', 'animate-pulse');
+                    textoRestante.innerHTML = `<span class="text-red-600 font-black"><i class="ph-bold ph-warning"></i> Tiempo Excedido por ${formatTiempo(segundosUsados - limiteSegundos)}</span>`;
+                } else {
+                    caja.classList.remove('border-red-400', 'bg-red-50', 'animate-pulse');
+                    
+                    // Restauración segura del color de la barra usando className
+                    barra.className = `progress-bar h-full rounded-full ${estado === 'bath' ? 'bg-purple-500' : (estado === 'food' ? 'bg-orange-500' : 'bg-blue-500')}`;
+                    
+                    const restan = limiteSegundos - segundosUsados;
+                    textoRestante.innerHTML = `Te restan <strong>${formatTiempo(restan)}</strong>`;
+                    
+                    if (restan <= 120) { // Menos de 2 mins
+                        textoRestante.innerHTML = `<span class="text-amber-600"><i class="ph-bold ph-clock"></i> ¡Atención! Te restan ${formatTiempo(restan)}</span>`;
+                    }
+                }
+
+                // Destacar la tarjeta si es el estado actual
+                if (sesionFirebase.estadoActivo === estado) {
+                    caja.classList.add('ring-4', 'ring-brand/30', 'scale-[1.02]');
+                } else {
+                    caja.classList.remove('ring-4', 'ring-brand/30', 'scale-[1.02]');
+                }
+            });
+        }
+
+        function formatTiempo(segundosTotales) {
+            const m = Math.floor(segundosTotales / 60);
+            const s = segundosTotales % 60;
+            return `${m}m ${s.toString().padStart(2, '0')}s`;
+        }
+
+        // --- ESCUCHA DEL HISTORIAL (LÍNEA DE TIEMPO) ---
+        function escucharHistorialHoy() {
+            // Regla Firestore: Traemos todo y filtramos en memoria para evitar errores de índices
+            onSnapshot(collection(db, "registros_tiempos"), (snapshot) => {
+                let logsHoy = [];
+                snapshot.forEach(doc => {
+                    const data = doc.data();
+                    if (data.asesor_id === asesorDatos.id) {
+                        const fechaLog = data.fecha ? data.fecha.toDate() : new Date();
+                        if (fechaLog.toLocaleDateString() === diaInicial) {
+                            logsHoy.push({ ...data, fechaReal: fechaLog });
                         }
                     }
                 });
 
-            } catch (error) {
-                console.error("Error al recuperar sesión:", error);
-            }
-        }
-
-        function iniciarInterfazAsesor() {
-            const nameDisplay = document.getElementById('nombre-asesor-display');
-            nameDisplay.innerHTML = `Asesor: <span class="font-bold text-text">${window.asesorDatos.nombre} (${window.asesorDatos.id})</span>`;
-            nameDisplay.classList.remove('hidden');
-            document.getElementById('btn-cerrar-sesion').classList.remove('hidden');
-            document.getElementById('networkTimeBadge').classList.remove('hidden');
-            document.getElementById('panel-login').style.display = 'none';
-            document.getElementById('panel-controles').style.display = 'block';
-
-            document.getElementById('limBath').innerText = window.asesorDatos.limites.bano;
-            document.getElementById('limFood').innerText = window.asesorDatos.limites.comida;
-            document.getElementById('limQuality').innerText = window.asesorDatos.limites.calidad;
-            
-            actualizarPantalla();
-        }
-
-        window.validarID = async function() {
-            const inputId = document.getElementById('input-id').value.trim();
-            const btn = document.getElementById('btn-login');
-            const errorMsg = document.getElementById('login-error');
-            
-            if (inputId.length > 0) {
-                btn.innerHTML = `<div class="spinner border-2 border-white border-t-transparent rounded-full w-5 h-5 animate-spin"></div> Buscando...`;
-                btn.disabled = true;
-                errorMsg.classList.add('hidden');
-
-                try {
-                    const docRef = doc(db, "operadores", inputId);
-                    const docSnap = await getDoc(docRef);
-
-                    if (docSnap.exists()) {
-                        window.asesorDatos = { id: inputId, ...docSnap.data() };
-                        localStorage.setItem('asesorDatos', JSON.stringify(window.asesorDatos));
-                        await recuperarSesion(inputId);
-                    } else {
-                        errorMsg.innerText = "ID no encontrado. Verifica con tu supervisor.";
-                        errorMsg.classList.remove('hidden');
-                    }
-                } catch (error) {
-                    errorMsg.innerText = "Error de conexión con la base de datos.";
-                    errorMsg.classList.remove('hidden');
-                } finally {
-                    btn.innerHTML = `Acceder <i class="ph-bold ph-arrow-right"></i>`;
-                    btn.disabled = false;
-                }
-            }
-        };
-
-        window.cerrarSesionLocal = function() {
-            if(unsubscribeSesion) unsubscribeSesion(); // Limpiamos el listener al salir
-            localStorage.removeItem('asesorDatos');
-            location.reload();
-        };
-
-        window.setEstado = async function(nuevoEstado) {
-            if (!window.asesorDatos) return;
-
-            let ahora = Date.now();
-            autoLogoutDisparado = false;
-
-            if (window.estadoActivo) {
-                keepAliveWorker.postMessage('stop');
-                let segundosPasados = Math.floor((ahora - sesionFirebase.tiempoInicioEstado) / 1000);
-                sesionFirebase.tiemposAcumulados[window.estadoActivo] += segundosPasados;
-                
-                if (segundosPasados > 5) {
-                    try {
-                        addDoc(collection(db, "registros_tiempos"), {
-                            asesor_id: window.asesorDatos.id,
-                            asesor_nombre: window.asesorDatos.nombre,
-                            estado: window.estadoActivo, 
-                            duracion_segundos: segundosPasados,
-                            fecha: serverTimestamp()
-                        });
-                    } catch (e) { }
-                }
-                removerEstilosActivos(window.estadoActivo);
-            }
-
-            window.estadoActivo = nuevoEstado;
-            sesionFirebase.estadoActivo = nuevoEstado;
-            sesionFirebase.tiempoInicioEstado = nuevoEstado ? ahora : null;
-
-            if (nuevoEstado) {
-                aplicarEstilosActivos(nuevoEstado);
-                keepAliveWorker.postMessage('start');
-            }
-
-            try {
-                await setDoc(doc(db, "sesiones_activas", window.asesorDatos.id), sesionFirebase);
-            } catch (e) { }
-            
-            actualizarPantalla();
-        }
-
-        function actualizarPantalla() {
-            if (!window.asesorDatos) return;
-            let ahora = Date.now();
-
-            ['bath', 'food', 'quality'].forEach(estado => {
-                let segundosUsados = sesionFirebase.tiemposAcumulados[estado] || 0;
-                if (window.estadoActivo === estado && sesionFirebase.tiempoInicioEstado) {
-                    segundosUsados += Math.floor((ahora - sesionFirebase.tiempoInicioEstado) / 1000);
-                }
-
-                let m = Math.floor(segundosUsados / 60);
-                let s = segundosUsados % 60;
-                let elDisp = document.getElementById(`disp${capitalize(estado)}`);
-                if(elDisp) elDisp.innerText = `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
-
-                const limiteMinutos = { bath: window.asesorDatos.limites.bano, food: window.asesorDatos.limites.comida, quality: window.asesorDatos.limites.calidad }[estado] || 999;
-                let limiteSegundos = limiteMinutos * 60;
-                let elRem = document.getElementById(`rem${capitalize(estado)}`);
-                
-                if (segundosUsados >= limiteSegundos) {
-                    if (elRem) {
-                        elRem.innerText = "¡TIEMPO EXCEDIDO!";
-                        elRem.className = "text-sm font-bold bg-red-100 text-red-600 px-4 py-2 rounded-full w-full text-center animate-pulse";
-                    }
-                    if (window.estadoActivo === estado && !autoLogoutDisparado) {
-                        autoLogoutDisparado = true;
-                        window.postMessage({ type: 'GP_SERVER_LOGOUT' }, '*');
-                    }
-                } else {
-                    let restantes = limiteSegundos - segundosUsados;
-                    let restM = Math.floor(restantes/60);
-                    let restS = restantes % 60;
-                    if (elRem) {
-                        elRem.innerText = `Restan: ${restM}m ${restS.toString().padStart(2, '0')}s`;
-                        elRem.className = restantes <= 180 ? "text-sm font-bold bg-amber-100 text-amber-600 px-4 py-2 rounded-full w-full text-center transition-colors" : "text-sm font-bold bg-money/10 text-money px-4 py-2 rounded-full w-full text-center transition-colors";
-                    }
-                }
+                // Ordenamos del más reciente al más antiguo
+                logsHoy.sort((a, b) => b.fechaReal - a.fechaReal);
+                renderTablaHistorial(logsHoy);
             });
         }
 
-        function aplicarEstilosActivos(estado) {
-            const newContainer = document.getElementById(`clock${capitalize(estado)}Container`);
-            if(newContainer) {
-                newContainer.classList.remove('border-border', 'bg-card');
-                newContainer.classList.add('border-brand', 'bg-blue-50', 'ring-4', 'ring-brand/20', 'scale-[1.02]', 'shadow-lg');
-                document.getElementById(`disp${capitalize(estado)}`).classList.remove('text-text');
-                document.getElementById(`disp${capitalize(estado)}`).classList.add('text-brand');
+        function renderTablaHistorial(logs) {
+            const tbody = document.getElementById('tabla-historial');
+            tbody.innerHTML = '';
+
+            if (logs.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="3" class="text-center p-8 text-text-mute"><i class="ph-fill ph-check-circle text-4xl text-slate-300 mb-2 block"></i> No hay registros de pausas finalizadas hoy.</td></tr>`;
+                return;
             }
+
+            logs.forEach(log => {
+                const horaStr = log.fechaReal.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit', hour12: true });
+                const meta = metaEstado[log.estado] || { icon: 'ph-question', bg: 'bg-slate-100', label: log.estado };
+                
+                tbody.innerHTML += `
+                    <tr class="hover:bg-slate-50 transition-colors">
+                        <td class="p-4 font-bold text-text">${horaStr}</td>
+                        <td class="p-4">
+                            <span class="px-3 py-1.5 ${meta.bg} text-[11px] font-black uppercase rounded-lg border border-white flex items-center gap-2 inline-flex">
+                                <i class="${meta.icon} text-lg"></i> ${meta.label}
+                            </span>
+                        </td>
+                        <td class="p-4 text-right font-mono font-black text-text">${formatTiempo(log.duracion_segundos)}</td>
+                    </tr>
+                `;
+            });
         }
-
-        function removerEstilosActivos(estado) {
-            const oldContainer = document.getElementById(`clock${capitalize(estado)}Container`);
-            if(oldContainer) {
-                oldContainer.classList.remove('border-brand', 'bg-blue-50', 'ring-4', 'ring-brand/20', 'scale-[1.02]', 'shadow-lg');
-                oldContainer.classList.add('border-border', 'bg-card');
-                document.getElementById(`disp${capitalize(estado)}`).classList.remove('text-brand');
-                document.getElementById(`disp${capitalize(estado)}`).classList.add('text-text');
-            }
-        }
-
-        function capitalize(s) { return s.charAt(0).toUpperCase() + s.slice(1); }
-
-        function actualizarBadgeConexion(estaConectado) {
-            const badge = document.getElementById('networkTimeBadge');
-            if (!badge) return;
-            if (estaConectado) {
-                badge.className = 'text-sm font-bold bg-money/10 text-money px-4 py-2 rounded-full flex items-center gap-2 shadow-sm border border-money/20';
-                badge.innerHTML = `<span class="relative flex h-3 w-3"><span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-money opacity-75"></span><span class="relative inline-flex rounded-full h-3 w-3 bg-money"></span></span>Conectado a TouchPoint`;
-            } else {
-                badge.className = 'text-sm font-bold bg-red-100 text-red-600 px-4 py-2 rounded-full flex items-center gap-2 shadow-sm border border-red-200 cursor-help transition-colors';
-                badge.innerHTML = `<i class="ph-bold ph-warning-circle text-lg"></i> Inicia sesión en TouchPoint`;
-            }
-        }
-
-        // ESCUCHA MENSAJES DESDE LA EXTENSIÓN
-        window.addEventListener('message', (event) => {
-            if (event.data && event.data.type === 'GP_CONNECTION_STATUS') {
-                actualizarBadgeConexion(event.data.connected);
-            }
-            
-            if (event.data && event.data.type === 'GODSPLAN_COMMAND') {
-                const action = event.data.action;
-                if (action === 'START_BREAK_BATH') setEstado('bath');
-                else if (action === 'START_BREAK_FOOD') setEstado('food');
-                else if (action === 'START_QUALITY') setEstado('quality');
-                else if (action === 'RESUME_WORK') setEstado(null);
-            }
-        });
     </script>
 </body>
 </html>
