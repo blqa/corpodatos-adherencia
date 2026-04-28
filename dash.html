@@ -3,263 +3,327 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Dashboard Supervisor - Tracker</title>
+    <title>Dashboard Admin - Control de Tiempos</title>
+    
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/@phosphor-icons/web"></script>
+    
     <script>
         tailwind.config = {
             theme: {
                 extend: {
-                    colors: {
-                        card: '#ffffff', border: '#e5e7eb',
-                        text: '#1f2937', 'text-mute': '#6b7280',
-                        brand: '#3b82f6', money: '#10b981', bg: '#f8fafc',
-                        danger: '#ef4444', warning: '#f59e0b'
-                    }
+                    fontFamily: { sans: ['Inter', 'sans-serif'] },
+                    animation: { 'pulse-slow': 'pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite' }
                 }
             }
         }
     </script>
+
     <style>
-        /* Ocultar scrollbar para un look más limpio */
-        ::-webkit-scrollbar { width: 6px; }
-        ::-webkit-scrollbar-track { background: transparent; }
-        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
-        ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
-        .tab-content { display: none; }
-        .tab-content.active { display: block; animation: fadeIn 0.3s ease-in-out; }
-        @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
+        .loader {
+            border: 3px solid #e2e8f0; border-top: 3px solid #0f172a; border-radius: 50%;
+            width: 32px; height: 32px; animation: spin 0.8s linear infinite;
+        }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        .custom-scrollbar::-webkit-scrollbar { width: 6px; height: 6px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+        input[type=number]::-webkit-inner-spin-button, 
+        input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
+        .glass-panel { background: rgba(255, 255, 255, 0.90); backdrop-filter: blur(12px); }
+        .progress-transition { transition: width 1s linear, background-color 0.3s; }
     </style>
 </head>
-<body class="bg-bg font-sans min-h-screen flex text-text">
+<body class="bg-slate-50 min-h-screen text-slate-800 pb-10 antialiased selection:bg-blue-100 selection:text-blue-900 transition-colors duration-300">
 
-    <!-- SIDEBAR -->
-    <aside class="w-64 bg-card border-r border-border flex flex-col fixed h-full z-10 shadow-sm">
-        <div class="p-6 border-b border-border flex items-center gap-3">
-            <div class="w-10 h-10 bg-brand text-white rounded-xl flex items-center justify-center shadow-md shadow-brand/30">
-                <i class="ph-bold ph-shield-check text-2xl"></i>
-            </div>
-            <div>
-                <h1 class="font-black text-lg leading-tight">Supervisor</h1>
-                <p class="text-xs text-text-mute font-medium">Panel de Control</p>
-            </div>
-        </div>
-        <nav class="flex-1 p-4 flex flex-col gap-2">
-            <button onclick="switchTab('dashboard')" id="btn-tab-dashboard" class="flex items-center gap-3 w-full text-left px-4 py-3 rounded-xl transition-all font-bold bg-blue-50 text-brand">
-                <i class="ph-bold ph-squares-four text-xl"></i> Monitor Real-time
-            </button>
-            <button onclick="switchTab('agentes')" id="btn-tab-agentes" class="flex items-center gap-3 w-full text-left px-4 py-3 rounded-xl transition-all font-bold text-text-mute hover:bg-slate-50 hover:text-text">
-                <i class="ph-bold ph-users text-xl"></i> Gestión de Agentes
-            </button>
-            <button onclick="switchTab('reportes')" id="btn-tab-reportes" class="flex items-center gap-3 w-full text-left px-4 py-3 rounded-xl transition-all font-bold text-text-mute hover:bg-slate-50 hover:text-text">
-                <i class="ph-bold ph-files text-xl"></i> Historial (Logs)
-            </button>
-        </nav>
-        <div class="p-4 border-t border-border">
-            <div class="bg-slate-50 border border-border p-3 rounded-xl flex items-center gap-3">
-                <div class="w-3 h-3 rounded-full bg-money animate-pulse"></div>
-                <span class="text-xs font-bold text-text-mute">Conexión Activa</span>
-            </div>
-        </div>
-    </aside>
+    <!-- Notificación Global -->
+    <div id="notificacion" class="fixed top-6 left-1/2 transform -translate-x-1/2 z-[100] hidden max-w-md w-full bg-slate-900 text-white shadow-2xl rounded-2xl p-4 transition-all duration-300 flex items-center gap-3 border border-slate-700">
+        <div id="notificacion-icon" class="text-2xl shrink-0"></div>
+        <p class="font-medium text-sm flex-1" id="notificacion-texto"></p>
+        <button onclick="document.getElementById('notificacion').classList.add('hidden')" class="text-slate-400 hover:text-white transition-colors">
+            <i class="ph ph-x"></i>
+        </button>
+    </div>
 
-    <!-- MAIN CONTENT -->
-    <main class="ml-64 flex-1 p-8 h-screen overflow-y-auto">
+    <!-- Modales -->
+    <div id="modal-overlay" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 hidden flex items-center justify-center px-4 transition-opacity duration-300 opacity-0">
         
-        <!-- DASHBOARD TAB -->
-        <section id="tab-dashboard" class="tab-content active">
-            <div class="flex flex-col xl:flex-row justify-between items-start xl:items-center mb-8 gap-4">
-                <div>
-                    <h2 class="text-3xl font-black">Monitor en Tiempo Real</h2>
-                    <p class="text-text-mute mt-1">Supervisión de adherencia y estados actuales de los agentes.</p>
-                </div>
-                <div class="flex flex-wrap items-center gap-4 bg-white p-2 rounded-xl border border-border shadow-sm">
-                    <!-- Toggle Solo Activos -->
-                    <label class="flex items-center gap-2 text-sm font-bold text-text-mute cursor-pointer px-2">
-                        <input type="checkbox" id="toggle-active" checked onchange="renderDashboard()" class="w-4 h-4 text-brand rounded focus:ring-brand">
-                        Solo conectados hoy
-                    </label>
-                    <div class="w-px h-6 bg-border hidden sm:block"></div>
-                    <!-- Grid Size Selector -->
-                    <div class="flex items-center gap-2 text-sm font-bold text-text-mute px-2">
-                        <i class="ph-bold ph-grid-four"></i> Columnas:
-                        <select id="grid-size" onchange="cambiarCuadricula()" class="bg-slate-50 border border-border rounded-lg px-2 py-1 focus:outline-none focus:border-brand font-mono">
-                            <option value="3">3 (Grande)</option>
-                            <option value="4" selected>4 (Mediano)</option>
-                            <option value="5">5 (Pequeño)</option>
-                        </select>
-                    </div>
-                </div>
+        <!-- Modal: Confirmar Eliminar -->
+        <div id="modal-confirm" class="bg-white rounded-3xl shadow-2xl w-full max-w-sm p-6 transform scale-95 transition-transform duration-300 hidden border border-transparent">
+            <div class="w-12 h-12 rounded-full bg-red-100 flex items-center justify-center mb-4 mx-auto"><i class="ph ph-trash text-red-600 text-2xl"></i></div>
+            <h3 class="text-xl font-bold text-slate-800 mb-2 text-center">¿Eliminar Colaborador?</h3>
+            <p class="text-slate-500 text-sm mb-6 text-center">Esta acción es irreversible. Se borrarán sus accesos y configuraciones.</p>
+            <div class="flex gap-3">
+                <button onclick="App.Modals.cerrarTodos()" class="flex-1 py-2.5 text-slate-600 bg-slate-100 hover:bg-slate-200 rounded-xl font-semibold transition-colors">Cancelar</button>
+                <button onclick="App.Handlers.eliminarAgente()" class="flex-1 py-2.5 bg-red-600 hover:bg-red-700 text-white rounded-xl font-semibold transition-colors shadow-sm shadow-red-200">Sí, Eliminar</button>
+            </div>
+        </div>
+
+        <!-- Modal: Confirmar Reset -->
+        <div id="modal-confirm-reset" class="bg-white rounded-3xl shadow-2xl w-full max-w-sm p-6 transform scale-95 transition-transform duration-300 hidden border border-transparent">
+            <div class="w-12 h-12 rounded-full bg-orange-100 flex items-center justify-center mb-4 mx-auto"><i class="ph ph-warning-circle text-orange-600 text-2xl"></i></div>
+            <h3 class="text-xl font-bold text-slate-800 mb-2 text-center">¿Reiniciar tiempos de hoy?</h3>
+            <p class="text-slate-500 text-sm mb-6 text-center">Esto pondrá en 00:00 los consumos del día para todos los colaboradores.</p>
+            <div class="flex gap-3">
+                <button onclick="App.Modals.cerrarTodos()" class="flex-1 py-2.5 text-slate-600 bg-slate-100 hover:bg-slate-200 rounded-xl font-semibold transition-colors">Cancelar</button>
+                <button onclick="App.Handlers.resetearDia()" class="flex-1 py-2.5 bg-orange-600 hover:bg-orange-700 text-white rounded-xl font-semibold transition-colors shadow-sm shadow-orange-200">Reiniciar</button>
+            </div>
+        </div>
+
+        <!-- Modal: Editar Agente (Tiempos y Límites) -->
+        <div id="modal-editar" class="bg-white rounded-3xl shadow-2xl w-full max-w-md p-6 transform scale-95 transition-transform duration-300 hidden max-h-[90vh] overflow-y-auto custom-scrollbar border border-transparent">
+            <div class="flex items-center justify-between mb-5">
+                <h3 class="text-lg font-bold text-slate-800 flex items-center gap-2">
+                    <div class="p-2 bg-blue-100 text-blue-600 rounded-lg"><i class="ph ph-sliders-horizontal"></i></div> Ajustes de <span id="edit-nombre" class="text-blue-600 truncate max-w-[150px]"></span>
+                </h3>
+                <button onclick="App.Modals.cerrarTodos()" class="text-slate-400 hover:text-slate-600 bg-slate-100 p-1.5 rounded-full"><i class="ph ph-x"></i></button>
             </div>
             
-            <div id="dashboard-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-                <!-- Tarjetas generadas dinámicamente -->
-                <div class="col-span-full text-center py-10 text-text-mute">Cargando agentes...</div>
-            </div>
-        </section>
-
-        <!-- AGENTES TAB -->
-        <section id="tab-agentes" class="tab-content">
-            <div class="flex justify-between items-center mb-8">
-                <div>
-                    <h2 class="text-3xl font-black">Directorio de Agentes</h2>
-                    <p class="text-text-mute mt-1">Crea, edita y configura los límites de tiempo de tu equipo.</p>
-                </div>
-                <button onclick="abrirModalAgente()" class="bg-brand text-white font-bold py-2.5 px-5 rounded-xl hover:bg-blue-600 transition shadow-md shadow-brand/30 flex items-center gap-2">
-                    <i class="ph-bold ph-plus"></i> Nuevo Agente
-                </button>
-            </div>
-
-            <div class="bg-card rounded-2xl shadow-sm border border-border overflow-hidden">
-                <table class="w-full text-left border-collapse">
-                    <thead>
-                        <tr class="bg-slate-50 border-b border-border text-sm text-text-mute uppercase tracking-wider">
-                            <th class="p-4 font-bold">ID corporativo</th>
-                            <th class="p-4 font-bold">Nombre</th>
-                            <th class="p-4 font-bold text-center"><i class="ph-bold ph-toilet"></i> Lím. Baño</th>
-                            <th class="p-4 font-bold text-center"><i class="ph-bold ph-hamburger"></i> Lím. Comida</th>
-                            <th class="p-4 font-bold text-center"><i class="ph-bold ph-headset"></i> Lím. Calidad</th>
-                            <th class="p-4 font-bold text-right">Acciones</th>
-                        </tr>
-                    </thead>
-                    <tbody id="tabla-agentes" class="divide-y divide-border">
-                        <!-- Filas dinámicas -->
-                    </tbody>
-                </table>
-            </div>
-        </section>
-
-        <!-- REPORTES TAB -->
-        <section id="tab-reportes" class="tab-content">
-            <div class="flex justify-between items-center mb-8">
-                <div>
-                    <h2 class="text-3xl font-black">Historial de Tiempos</h2>
-                    <p class="text-text-mute mt-1">Últimos registros de finalización de pausas de los agentes.</p>
-                </div>
-                <button onclick="cargarReportes()" class="bg-white border border-border text-text font-bold py-2 px-4 rounded-xl hover:bg-slate-50 transition flex items-center gap-2">
-                    <i class="ph-bold ph-arrows-clockwise"></i> Refrescar
-                </button>
-            </div>
-
-            <div class="bg-card rounded-2xl shadow-sm border border-border overflow-hidden">
-                <table class="w-full text-left border-collapse">
-                    <thead>
-                        <tr class="bg-slate-50 border-b border-border text-sm text-text-mute uppercase tracking-wider">
-                            <th class="p-4 font-bold">Fecha y Hora</th>
-                            <th class="p-4 font-bold">Agente (ID)</th>
-                            <th class="p-4 font-bold">Estado</th>
-                            <th class="p-4 font-bold">Duración</th>
-                        </tr>
-                    </thead>
-                    <tbody id="tabla-reportes" class="divide-y divide-border">
-                        <!-- Filas dinámicas -->
-                    </tbody>
-                </table>
-            </div>
-        </section>
-
-    </main>
-
-    <!-- MODAL AGENTE -->
-    <div id="modal-agente" class="fixed inset-0 bg-text/50 backdrop-blur-sm z-50 flex items-center justify-center hidden opacity-0 transition-opacity">
-        <div class="bg-card p-6 rounded-2xl shadow-xl border border-border w-full max-w-md transform scale-95 transition-transform" id="modal-content">
-            <div class="flex justify-between items-center mb-5">
-                <h3 class="text-xl font-black" id="modal-title">Nuevo Agente</h3>
-                <button onclick="cerrarModalAgente()" class="text-text-mute hover:text-text"><i class="ph-bold ph-x text-xl"></i></button>
-            </div>
-            
-            <form id="form-agente" onsubmit="guardarAgente(event)" class="space-y-4">
-                <div>
-                    <label class="block text-sm font-bold text-text-mute mb-1">ID Corporativo</label>
-                    <input type="text" id="agente-id" required class="w-full border border-border p-3 rounded-xl focus:ring-2 focus:ring-brand focus:border-brand focus:outline-none bg-slate-50 font-mono">
-                </div>
-                <div>
-                    <label class="block text-sm font-bold text-text-mute mb-1">Nombre Completo</label>
-                    <input type="text" id="agente-nombre" required class="w-full border border-border p-3 rounded-xl focus:ring-2 focus:ring-brand focus:border-brand focus:outline-none">
-                </div>
+            <form onsubmit="App.Handlers.guardarEdicion(event)">
+                <input type="hidden" id="edit-id">
                 
-                <div class="grid grid-cols-3 gap-3 pt-2">
-                    <div>
-                        <label class="block text-xs font-bold text-text-mute mb-1"><i class="ph-fill ph-toilet"></i> Baño (min)</label>
-                        <input type="number" id="agente-lim-bano" required min="1" class="w-full border border-border p-2 rounded-lg text-center">
+                <p class="text-slate-500 text-sm mb-5 leading-relaxed">Modifica el consumo de <strong class="text-slate-700">HOY</strong> o define límites específicos. <span class="text-blue-600 bg-blue-50 px-1 rounded">Deja vacío para usar los globales.</span></p>
+                
+                <div class="space-y-5">
+                    <!-- Tiempos de Hoy -->
+                    <div class="p-4 rounded-2xl border border-slate-200 bg-white shadow-sm">
+                        <h4 class="font-semibold text-xs uppercase tracking-wider text-slate-400 mb-3 flex items-center gap-2"><i class="ph ph-clock"></i> Consumido Hoy (Min:Seg)</h4>
+                        <div class="grid grid-cols-3 gap-3">
+                            <div class="relative">
+                                <label class="block text-[10px] uppercase font-semibold text-slate-500 mb-1">Baño</label>
+                                <div class="relative"><i class="ph ph-toilet absolute left-2.5 top-2.5 text-slate-400"></i><input type="text" id="edit-c-bano" placeholder="00:00" class="w-full border border-slate-300 bg-transparent rounded-xl pl-8 pr-2 py-2 text-sm font-mono focus:border-blue-500 focus:ring-2 focus:ring-blue-100 outline-none transition-all"></div>
+                            </div>
+                            <div class="relative">
+                                <label class="block text-[10px] uppercase font-semibold text-slate-500 mb-1">Comida</label>
+                                <div class="relative"><i class="ph ph-fork-knife absolute left-2.5 top-2.5 text-slate-400"></i><input type="text" id="edit-c-comida" placeholder="00:00" class="w-full border border-slate-300 bg-transparent rounded-xl pl-8 pr-2 py-2 text-sm font-mono focus:border-orange-500 focus:ring-2 focus:ring-orange-100 outline-none transition-all"></div>
+                            </div>
+                            <div class="relative">
+                                <label class="block text-[10px] uppercase font-semibold text-slate-500 mb-1">Calidad</label>
+                                <div class="relative"><i class="ph ph-star absolute left-2.5 top-2.5 text-slate-400"></i><input type="text" id="edit-c-calidad" placeholder="00:00" class="w-full border border-slate-300 bg-transparent rounded-xl pl-8 pr-2 py-2 text-sm font-mono focus:border-purple-500 focus:ring-2 focus:ring-purple-100 outline-none transition-all"></div>
+                            </div>
+                        </div>
                     </div>
-                    <div>
-                        <label class="block text-xs font-bold text-text-mute mb-1"><i class="ph-fill ph-hamburger"></i> Comida (min)</label>
-                        <input type="number" id="agente-lim-comida" required min="1" class="w-full border border-border p-2 rounded-lg text-center">
-                    </div>
-                    <div>
-                        <label class="block text-xs font-bold text-text-mute mb-1"><i class="ph-fill ph-headset"></i> Calidad (min)</label>
-                        <input type="number" id="agente-lim-calidad" required min="1" class="w-full border border-border p-2 rounded-lg text-center">
+
+                    <!-- Límites -->
+                    <div class="p-4 rounded-2xl border border-slate-200 bg-white shadow-sm">
+                        <h4 class="font-semibold text-xs uppercase tracking-wider text-slate-400 mb-3 flex items-center gap-2"><i class="ph ph-lock-key"></i> Límites Individuales (Min)</h4>
+                        <div class="grid grid-cols-2 gap-3">
+                            <div class="relative">
+                                <label class="block text-[10px] uppercase font-semibold text-slate-500 mb-1">Límite Baño</label>
+                                <input type="number" id="edit-l-bano" class="w-full border border-slate-300 bg-transparent rounded-xl p-2.5 text-sm focus:border-blue-500 outline-none transition-all font-mono" placeholder="Global">
+                            </div>
+                            <div class="relative">
+                                <label class="block text-[10px] uppercase font-semibold text-slate-500 mb-1">Límite Comida</label>
+                                <input type="number" id="edit-l-comida" class="w-full border border-slate-300 bg-transparent rounded-xl p-2.5 text-sm focus:border-orange-500 outline-none transition-all font-mono" placeholder="Global">
+                            </div>
+                        </div>
                     </div>
                 </div>
 
-                <div class="pt-4 flex gap-3">
-                    <button type="button" onclick="cerrarModalAgente()" class="flex-1 bg-white border border-border font-bold py-3 rounded-xl hover:bg-slate-50 transition">Cancelar</button>
-                    <button type="submit" class="flex-1 bg-brand text-white font-bold py-3 rounded-xl hover:bg-blue-600 transition shadow-md shadow-brand/30" id="btn-save-agente">Guardar</button>
+                <div class="flex gap-3 mt-6 pt-4 border-t border-slate-100">
+                    <button type="button" onclick="App.Modals.cerrarTodos()" class="flex-1 px-4 py-2.5 text-slate-600 bg-slate-100 hover:bg-slate-200 rounded-xl font-medium transition-colors">Cancelar</button>
+                    <button type="submit" id="btn-save-edit" class="flex-[2] px-4 py-2.5 bg-slate-900 hover:bg-slate-800 text-white rounded-xl font-medium transition-colors shadow-md flex justify-center items-center gap-2">
+                        <i class="ph ph-floppy-disk"></i> Guardar Cambios
+                    </button>
                 </div>
             </form>
         </div>
     </div>
 
-    <!-- MODAL AJUSTE DE TIEMPOS -->
-    <div id="modal-ajuste" class="fixed inset-0 bg-text/50 backdrop-blur-sm z-50 flex items-center justify-center hidden opacity-0 transition-opacity">
-        <div class="bg-card p-6 rounded-2xl shadow-xl border border-border w-full max-w-md transform scale-95 transition-transform" id="modal-ajuste-content">
-            <div class="flex justify-between items-center mb-5">
-                <div>
-                    <h3 class="text-xl font-black text-brand" id="modal-ajuste-title">Ajustar Tiempos del Día</h3>
-                    <p class="text-sm font-medium text-text-mute mt-1">Agente: <span id="ajuste-nombre-display" class="font-bold text-text"></span></p>
-                </div>
-                <button onclick="cerrarModalAjuste()" class="text-text-mute hover:text-text"><i class="ph-bold ph-x text-xl"></i></button>
-            </div>
+    <!-- PANEL LATERAL CONFIGURACIÓN -->
+    <div id="panel-config-overlay" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 hidden transition-opacity duration-300 opacity-0" onclick="App.Modals.cerrarConfig()">
+        <div class="absolute inset-y-0 right-0 w-full max-w-md bg-white shadow-2xl transform translate-x-full transition-transform duration-300 ease-in-out flex flex-col border-l border-slate-200" id="panel-config" onclick="event.stopPropagation()">
             
-            <form id="form-ajuste" onsubmit="guardarAjuste(event)" class="space-y-4">
-                <input type="hidden" id="ajuste-agente-id">
+            <div class="p-5 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
+                <h2 class="text-lg font-bold text-slate-800 flex items-center gap-2"><i class="ph ph-gear text-blue-500 text-xl"></i> Ajustes del Sistema</h2>
+                <button onclick="App.Modals.cerrarConfig()" class="text-slate-400 hover:text-slate-600 bg-white p-2 rounded-full border border-slate-200 shadow-sm transition-colors"><i class="ph ph-x"></i></button>
+            </div>
+
+            <div class="flex-1 overflow-y-auto p-5 space-y-6 custom-scrollbar bg-slate-50/30">
                 
-                <div class="bg-slate-50 p-4 rounded-xl border border-border mb-4">
-                    <p class="text-xs text-text-mute mb-3"><i class="ph-bold ph-info"></i> Modifica los minutos totales acumulados en el día. Esto sumará o restará tiempo al historial diario de este operador.</p>
-                    <div class="space-y-3">
-                        <div class="flex justify-between items-center">
-                            <label class="text-sm font-bold flex items-center gap-2 w-1/2"><i class="ph-fill ph-toilet text-purple-500"></i> Sanitario</label>
-                            <div class="flex items-center gap-1">
-                                <input type="number" id="ajuste-bath-m" required min="0" placeholder="min" class="w-16 border border-border p-2 rounded-lg text-center font-mono focus:ring-2 focus:ring-brand focus:outline-none">
-                                <span class="font-bold text-text-mute">:</span>
-                                <input type="number" id="ajuste-bath-s" required min="0" max="59" placeholder="seg" class="w-16 border border-border p-2 rounded-lg text-center font-mono focus:ring-2 focus:ring-brand focus:outline-none">
+                <!-- Políticas Globales -->
+                <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-5">
+                    <h3 class="font-bold text-slate-800 mb-4 flex items-center gap-2 text-sm border-b border-slate-100 pb-2">
+                        <i class="ph ph-timer text-slate-400"></i> Políticas Globales
+                    </h3>
+                    <p class="text-xs text-slate-500 mb-4 leading-relaxed">Establece los límites predeterminados para todos los empleados que no tengan límites personalizados.</p>
+                    <div class="flex gap-3 mb-4">
+                        <div class="flex-1">
+                            <label class="block text-[10px] uppercase text-slate-500 font-bold mb-1.5 ml-1">Baño (min)</label>
+                            <div class="relative">
+                                <i class="ph ph-toilet absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400"></i>
+                                <input type="number" id="cfg-global-bano" class="w-full border border-slate-200 rounded-xl pl-9 pr-3 py-2 text-sm font-mono focus:border-slate-800 outline-none transition-all bg-slate-50">
                             </div>
                         </div>
-                        <div class="flex justify-between items-center">
-                            <label class="text-sm font-bold flex items-center gap-2 w-1/2"><i class="ph-fill ph-hamburger text-orange-500"></i> Comida</label>
-                            <div class="flex items-center gap-1">
-                                <input type="number" id="ajuste-food-m" required min="0" placeholder="min" class="w-16 border border-border p-2 rounded-lg text-center font-mono focus:ring-2 focus:ring-brand focus:outline-none">
-                                <span class="font-bold text-text-mute">:</span>
-                                <input type="number" id="ajuste-food-s" required min="0" max="59" placeholder="seg" class="w-16 border border-border p-2 rounded-lg text-center font-mono focus:ring-2 focus:ring-brand focus:outline-none">
-                            </div>
-                        </div>
-                        <div class="flex justify-between items-center">
-                            <label class="text-sm font-bold flex items-center gap-2 w-1/2"><i class="ph-fill ph-headset text-blue-500"></i> Calidad</label>
-                            <div class="flex items-center gap-1">
-                                <input type="number" id="ajuste-quality-m" required min="0" placeholder="min" class="w-16 border border-border p-2 rounded-lg text-center font-mono focus:ring-2 focus:ring-brand focus:outline-none">
-                                <span class="font-bold text-text-mute">:</span>
-                                <input type="number" id="ajuste-quality-s" required min="0" max="59" placeholder="seg" class="w-16 border border-border p-2 rounded-lg text-center font-mono focus:ring-2 focus:ring-brand focus:outline-none">
+                        <div class="flex-1">
+                            <label class="block text-[10px] uppercase text-slate-500 font-bold mb-1.5 ml-1">Comida (min)</label>
+                            <div class="relative">
+                                <i class="ph ph-fork-knife absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400"></i>
+                                <input type="number" id="cfg-global-comida" class="w-full border border-slate-200 rounded-xl pl-9 pr-3 py-2 text-sm font-mono focus:border-slate-800 outline-none transition-all bg-slate-50">
                             </div>
                         </div>
                     </div>
+                    <button onclick="App.Handlers.guardarGlobales()" class="w-full bg-slate-100 hover:bg-slate-200 text-slate-800 text-xs font-bold py-2.5 rounded-xl transition-colors flex items-center justify-center gap-2"><i class="ph ph-check-circle"></i> Aplicar Límites</button>
                 </div>
 
-                <div class="pt-2 flex gap-3">
-                    <button type="button" onclick="cerrarModalAjuste()" class="flex-1 bg-white border border-border font-bold py-3 rounded-xl hover:bg-slate-50 transition">Cancelar</button>
-                    <button type="submit" class="flex-1 bg-brand text-white font-bold py-3 rounded-xl hover:bg-blue-600 transition shadow-md shadow-brand/30" id="btn-save-ajuste">Guardar Cambios</button>
+                <!-- Alta Empleado -->
+                <div class="bg-slate-900 rounded-2xl shadow-sm border border-slate-800 p-5 text-white">
+                    <h3 class="font-bold mb-4 flex items-center gap-2 text-sm border-b border-slate-700 pb-2">
+                        <i class="ph ph-user-plus text-blue-400"></i> Alta de Empleado
+                    </h3>
+                    <form onsubmit="App.Handlers.crearAgente(event)" class="space-y-3 mb-4">
+                        <input type="text" id="nuevo-pin" required placeholder="PIN / ID Único" class="w-full border border-slate-700 rounded-xl bg-slate-800/50 p-2.5 text-sm outline-none focus:border-blue-500 transition-all font-mono text-white uppercase">
+                        <input type="text" id="nuevo-nombre" required placeholder="Nombre Completo" class="w-full border border-slate-700 rounded-xl bg-slate-800/50 p-2.5 text-sm outline-none focus:border-blue-500 transition-all text-white">
+                        <button type="submit" id="btn-crear-agente" class="w-full bg-blue-600 hover:bg-blue-500 text-white text-sm font-bold py-2.5 rounded-xl transition-colors flex justify-center items-center gap-2 shadow-sm shadow-blue-900/50 mt-2">
+                            Registrar Empleado <i class="ph ph-plus-bold"></i>
+                        </button>
+                    </form>
                 </div>
-            </form>
+            </div>
         </div>
     </div>
 
+    <!-- PANTALLAS DE ESTADO Y LOGIN -->
+    <div id="vista-cargando" class="flex flex-col items-center justify-center min-h-screen bg-slate-50 hidden">
+        <div class="relative"><div class="loader mb-6 relative z-10"></div><div class="absolute inset-0 bg-blue-400 blur-xl opacity-20 rounded-full"></div></div>
+        <p class="text-slate-600 font-medium tracking-wide animate-pulse">Conectando al servidor...</p>
+    </div>
 
-    <!-- FIREBASE Y LÓGICA -->
+    <div id="vista-login-admin" class="min-h-screen flex items-center justify-center px-4 relative overflow-hidden bg-slate-50">
+        <div class="absolute top-[-10%] left-[-10%] w-96 h-96 bg-blue-400 rounded-full mix-blend-multiply filter blur-3xl opacity-10 animate-pulse-slow"></div>
+        <div class="absolute bottom-[-10%] right-[-10%] w-96 h-96 bg-purple-400 rounded-full mix-blend-multiply filter blur-3xl opacity-10 animate-pulse-slow" style="animation-delay: 2s;"></div>
+
+        <div class="bg-white p-8 md:p-10 rounded-3xl shadow-2xl border border-slate-100 w-full max-w-sm relative z-10 transform transition-all hover:scale-[1.01]">
+            <div class="w-16 h-16 bg-slate-900 rounded-2xl flex items-center justify-center mb-6 shadow-lg shadow-slate-200"><i class="ph ph-fingerprint text-3xl text-white"></i></div>
+            <h2 class="text-2xl font-bold text-slate-900 mb-1">Acceso Root</h2>
+            <p class="text-slate-500 text-sm mb-8 font-medium">Panel de administración central</p>
+            
+            <div class="relative mb-6">
+                <input type="password" id="pin-admin" autocomplete="off" placeholder="Palabra clave" class="w-full text-center text-lg tracking-[0.3em] font-mono border-b-2 border-slate-200 bg-slate-50/50 rounded-t-xl p-4 focus:border-slate-900 outline-none transition-all" onkeypress="if(event.key === 'Enter') App.Auth.login()">
+            </div>
+            
+            <button onclick="App.Auth.login()" class="w-full bg-slate-900 hover:bg-slate-800 text-white font-semibold py-3.5 rounded-xl shadow-lg shadow-slate-200 transition-all active:scale-95 flex items-center justify-center gap-2">Autenticar <i class="ph ph-arrow-right font-bold"></i></button>
+        </div>
+    </div>
+
+    <!-- PANTALLA DASHBOARD ADMIN -->
+    <div id="vista-admin" class="hidden min-h-screen flex flex-col">
+        <nav class="glass-panel sticky top-0 z-40 px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between border-b border-slate-200 shadow-sm">
+            <div class="flex items-center gap-3">
+                <div class="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center shadow-inner"><i class="ph ph-chart-polar text-white text-lg"></i></div>
+                <div>
+                    <h1 class="text-lg font-bold text-slate-900 leading-tight">Admin<span class="text-blue-600">Dash</span></h1>
+                    <p class="text-[10px] text-slate-500 font-medium tracking-wide capitalize" id="fecha-admin-display">Hoy</p>
+                </div>
+            </div>
+            
+            <div class="flex items-center gap-3 sm:gap-5">
+                <button onclick="App.Modals.abrirReset()" class="text-slate-600 hover:text-orange-600 bg-white hover:bg-orange-50 border border-slate-200 p-2 sm:px-3 sm:py-1.5 rounded-lg transition-colors flex items-center gap-2 shadow-sm text-sm font-medium" title="Reiniciar Tiempos"><i class="ph ph-arrow-counter-clockwise text-lg"></i> <span class="hidden sm:inline">Reset Día</span></button>
+                <div class="w-px h-6 bg-slate-200 hidden sm:block"></div>
+                <button onclick="App.Modals.abrirConfig()" class="text-slate-500 hover:text-slate-800 p-2 rounded-lg transition-colors flex items-center justify-center" title="Configuración"><i class="ph ph-gear text-xl"></i></button>
+                <button onclick="App.Auth.logout()" class="text-slate-500 hover:text-red-600 p-2 sm:px-3 sm:py-1.5 rounded-lg transition-colors flex items-center gap-2 text-sm font-medium" title="Cerrar Sesión"><span class="hidden sm:inline">Salir</span> <i class="ph ph-sign-out text-lg"></i></button>
+            </div>
+        </nav>
+
+        <main class="max-w-[1400px] w-full mx-auto p-4 sm:p-6 lg:p-8 space-y-8 flex-1">
+            
+            <!-- KPIs -->
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4 lg:gap-6">
+                <div class="bg-white rounded-3xl shadow-sm border border-slate-200 p-6 flex items-center gap-5 relative overflow-hidden">
+                    <div class="absolute -right-4 -top-4 w-24 h-24 bg-blue-50 rounded-full opacity-50 pointer-events-none"></div>
+                    <div class="w-14 h-14 rounded-2xl bg-gradient-to-br from-blue-500 to-blue-600 text-white flex items-center justify-center shadow-lg shadow-blue-200 shrink-0"><i class="ph ph-users text-2xl"></i></div>
+                    <div><p class="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">Personal Total</p><p class="text-3xl font-black text-slate-800 leading-none" id="kpi-total">0</p></div>
+                </div>
+                <div class="bg-white rounded-3xl shadow-sm border border-slate-200 p-6 flex items-center gap-5 relative overflow-hidden">
+                    <div class="absolute -right-4 -top-4 w-24 h-24 bg-emerald-50 rounded-full opacity-50 pointer-events-none"></div>
+                    <div class="w-14 h-14 rounded-2xl bg-gradient-to-br from-emerald-400 to-emerald-500 text-white flex items-center justify-center shadow-lg shadow-emerald-200 shrink-0 relative"><div class="absolute inset-0 border-2 border-white/50 rounded-2xl animate-ping opacity-20"></div><i class="ph ph-broadcast text-2xl"></i></div>
+                    <div><p class="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">En Receso (Vivo)</p><p class="text-3xl font-black text-slate-800 leading-none" id="kpi-activos">0</p></div>
+                </div>
+                <div class="bg-white rounded-3xl shadow-sm border border-slate-200 p-6 flex items-center gap-5 relative overflow-hidden">
+                    <div class="absolute -right-4 -top-4 w-24 h-24 bg-red-50 rounded-full opacity-50 pointer-events-none"></div>
+                    <div class="w-14 h-14 rounded-2xl bg-gradient-to-br from-red-500 to-red-600 text-white flex items-center justify-center shadow-lg shadow-red-200 shrink-0"><i class="ph ph-warning text-2xl"></i></div>
+                    <div><p class="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">Excedidos Hoy</p><p class="text-3xl font-black text-red-600 leading-none" id="kpi-excedidos">0</p></div>
+                </div>
+            </div>
+
+            <!-- Monitor en Vivo -->
+            <section class="bg-white rounded-3xl shadow-sm border border-slate-200 overflow-hidden flex flex-col">
+                <div class="px-6 py-5 border-b border-slate-100 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-slate-50/50">
+                    <div>
+                        <h2 class="font-bold text-slate-800 flex items-center gap-2 text-lg">
+                            <span class="relative flex h-3 w-3"><span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span><span class="relative inline-flex rounded-full h-3 w-3 bg-emerald-500"></span></span>
+                            Monitor de Personal <span class="bg-slate-200 text-slate-600 text-[10px] px-2 py-0.5 rounded-full uppercase tracking-wider ml-2">Hoy</span>
+                        </h2>
+                        <p class="text-xs text-slate-500 mt-1">Supervisa en tiempo real el estado y consumo acumulado.</p>
+                    </div>
+                    <div class="relative w-full sm:w-64 group">
+                        <i class="ph ph-magnifying-glass absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400 group-focus-within:text-blue-500 transition-colors"></i>
+                        <input type="text" id="search-monitor" onkeyup="App.UI.renderMonitor()" placeholder="Buscar colaborador..." class="w-full border border-slate-200 rounded-xl pl-10 pr-4 py-2.5 text-sm focus:border-blue-500 focus:ring-2 focus:ring-blue-100 outline-none transition-all shadow-sm bg-white">
+                    </div>
+                </div>
+                <div class="p-6 bg-slate-50/30 flex-1">
+                    <div id="lista-activos" class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-5">
+                        <div class="col-span-full text-center py-10"><div class="loader mx-auto mb-4"></div><p class="text-slate-500 font-bold">Iniciando sistema...</p></div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Historial -->
+            <section class="bg-white rounded-3xl shadow-sm border border-slate-200 overflow-hidden">
+                <div class="px-6 py-5 border-b border-slate-100 flex flex-wrap justify-between items-center gap-4 bg-slate-50/50">
+                    <h2 class="font-bold text-slate-800 flex items-center gap-2 text-lg"><i class="ph ph-clock-counter-clockwise text-blue-500 text-xl"></i> Bitácora de Movimientos</h2>
+                    <div class="relative">
+                        <i class="ph ph-calendar-blank absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400"></i>
+                        <input type="date" id="filtro-fecha-historial" onchange="App.Firebase.fetchReportes()" class="pl-10 pr-4 py-2 border border-slate-200 bg-white rounded-xl text-sm text-slate-600 font-medium outline-none focus:border-blue-500 transition-all cursor-pointer">
+                    </div>
+                </div>
+                <div class="overflow-x-auto max-h-[500px] custom-scrollbar relative">
+                    <table class="w-full text-left border-collapse min-w-[900px]">
+                        <thead class="sticky top-0 bg-slate-50 shadow-sm z-10 backdrop-blur-md bg-white/90 border-b border-slate-200">
+                            <tr class="text-slate-500 text-[11px] uppercase tracking-wider">
+                                <th class="px-6 py-4 font-bold rounded-tl-lg">Hora (Fin)</th>
+                                <th class="px-6 py-4 font-bold">Colaborador</th>
+                                <th class="px-6 py-4 font-bold">Tipo</th>
+                                <th class="px-6 py-4 font-bold text-right text-blue-600 rounded-tr-lg">Tiempo Consumido</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tabla-registros-global" class="divide-y divide-slate-100 text-sm"></tbody>
+                    </table>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <!-- ========================================== -->
+    <!-- NÚCLEO JAVASCRIPT (APP LOGIC)              -->
+    <!-- ========================================== -->
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import { getFirestore, collection, onSnapshot, doc, getDocs, setDoc, deleteDoc, updateDoc, query, orderBy, limit } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import { getFirestore, collection, onSnapshot, doc, getDocs, setDoc, deleteDoc, updateDoc, query, where, orderBy, limit } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
-        // CONFIGURACIÓN PROPORCIONADA
+        // --- ESTADO Y CONFIGURACIÓN ---
+        window.App = {
+            db: null,
+            state: {
+                operadores: {},
+                sesiones: {},
+                fechaFiltro: new Date().toLocaleDateString('en-CA') // YYYY-MM-DD local
+            },
+            config: {
+                limites: { bano: 15, comida: 30 },
+                meta: {
+                    'bath': { icon: 'ph-toilet', label: 'Sanitario', cText: 'text-purple-600', cBg: 'bg-purple-100', cBorder: 'border-purple-200', cBar: 'bg-purple-500' },
+                    'food': { icon: 'ph-hamburger', label: 'Comida', cText: 'text-orange-600', cBg: 'bg-orange-100', cBorder: 'border-orange-200', cBar: 'bg-orange-500' },
+                    'quality': { icon: 'ph-star', label: 'Calidad', cText: 'text-blue-600', cBg: 'bg-blue-100', cBorder: 'border-blue-200', cBar: 'bg-blue-500' }
+                }
+            },
+            tempId: null // Para modals
+        };
+
         const firebaseConfig = {
             apiKey: "AIzaSyDT7iPaeRjlt-WIWWzwBh3deN2z_E-b2JA",
             authDomain: "corpodatos-935f9.firebaseapp.com",
@@ -269,477 +333,445 @@
             appId: "1:634601793039:web:4412da30d31ff6f6e5657a"
         };
 
+        // --- INICIALIZAR FIREBASE ---
         const app = initializeApp(firebaseConfig);
-        const db = getFirestore(app);
+        window.db = getFirestore(app);
+        App.db = window.db;
 
-        // ESTADO GLOBAL
-        let operadores = {}; // Caché de info base de agentes
-        let sesiones = {}; // Caché de estados activos
-        let timerRealtime; // Intervalo para animar los relojes
-
-        // MAPA DE ICONOS Y COLORES POR ESTADO
-        const metaEstado = {
-            'bath': { icon: 'ph-toilet', label: 'Sanitario', color: 'bg-purple-100 text-purple-600 border-purple-200' },
-            'food': { icon: 'ph-hamburger', label: 'Comida', color: 'bg-orange-100 text-orange-600 border-orange-200' },
-            'quality': { icon: 'ph-headset', label: 'Calidad', color: 'bg-blue-100 text-blue-600 border-blue-200' },
-            'null': { icon: 'ph-desktop', label: 'Trabajando / Disponible', color: 'bg-money/10 text-money border-money/20' }
+        // --- UTILIDADES ---
+        const Utils = {
+            formatSeg: (total) => {
+                if (isNaN(total) || total < 0) return "00:00";
+                const m = Math.floor(total / 60).toString().padStart(2, '0');
+                const s = (total % 60).toString().padStart(2, '0');
+                return `${m}:${s}`;
+            },
+            parseTime: (str) => {
+                if(!str) return 0;
+                const p = str.split(':');
+                return p.length === 2 ? (parseInt(p[0])||0)*60 + (parseInt(p[1])||0) : 0;
+            },
+            formatInput: (e) => {
+                let v = e.target.value.replace(/\D/g, '');
+                if(v.length > 4) v = v.substring(0,4);
+                if(v.length >= 3) v = v.substring(0, v.length-2) + ':' + v.substring(v.length-2);
+                e.target.value = v;
+            },
+            toast: (msg, type = 'success') => {
+                const c = document.getElementById('notificacion');
+                const i = document.getElementById('notificacion-icon');
+                i.innerHTML = type === 'error' ? '<i class="ph ph-warning-circle text-red-400"></i>' : '<i class="ph ph-check-circle text-emerald-400"></i>';
+                c.className = `fixed top-6 left-1/2 transform -translate-x-1/2 z-[100] max-w-md w-full bg-slate-900 text-white shadow-2xl rounded-2xl p-4 flex items-center gap-3 border ${type === 'error' ? 'border-red-500/50' : 'border-emerald-500/50'}`;
+                document.getElementById('notificacion-texto').textContent = msg;
+                c.classList.remove('hidden');
+                setTimeout(() => c.classList.add('hidden'), 4000);
+            },
+            fechaHoyNormal: () => new Date().toLocaleDateString() // DD/MM/YYYY local
         };
 
-        // --- INICIALIZACIÓN ---
-        async function init() {
-            await cargarOperadores();
-            escucharSesiones();
-            cargarReportes();
-            iniciarRelojGlobal();
-            cambiarCuadricula(); // Configurar cuadrícula inicial
-        }
+        ['edit-c-bano','edit-c-comida','edit-c-calidad'].forEach(id => {
+            const el = document.getElementById(id);
+            if (el) el.addEventListener('input', Utils.formatInput);
+        });
 
-        // --- NAVEGACIÓN ---
-        window.switchTab = function(tabId) {
-            document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
-            document.getElementById(`tab-${tabId}`).classList.add('active');
-
-            // Actualizar botones del sidebar
-            document.querySelectorAll('aside nav button').forEach(btn => {
-                btn.className = "flex items-center gap-3 w-full text-left px-4 py-3 rounded-xl transition-all font-bold text-text-mute hover:bg-slate-50 hover:text-text";
-            });
-            document.getElementById(`btn-tab-${tabId}`).className = "flex items-center gap-3 w-full text-left px-4 py-3 rounded-xl transition-all font-bold bg-blue-50 text-brand";
-        }
-
-        // --- LÓGICA DE AGENTES (CRUD) ---
-        async function cargarOperadores() {
-            try {
-                const snap = await getDocs(collection(db, "operadores"));
-                operadores = {};
-                snap.forEach(doc => { operadores[doc.id] = doc.data(); });
-                renderTablaAgentes();
-                renderDashboard(); // Re-renderizar dash en caso de que falten nombres
-            } catch (error) {
-                console.error("Error al cargar operadores", error);
-            }
-        }
-
-        function renderTablaAgentes() {
-            const tbody = document.getElementById('tabla-agentes');
-            tbody.innerHTML = '';
-            
-            Object.values(operadores).forEach(ag => {
-                tbody.innerHTML += `
-                    <tr class="hover:bg-slate-50 transition-colors">
-                        <td class="p-4 font-mono font-bold">${ag.id}</td>
-                        <td class="p-4 font-medium">${ag.nombre}</td>
-                        <td class="p-4 text-center text-text-mute">${ag.limites?.bano || 0} m</td>
-                        <td class="p-4 text-center text-text-mute">${ag.limites?.comida || 0} m</td>
-                        <td class="p-4 text-center text-text-mute">${ag.limites?.calidad || 0} m</td>
-                        <td class="p-4 text-right">
-                            <button onclick='editarAgente(${JSON.stringify(ag)})' class="text-brand hover:text-blue-700 bg-blue-50 p-2 rounded-lg transition mr-2"><i class="ph-bold ph-pencil-simple"></i></button>
-                            <button onclick='eliminarAgente("${ag.id}")' class="text-danger hover:text-red-700 bg-red-50 p-2 rounded-lg transition"><i class="ph-bold ph-trash"></i></button>
-                        </td>
-                    </tr>
-                `;
-            });
-        }
-
-        // --- LÓGICA DEL MODAL AGENTES ---
-        window.abrirModalAgente = function() {
-            document.getElementById('form-agente').reset();
-            document.getElementById('agente-id').readOnly = false;
-            document.getElementById('agente-id').classList.remove('bg-gray-100', 'text-gray-500');
-            document.getElementById('modal-title').innerText = "Nuevo Agente";
-            
-            const modal = document.getElementById('modal-agente');
-            modal.classList.remove('hidden');
-            setTimeout(() => {
-                modal.classList.remove('opacity-0');
-                document.getElementById('modal-content').classList.remove('scale-95');
-            }, 10);
-        };
-
-        window.cerrarModalAgente = function() {
-            const modal = document.getElementById('modal-agente');
-            modal.classList.add('opacity-0');
-            document.getElementById('modal-content').classList.add('scale-95');
-            setTimeout(() => modal.classList.add('hidden'), 300);
-        };
-
-        window.editarAgente = function(ag) {
-            abrirModalAgente();
-            document.getElementById('modal-title').innerText = "Editar Agente";
-            document.getElementById('agente-id').value = ag.id;
-            document.getElementById('agente-id').readOnly = true;
-            document.getElementById('agente-id').classList.add('bg-gray-100', 'text-gray-500');
-            
-            document.getElementById('agente-nombre').value = ag.nombre;
-            document.getElementById('agente-lim-bano').value = ag.limites.bano;
-            document.getElementById('agente-lim-comida').value = ag.limites.comida;
-            document.getElementById('agente-lim-calidad').value = ag.limites.calidad;
-        };
-
-        window.guardarAgente = async function(e) {
-            e.preventDefault();
-            const btn = document.getElementById('btn-save-agente');
-            btn.innerHTML = `<div class="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>`;
-            btn.disabled = true;
-
-            const agId = document.getElementById('agente-id').value.trim();
-            const data = {
-                id: agId,
-                nombre: document.getElementById('agente-nombre').value.trim(),
-                limites: {
-                    bano: parseInt(document.getElementById('agente-lim-bano').value),
-                    comida: parseInt(document.getElementById('agente-lim-comida').value),
-                    calidad: parseInt(document.getElementById('agente-lim-calidad').value)
-                }
-            };
-
-            try {
-                await setDoc(doc(db, "operadores", agId), data);
-                operadores[agId] = data; // Actualizar cache local
-                renderTablaAgentes();
-                renderDashboard();
-                cerrarModalAgente();
-            } catch (error) {
-                alert("Error al guardar: " + error.message);
-            } finally {
-                btn.innerHTML = 'Guardar';
-                btn.disabled = false;
-            }
-        };
-
-        window.eliminarAgente = async function(id) {
-            if(confirm(`¿Estás seguro de eliminar al agente ${id}?`)) {
-                try {
-                    await deleteDoc(doc(db, "operadores", id));
-                    delete operadores[id];
-                    renderTablaAgentes();
-                    renderDashboard();
-                } catch (error) {
-                    alert("Error al eliminar.");
-                }
-            }
-        };
-
-        // --- LÓGICA DEL MODAL DE AJUSTE DE TIEMPOS ---
-        window.abrirModalAjuste = function(agenteId) {
-            const ag = operadores[agenteId];
-            // Si no hay sesión iniciada hoy, iniciamos con tiempos en 0
-            const sesion = sesiones[agenteId] || { tiemposAcumulados: { bath: 0, food: 0, quality: 0 } };
-            
-            document.getElementById('ajuste-agente-id').value = agenteId;
-            document.getElementById('ajuste-nombre-display').innerText = ag.nombre;
-            
-            // Llenamos los inputs separando minutos y segundos
-            const bathTotal = sesion.tiemposAcumulados?.bath || 0;
-            document.getElementById('ajuste-bath-m').value = Math.floor(bathTotal / 60);
-            document.getElementById('ajuste-bath-s').value = bathTotal % 60;
-
-            const foodTotal = sesion.tiemposAcumulados?.food || 0;
-            document.getElementById('ajuste-food-m').value = Math.floor(foodTotal / 60);
-            document.getElementById('ajuste-food-s').value = foodTotal % 60;
-
-            const qualityTotal = sesion.tiemposAcumulados?.quality || 0;
-            document.getElementById('ajuste-quality-m').value = Math.floor(qualityTotal / 60);
-            document.getElementById('ajuste-quality-s').value = qualityTotal % 60;
-
-            const modal = document.getElementById('modal-ajuste');
-            modal.classList.remove('hidden');
-            setTimeout(() => {
-                modal.classList.remove('opacity-0');
-                document.getElementById('modal-ajuste-content').classList.remove('scale-95');
-            }, 10);
-        };
-
-        window.cerrarModalAjuste = function() {
-            const modal = document.getElementById('modal-ajuste');
-            modal.classList.add('opacity-0');
-            document.getElementById('modal-ajuste-content').classList.add('scale-95');
-            setTimeout(() => modal.classList.add('hidden'), 300);
-        };
-
-        window.guardarAjuste = async function(e) {
-            e.preventDefault();
-            const btn = document.getElementById('btn-save-ajuste');
-            btn.innerHTML = `<div class="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>`;
-            btn.disabled = true;
-
-            const agenteId = document.getElementById('ajuste-agente-id').value;
-            
-            // Obtenemos minutos y segundos, calculamos el total de segundos
-            const bathM = parseInt(document.getElementById('ajuste-bath-m').value) || 0;
-            const bathS = parseInt(document.getElementById('ajuste-bath-s').value) || 0;
-            const foodM = parseInt(document.getElementById('ajuste-food-m').value) || 0;
-            const foodS = parseInt(document.getElementById('ajuste-food-s').value) || 0;
-            const qualityM = parseInt(document.getElementById('ajuste-quality-m').value) || 0;
-            const qualityS = parseInt(document.getElementById('ajuste-quality-s').value) || 0;
-
-            const nuevosTiempos = {
-                bath: (bathM * 60) + bathS,
-                food: (foodM * 60) + foodS,
-                quality: (qualityM * 60) + qualityS
-            };
-
-            try {
-                const docRef = doc(db, "sesiones_activas", agenteId);
-                if (sesiones[agenteId]) {
-                    // Si ya existe la sesión de hoy, solo actualizamos los acumulados
-                    await updateDoc(docRef, { tiemposAcumulados: nuevosTiempos });
+        // --- MÓDULOS DE APP ---
+        App.Auth = {
+            login: () => {
+                const pinInput = document.getElementById('pin-admin');
+                const pin = pinInput ? pinInput.value.trim().toLowerCase() : '';
+                if(pin === 'blqa') {
+                    document.getElementById('vista-login-admin').classList.add('hidden');
+                    document.getElementById('vista-admin').classList.remove('hidden');
+                    const display = document.getElementById('fecha-admin-display');
+                    if (display) display.innerText = new Date().toLocaleDateString('es-ES', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+                    App.Firebase.init();
                 } else {
-                    // Si el agente no se ha logueado hoy, le creamos el documento de la sesión en limpio con esos tiempos
-                    const hoy = new Date().toLocaleDateString();
-                    await setDoc(docRef, {
-                        estadoActivo: null,
-                        tiempoInicioEstado: null,
-                        fecha: hoy,
-                        tiemposAcumulados: nuevosTiempos
-                    });
+                    Utils.toast('PIN incorrecto', 'error');
                 }
-                cerrarModalAjuste();
-            } catch (error) {
-                alert("Error al ajustar tiempos: " + error.message);
-            } finally {
-                btn.innerHTML = 'Guardar Cambios';
-                btn.disabled = false;
+            },
+            logout: () => {
+                document.getElementById('vista-admin').classList.add('hidden');
+                document.getElementById('vista-login-admin').classList.remove('hidden');
+                const pinInput = document.getElementById('pin-admin');
+                if (pinInput) pinInput.value = '';
             }
         };
 
-
-        // --- LÓGICA DEL DASHBOARD EN TIEMPO REAL ---
-        function escucharSesiones() {
-            onSnapshot(collection(db, "sesiones_activas"), (snapshot) => {
-                const hoy = new Date().toLocaleDateString();
-                sesiones = {};
-                snapshot.forEach(doc => {
-                    const data = doc.data();
-                    if(data.fecha === hoy) { // Solo mostrar sesiones del día actual
-                        sesiones[doc.id] = data;
-                    }
+        App.Modals = {
+            abrirConfig: () => {
+                const o = document.getElementById('panel-config-overlay'); const p = document.getElementById('panel-config');
+                const banoInput = document.getElementById('cfg-global-bano');
+                const comidaInput = document.getElementById('cfg-global-comida');
+                if (banoInput) banoInput.value = App.config.limites.bano;
+                if (comidaInput) comidaInput.value = App.config.limites.comida;
+                
+                if (o && p) {
+                    o.classList.remove('hidden'); 
+                    setTimeout(() => { o.classList.remove('opacity-0'); p.classList.remove('translate-x-full'); }, 10);
+                }
+            },
+            cerrarConfig: () => {
+                const o = document.getElementById('panel-config-overlay'); const p = document.getElementById('panel-config');
+                if (o && p) {
+                    o.classList.add('opacity-0'); p.classList.add('translate-x-full'); 
+                    setTimeout(() => o.classList.add('hidden'), 300);
+                }
+            },
+            abrirReset: () => {
+                const overlay = document.getElementById('modal-overlay');
+                const m = document.getElementById('modal-confirm-reset');
+                if (overlay && m) {
+                    overlay.classList.remove('hidden');
+                    m.classList.remove('hidden'); 
+                    setTimeout(() => { overlay.classList.remove('opacity-0'); m.classList.remove('scale-95'); }, 10);
+                }
+            },
+            cerrarTodos: () => {
+                const o = document.getElementById('modal-overlay');
+                if (!o) return;
+                o.classList.add('opacity-0');
+                ['modal-confirm', 'modal-confirm-reset', 'modal-editar'].forEach(id => {
+                    const el = document.getElementById(id); if(el) el.classList.add('scale-95');
                 });
-                renderDashboard();
-            });
-        }
-
-        function renderDashboard() {
-            const grid = document.getElementById('dashboard-grid');
-            if (Object.keys(operadores).length === 0) {
-                grid.innerHTML = `<div class="col-span-full text-center py-10 text-text-mute bg-slate-50 rounded-2xl border border-border">No hay agentes registrados en el sistema.</div>`;
-                return;
-            }
-
-            const showOnlyActive = document.getElementById('toggle-active')?.checked ?? true;
-            let agentesAMostrar = Object.values(operadores);
-
-            if (showOnlyActive) {
-                // Solo mostrar agentes que tengan una sesión activa registrada el día de hoy
-                agentesAMostrar = agentesAMostrar.filter(ag => sesiones[ag.id]);
-            }
-
-            grid.innerHTML = '';
-            
-            if (agentesAMostrar.length === 0) {
-                grid.innerHTML = `<div class="col-span-full text-center py-10 text-text-mute bg-slate-50 rounded-2xl border border-border">No hay agentes conectados actualmente.</div>`;
-                return;
-            }
-
-            agentesAMostrar.forEach(ag => {
-                const sesion = sesiones[ag.id] || { estadoActivo: null, tiemposAcumulados: {} };
-                const estado = sesion.estadoActivo || 'null';
-                const meta = metaEstado[estado];
-                
-                // Determinar si está excedido de forma inicial (se actualizará en el loop)
-                const isWorking = estado === 'null';
-                
-                grid.innerHTML += `
-                    <div class="bg-card border border-border rounded-xl p-4 shadow-sm hover:shadow-md transition-shadow relative overflow-hidden flex flex-col justify-between h-full" id="card-${ag.id}">
-                        
-                        <!-- Barra superior decorativa según estado -->
-                        <div class="absolute top-0 left-0 w-full h-1 ${isWorking ? 'bg-money' : 'bg-brand'}" id="card-border-${ag.id}"></div>
-
-                        <div class="flex justify-between items-start mb-3">
-                            <div class="overflow-hidden pr-2">
-                                <h3 class="font-bold text-base leading-tight truncate w-full" title="${ag.nombre}">${ag.nombre}</h3>
-                                <p class="text-[10px] text-text-mute font-mono mt-0.5">ID: ${ag.id}</p>
-                            </div>
-                            <div class="flex flex-col items-end gap-1 shrink-0">
-                                <div class="px-2 py-1 rounded-md border text-[10px] font-bold flex items-center gap-1 ${meta.color}" id="badge-estado-${ag.id}">
-                                    <i class="ph-bold ${meta.icon}"></i> <span id="label-estado-${ag.id}">${meta.label}</span>
-                                </div>
-                                <button onclick="abrirModalAjuste('${ag.id}')" class="text-[10px] text-text-mute hover:text-brand flex items-center gap-1 transition-colors font-semibold bg-slate-50 hover:bg-blue-50 px-1.5 py-0.5 rounded border border-slate-100 hover:border-blue-200" title="Ajustar tiempos del día">
-                                    <i class="ph-bold ph-faders"></i> Ajustar
-                                </button>
-                            </div>
-                        </div>
-
-                        ${!isWorking ? `
-                            <div class="text-center py-3 bg-slate-50 rounded-lg mb-3 border border-slate-100">
-                                <div class="font-mono font-black text-3xl text-text tabular-nums tracking-tighter" id="timer-disp-${ag.id}">00:00</div>
-                                <div class="text-[10px] font-bold mt-1 text-text-mute" id="timer-limit-${ag.id}">Límite: ${ag.limites[estado]} min</div>
-                            </div>
-                        ` : `
-                            <div class="text-center py-5 mb-3">
-                                <div class="text-slate-300 mb-1"><i class="ph-fill ph-check-circle text-3xl"></i></div>
-                                <div class="text-xs font-medium text-text-mute">Operando con normalidad</div>
-                            </div>
-                        `}
-
-                        <!-- Resumen del día -->
-                        <div class="mt-auto pt-3 border-t border-border">
-                            <h4 class="text-[10px] font-extrabold text-text-mute uppercase tracking-widest mb-2 text-center">Adherencia del Día</h4>
-                            <div class="grid grid-cols-3 gap-2">
-                                <div class="flex flex-col items-center justify-center bg-purple-50 py-2 rounded-lg border border-purple-100 shadow-sm" title="Total Sanitario">
-                                    <div class="text-purple-500 mb-0.5"><i class="ph-fill ph-toilet text-xl"></i></div>
-                                    <div class="text-base lg:text-lg font-mono font-black text-purple-900" id="acum-bath-${ag.id}">${formatSegundos(sesion.tiemposAcumulados?.bath || 0)}</div>
-                                </div>
-                                <div class="flex flex-col items-center justify-center bg-orange-50 py-2 rounded-lg border border-orange-100 shadow-sm" title="Total Comida">
-                                    <div class="text-orange-500 mb-0.5"><i class="ph-fill ph-hamburger text-xl"></i></div>
-                                    <div class="text-base lg:text-lg font-mono font-black text-orange-900" id="acum-food-${ag.id}">${formatSegundos(sesion.tiemposAcumulados?.food || 0)}</div>
-                                </div>
-                                <div class="flex flex-col items-center justify-center bg-blue-50 py-2 rounded-lg border border-blue-100 shadow-sm" title="Total Calidad">
-                                    <div class="text-blue-500 mb-0.5"><i class="ph-fill ph-headset text-xl"></i></div>
-                                    <div class="text-base lg:text-lg font-mono font-black text-blue-900" id="acum-quality-${ag.id}">${formatSegundos(sesion.tiemposAcumulados?.quality || 0)}</div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                `;
-            });
-
-            // Forzar un tick inmediato para pintar tiempos
-            tickRelojes();
-        }
-
-        window.cambiarCuadricula = function() {
-            const grid = document.getElementById('dashboard-grid');
-            const size = document.getElementById('grid-size').value;
-            
-            // Limpiar clases de grid actuales
-            grid.className = 'grid gap-4'; 
-            
-            // Asignar nuevas columnas según la selección
-            if (size === '3') {
-                grid.classList.add('grid-cols-1', 'md:grid-cols-2', 'xl:grid-cols-3');
-            } else if (size === '4') {
-                grid.classList.add('grid-cols-1', 'md:grid-cols-2', 'lg:grid-cols-3', 'xl:grid-cols-4');
-            } else if (size === '5') {
-                grid.classList.add('grid-cols-1', 'md:grid-cols-3', 'lg:grid-cols-4', 'xl:grid-cols-5');
+                setTimeout(() => { 
+                    o.classList.add('hidden'); 
+                    ['modal-confirm', 'modal-confirm-reset', 'modal-editar'].forEach(id => {
+                        const el = document.getElementById(id);
+                        if (el) el.classList.add('hidden');
+                    }); 
+                }, 300);
             }
         };
 
-        // Loop Global para actualizar los contadores
-        function iniciarRelojGlobal() {
-            if(timerRealtime) clearInterval(timerRealtime);
-            timerRealtime = setInterval(tickRelojes, 1000);
-        }
-
-        function tickRelojes() {
-            const ahora = Date.now();
-            
-            Object.values(operadores).forEach(ag => {
-                const sesion = sesiones[ag.id];
-                if (!sesion || !sesion.estadoActivo) return; // Si no hay sesión o está trabajando, no hay contador que mover
-
-                const estado = sesion.estadoActivo;
-                let segundosUsados = sesion.tiemposAcumulados[estado] || 0;
+        App.Handlers = {
+            crearAgente: async (e) => {
+                e.preventDefault();
+                const btn = document.getElementById('btn-crear-agente'); 
+                if (btn) btn.disabled = true;
+                const idInput = document.getElementById('nuevo-pin');
+                const nombreInput = document.getElementById('nuevo-nombre');
                 
-                if (sesion.tiempoInicioEstado) {
-                    segundosUsados += Math.floor((ahora - sesion.tiempoInicioEstado) / 1000);
-                }
-
-                const dispEl = document.getElementById(`timer-disp-${ag.id}`);
-                const limitEl = document.getElementById(`timer-limit-${ag.id}`);
-                const badgeEl = document.getElementById(`badge-estado-${ag.id}`);
-                const cardBorderEl = document.getElementById(`card-border-${ag.id}`);
+                const id = idInput ? idInput.value.trim().toUpperCase() : '';
+                const nombre = nombreInput ? nombreInput.value.trim() : '';
                 
-                if(dispEl) {
-                    dispEl.innerText = formatSegundos(segundosUsados);
-                    
-                    // Actualizar el acumulado total abajo también dinámicamente
-                    const acumEl = document.getElementById(`acum-${estado}-${ag.id}`);
-                    if(acumEl) acumEl.innerText = formatSegundos(segundosUsados);
-
-                    // Revisar límites
-                    const limiteMinutos = ag.limites[estado] || 999;
-                    const limiteSegundos = limiteMinutos * 60;
-
-                    if (segundosUsados >= limiteSegundos) {
-                        dispEl.classList.add('text-danger');
-                        if(limitEl) {
-                            limitEl.innerHTML = `<span class="text-danger flex items-center justify-center gap-1"><i class="ph-fill ph-warning"></i> Excedido por ${formatSegundos(segundosUsados - limiteSegundos)}</span>`;
-                        }
-                        if(badgeEl) {
-                            badgeEl.className = "px-3 py-1.5 rounded-lg border text-xs font-bold flex items-center gap-1.5 bg-red-100 text-red-600 border-red-200 animate-pulse";
-                        }
-                        if(cardBorderEl) {
-                            cardBorderEl.className = "absolute top-0 left-0 w-full h-1 bg-danger";
-                        }
-                    } else {
-                        // Warn si quedan menos de 2 minutos
-                        if(limiteSegundos - segundosUsados <= 120) {
-                           dispEl.classList.remove('text-danger');
-                           dispEl.classList.add('text-warning');
-                           if(cardBorderEl) cardBorderEl.className = "absolute top-0 left-0 w-full h-1 bg-warning";
-                        } else {
-                           dispEl.classList.remove('text-danger', 'text-warning');
-                           if(cardBorderEl) cardBorderEl.className = "absolute top-0 left-0 w-full h-1 bg-brand";
-                        }
-                    }
-                }
-            });
-        }
-
-        function formatSegundos(totalSegundos) {
-            const m = Math.floor(totalSegundos / 60);
-            const s = totalSegundos % 60;
-            return `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
-        }
-
-
-        // --- LÓGICA DE REPORTES ---
-        window.cargarReportes = async function() {
-            const tbody = document.getElementById('tabla-reportes');
-            tbody.innerHTML = `<tr><td colspan="4" class="text-center p-6"><div class="inline-block w-6 h-6 border-2 border-brand border-t-transparent rounded-full animate-spin"></div></td></tr>`;
-            
-            try {
-                // Obtenemos los últimos 50 registros
-                const q = query(collection(db, "registros_tiempos"), orderBy("fecha", "desc"), limit(50));
-                const snap = await getDocs(q);
-                
-                tbody.innerHTML = '';
-                
-                if (snap.empty) {
-                    tbody.innerHTML = `<tr><td colspan="4" class="text-center p-6 text-text-mute">No hay registros recientes.</td></tr>`;
+                if (!id || !nombre) {
+                    Utils.toast("Completa todos los campos.", "error");
+                    if (btn) btn.disabled = false;
                     return;
                 }
+                
+                try {
+                    await setDoc(doc(App.db, "operadores", id), { id, nombre, limites: {bano: null, comida: null, calidad: null} });
+                    if (idInput) idInput.value = ''; 
+                    if (nombreInput) nombreInput.value = '';
+                    App.Modals.cerrarConfig(); 
+                    Utils.toast("Agente registrado.");
+                } catch(err) { 
+                    Utils.toast("Error al registrar.", "error"); 
+                } finally { 
+                    if (btn) btn.disabled = false; 
+                }
+            },
+            guardarGlobales: async () => {
+                const banoInput = document.getElementById('cfg-global-bano');
+                const comidaInput = document.getElementById('cfg-global-comida');
+                
+                const bano = banoInput ? (parseInt(banoInput.value) || 15) : 15;
+                const comida = comidaInput ? (parseInt(comidaInput.value) || 30) : 30;
+                
+                try {
+                    await setDoc(doc(App.db, "config", "global"), { limites: { bano, comida } }, { merge: true });
+                    App.config.limites = {bano, comida};
+                    App.Modals.cerrarConfig(); Utils.toast("Límites globales aplicados.");
+                } catch(err) { Utils.toast("Error al guardar.", "error"); }
+            },
+            abrirEditar: (id) => {
+                App.tempId = id; const ag = App.state.operadores[id]; const ses = App.state.sesiones[id] || { tiemposAcumulados: {} };
+                if (!ag) return;
+                
+                const editNombre = document.getElementById('edit-nombre');
+                const editId = document.getElementById('edit-id');
+                const editCBano = document.getElementById('edit-c-bano');
+                const editCComida = document.getElementById('edit-c-comida');
+                const editCCalidad = document.getElementById('edit-c-calidad');
+                const editLBano = document.getElementById('edit-l-bano');
+                const editLComida = document.getElementById('edit-l-comida');
+                
+                if (editNombre) editNombre.innerText = ag.nombre;
+                if (editId) editId.value = id;
+                if (editCBano) editCBano.value = Utils.formatSeg(ses.tiemposAcumulados?.bath || 0);
+                if (editCComida) editCComida.value = Utils.formatSeg(ses.tiemposAcumulados?.food || 0);
+                if (editCCalidad) editCCalidad.value = Utils.formatSeg(ses.tiemposAcumulados?.quality || 0);
+                if (editLBano) editLBano.value = ag.limites?.bano || '';
+                if (editLComida) editLComida.value = ag.limites?.comida || '';
+                
+                const overlay = document.getElementById('modal-overlay');
+                const m = document.getElementById('modal-editar');
+                
+                if (overlay && m) {
+                    overlay.classList.remove('hidden'); 
+                    m.classList.remove('hidden'); 
+                    setTimeout(() => { overlay.classList.remove('opacity-0'); m.classList.remove('scale-95'); }, 10);
+                }
+            },
+            guardarEdicion: async (e) => {
+                e.preventDefault(); 
+                const idInput = document.getElementById('edit-id');
+                if (!idInput) return;
+                const id = idInput.value;
+                
+                const btn = document.getElementById('btn-save-edit'); 
+                if (btn) btn.disabled = true;
+                
+                const cbano = document.getElementById('edit-c-bano');
+                const ccomida = document.getElementById('edit-c-comida');
+                const ccalidad = document.getElementById('edit-c-calidad');
+                const lbano = document.getElementById('edit-l-bano');
+                const lcomida = document.getElementById('edit-l-comida');
+                
+                const nwTiempos = {
+                    bath: cbano ? Utils.parseTime(cbano.value) : 0,
+                    food: ccomida ? Utils.parseTime(ccomida.value) : 0,
+                    quality: ccalidad ? Utils.parseTime(ccalidad.value) : 0
+                };
+                
+                const lB = (lbano && lbano.value) ? parseInt(lbano.value) : null;
+                const lC = (lcomida && lcomida.value) ? parseInt(lcomida.value) : null;
 
-                snap.forEach(doc => {
-                    const data = doc.data();
-                    const fechaStr = data.fecha ? data.fecha.toDate().toLocaleString() : 'Fecha pendiente';
-                    const estadoLabel = metaEstado[data.estado]?.label || data.estado;
-                    const duracionStr = formatSegundos(data.duracion_segundos);
-
-                    tbody.innerHTML += `
-                        <tr class="hover:bg-slate-50 transition-colors">
-                            <td class="p-4 text-sm text-text-mute">${fechaStr}</td>
-                            <td class="p-4 font-bold">
-                                ${data.asesor_nombre} <span class="font-mono text-xs text-text-mute bg-slate-200 px-1 rounded ml-1">${data.asesor_id}</span>
-                            </td>
-                            <td class="p-4">
-                                <span class="px-2 py-1 bg-slate-100 text-text-mute text-xs font-bold rounded border border-border">
-                                    ${estadoLabel}
-                                </span>
-                            </td>
-                            <td class="p-4 font-mono font-bold">${duracionStr}</td>
-                        </tr>
-                    `;
-                });
-
-            } catch (error) {
-                console.error("Error cargando reportes", error);
-                tbody.innerHTML = `<tr><td colspan="4" class="text-center p-6 text-danger">Error al cargar el historial.</td></tr>`;
+                try {
+                    // Update Limits
+                    await updateDoc(doc(App.db, "operadores", id), { "limites.bano": lB, "limites.comida": lC });
+                    // Update Today's time
+                    const refSes = doc(App.db, "sesiones_activas", id);
+                    if(App.state.sesiones[id]) { 
+                        await updateDoc(refSes, { tiemposAcumulados: nwTiempos }); 
+                    } else { 
+                        await setDoc(refSes, { estadoActivo: null, tiempoInicioEstado: null, fecha: Utils.fechaHoyNormal(), tiemposAcumulados: nwTiempos }); 
+                    }
+                    
+                    App.Modals.cerrarTodos(); Utils.toast("Cambios guardados.");
+                } catch(err) { 
+                    Utils.toast("Error al guardar.", "error"); 
+                } finally { 
+                    if (btn) btn.disabled = false; 
+                }
+            },
+            abrirEliminar: (id) => {
+                App.tempId = id; 
+                const overlay = document.getElementById('modal-overlay');
+                const m = document.getElementById('modal-confirm');
+                if (overlay && m) {
+                    overlay.classList.remove('hidden'); 
+                    m.classList.remove('hidden'); 
+                    setTimeout(() => { overlay.classList.remove('opacity-0'); m.classList.remove('scale-95'); }, 10);
+                }
+            },
+            eliminarAgente: async () => {
+                if(!App.tempId) return;
+                try { 
+                    await deleteDoc(doc(App.db, "operadores", App.tempId)); 
+                    App.Modals.cerrarTodos(); 
+                    Utils.toast("Agente eliminado."); 
+                } catch(err) { 
+                    Utils.toast("Error al eliminar.", "error"); 
+                }
+            },
+            resetearDia: async () => {
+                App.Modals.cerrarTodos();
+                try {
+                    const promesas = Object.keys(App.state.operadores).map(id => {
+                        return setDoc(doc(App.db, "sesiones_activas", id), { estadoActivo: null, tiempoInicioEstado: null, fecha: Utils.fechaHoyNormal(), tiemposAcumulados: {bath:0, food:0, quality:0} });
+                    });
+                    await Promise.all(promesas); Utils.toast("Tiempos reiniciados a cero.");
+                } catch(err) { Utils.toast("Error al reiniciar.", "error"); }
             }
         };
 
-        // Iniciar la app
-        init();
+        App.UI = {
+            renderMonitor: () => {
+                const grid = document.getElementById('lista-activos');
+                if (!grid) return;
+                
+                const searchEl = document.getElementById('search-monitor');
+                const term = searchEl ? searchEl.value.toLowerCase() : '';
+                
+                // NOTA: Como en este diseño el usuario solicitó conservar su diseño plano y 
+                // eliminamos el checkbox "toggle-active" para dejar todo visible o buscable,
+                // aseguramos que este valor siempre sea false para que no rompa o bien leemos 
+                // con protección.
+                const toggleEl = document.getElementById('toggle-active');
+                const soloActivos = toggleEl ? toggleEl.checked : false;
+                
+                let html = ''; let excedidos = 0; let activos = 0; let total = Object.keys(App.state.operadores).length;
+
+                Object.values(App.state.operadores).forEach(ag => {
+                    const ses = App.state.sesiones[ag.id];
+                    const isReceso = ses && ses.estadoActivo && ses.estadoActivo !== 'null';
+                    const isWorking = ses && (!ses.estadoActivo || ses.estadoActivo === 'null');
+                    const isOffline = !ses;
+
+                    if(term && !ag.nombre.toLowerCase().includes(term) && !ag.id.toLowerCase().includes(term)) return;
+                    if(soloActivos && isOffline) return;
+
+                    if(isReceso) activos++;
+
+                    // Limites aplicables
+                    const limB = ag.limites?.bano || App.config.limites.bano;
+                    const limC = ag.limites?.comida || App.config.limites.comida;
+                    
+                    const tB = ses?.tiemposAcumulados?.bath || 0; const tC = ses?.tiemposAcumulados?.food || 0; const tQ = ses?.tiemposAcumulados?.quality || 0;
+                    const excB = tB >= (limB * 60); const excC = tC >= (limC * 60);
+                    if(excB || excC) excedidos++;
+
+                    let statusHtml, timerHtml;
+                    let opacity = isOffline ? 'opacity-60 grayscale-[20%] bg-slate-50' : 'bg-white shadow-sm';
+
+                    if (isReceso) {
+                        const m = App.config.meta[ses.estadoActivo];
+                        statusHtml = `<span class="px-2 py-1 ${m.cBg} ${m.cText} text-[10px] font-bold rounded flex items-center gap-1.5 shrink-0 border ${m.cBorder}"><span class="w-1.5 h-1.5 ${m.cBar} rounded-full animate-pulse"></span> ${m.label}</span>`;
+                        timerHtml = `
+                            <div class="${m.cBg} rounded-2xl p-4 flex flex-col items-center justify-center border ${m.cBorder} relative overflow-hidden mb-4">
+                                <div class="absolute bottom-0 left-0 h-1.5 ${m.cBorder.replace('border-','bg-')} w-full opacity-50"><div id="p-${ag.id}" class="h-full ${m.cBar} progress-transition" style="width:0%"></div></div>
+                                <span id="t-${ag.id}" class="${m.cText} font-mono text-3xl font-black tracking-wider">00:00</span>
+                                <span class="text-[9px] font-bold uppercase tracking-widest mt-1 opacity-80 ${m.cText}">En Curso</span>
+                            </div>`;
+                    } else if (isWorking) {
+                        statusHtml = `<span class="px-2 py-1 bg-emerald-100 text-emerald-700 text-[10px] font-bold rounded flex items-center gap-1 shrink-0 border border-emerald-200"><span class="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse"></span> Operando</span>`;
+                        timerHtml = `<div class="bg-emerald-50/50 rounded-2xl p-4 flex flex-col items-center justify-center border border-emerald-100 mb-4 h-[94px]"><i class="ph-fill ph-check-circle text-3xl text-emerald-400 mb-1"></i><span class="text-[10px] font-bold uppercase tracking-widest text-emerald-600">Conectado</span></div>`;
+                    } else {
+                        statusHtml = `<span class="px-2 py-1 bg-slate-200 text-slate-500 text-[10px] font-bold rounded flex items-center gap-1 shrink-0 border border-slate-300"><i class="ph-fill ph-moon"></i> Ausente</span>`;
+                        timerHtml = `<div class="bg-slate-50 rounded-2xl p-4 flex flex-col items-center justify-center border border-slate-100 mb-4 h-[94px]"><i class="ph-fill ph-coffee text-3xl text-slate-300 mb-1"></i><span class="text-[10px] font-bold uppercase tracking-widest text-slate-400">Desconectado</span></div>`;
+                    }
+
+                    html += `
+                    <div class="${opacity} rounded-3xl p-5 border border-slate-200 flex flex-col hover:border-blue-200 transition-all relative group h-full">
+                        <div class="absolute top-4 right-4 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity z-10 bg-white/90 backdrop-blur-md rounded-xl p-1 shadow-sm border border-slate-200">
+                            <button onclick="App.Handlers.abrirEditar('${ag.id}')" class="text-slate-500 hover:text-blue-600 p-1.5 rounded-lg hover:bg-blue-50 transition-colors" title="Ajustar"><i class="ph-bold ph-sliders-horizontal"></i></button>
+                        </div>
+                        <div class="flex justify-between items-start mb-4 pr-10 min-h-[44px]">
+                            <div class="min-w-0"><h3 class="font-bold text-slate-800 text-base leading-tight truncate mb-1" title="${ag.nombre}">${ag.nombre}</h3><span class="text-[10px] text-slate-500 font-mono font-bold bg-slate-100 px-1.5 py-0.5 rounded">ID: ${ag.id}</span></div>
+                        </div>
+                        ${timerHtml}
+                        <div class="flex justify-between items-end mb-3 mt-auto pt-2 border-t border-slate-100">${statusHtml}<span class="text-[9px] text-slate-400 font-bold uppercase tracking-widest bg-slate-100 px-2 py-1 rounded">Consumo Hoy</span></div>
+                        <div class="grid grid-cols-3 gap-2">
+                            <div class="flex flex-col items-center justify-center rounded-2xl p-2 border ${excB ? 'bg-red-50 border-red-200 text-red-700' : 'bg-slate-50 border-slate-100 text-slate-600'}"><i class="ph-fill ph-toilet ${excB ? 'text-red-500' : 'text-blue-400'} mb-1 text-lg"></i><span id="tot-bath-${ag.id}" class="text-xs font-mono font-bold leading-none mb-1">${Utils.formatSeg(tB)}</span><span class="text-[9px] opacity-70 font-medium">/ ${limB}m</span></div>
+                            <div class="flex flex-col items-center justify-center rounded-2xl p-2 border ${excC ? 'bg-red-50 border-red-200 text-red-700' : 'bg-slate-50 border-slate-100 text-slate-600'}"><i class="ph-fill ph-hamburger ${excC ? 'text-red-500' : 'text-orange-400'} mb-1 text-lg"></i><span id="tot-food-${ag.id}" class="text-xs font-mono font-bold leading-none mb-1">${Utils.formatSeg(tC)}</span><span class="text-[9px] opacity-70 font-medium">/ ${limC}m</span></div>
+                            <div class="flex flex-col items-center justify-center rounded-2xl p-2 border bg-slate-50 border-slate-100 text-slate-600"><i class="ph-fill ph-star text-purple-400 mb-1 text-lg"></i><span id="tot-quality-${ag.id}" class="text-xs font-mono font-bold leading-none mb-1">${Utils.formatSeg(tQ)}</span><span class="text-[9px] opacity-70 font-medium">Libre</span></div>
+                        </div>
+                    </div>`;
+                });
+
+                const kpiTotal = document.getElementById('kpi-total');
+                const kpiActivos = document.getElementById('kpi-activos');
+                const kpiExced = document.getElementById('kpi-excedidos');
+                
+                if (kpiTotal) kpiTotal.innerText = total;
+                if (kpiActivos) kpiActivos.innerText = activos;
+                if (kpiExced) kpiExced.innerText = excedidos;
+                
+                grid.innerHTML = html || `<div class="col-span-full py-10 text-center text-slate-400 font-bold">No hay coincidencias con tu búsqueda.</div>`;
+                App.UI.tickRelojes(); // Ejecutar inmediato
+            },
+            tickRelojes: () => {
+                const ahora = Date.now();
+                Object.values(App.state.operadores).forEach(ag => {
+                    const ses = App.state.sesiones[ag.id];
+                    if(!ses || !ses.estadoActivo || ses.estadoActivo === 'null') return;
+                    
+                    const estado = ses.estadoActivo;
+                    let segs = ses.tiemposAcumulados[estado] || 0;
+                    if(ses.tiempoInicioEstado) segs += Math.floor((ahora - ses.tiempoInicioEstado) / 1000);
+
+                    const limMax = (ag.limites[estado === 'bath' ? 'bano' : estado] || App.config.limites[estado === 'bath' ? 'bano' : estado] || 999) * 60;
+                    
+                    const txtDisp = document.getElementById(`t-${ag.id}`);
+                    const barProg = document.getElementById(`p-${ag.id}`);
+                    const txtTot = document.getElementById(`tot-${estado}-${ag.id}`);
+
+                    if(txtDisp) {
+                        txtDisp.innerText = Utils.formatSeg(segs);
+                        if(txtTot) txtTot.innerText = Utils.formatSeg(segs);
+                        
+                        if(barProg) barProg.style.width = `${Math.min((segs/limMax)*100, 100)}%`;
+
+                        if(segs >= limMax) {
+                            txtDisp.className = "text-red-600 font-mono text-3xl font-black tracking-wider animate-pulse";
+                            if(barProg) barProg.className = "h-full bg-red-500 progress-transition";
+                        }
+                    }
+                });
+            }
+        };
+
+        App.Firebase = {
+            init: async () => {
+                // Fetch config
+                onSnapshot(doc(window.db, "config", "global"), (d) => { if(d.exists() && d.data().limites) App.config.limites = d.data().limites; });
+                
+                // Fetch agents
+                onSnapshot(collection(window.db, "operadores"), (snap) => {
+                    App.state.operadores = {};
+                    snap.forEach(d => App.state.operadores[d.id] = d.data());
+                    App.UI.renderMonitor();
+                });
+
+                // Fetch live sessions
+                onSnapshot(collection(window.db, "sesiones_activas"), (snap) => {
+                    App.state.sesiones = {};
+                    snap.forEach(d => { if(d.data().fecha === Utils.fechaHoyNormal()) App.state.sesiones[d.id] = d.data(); });
+                    App.UI.renderMonitor();
+                });
+
+                // Clock Engine
+                setInterval(App.UI.tickRelojes, 1000);
+                
+                // Initial History
+                const filtroHistorial = document.getElementById('filtro-fecha-historial');
+                if(filtroHistorial) filtroHistorial.value = App.state.fechaFiltro;
+                App.Firebase.fetchReportes();
+            },
+            fetchReportes: async () => {
+                const tbody = document.getElementById('tabla-registros-global');
+                const filtroEl = document.getElementById('filtro-fecha-historial');
+                if(!tbody) return;
+                
+                const fecha = filtroEl ? filtroEl.value : ''; // YYYY-MM-DD
+                tbody.innerHTML = `<tr><td colspan="4" class="text-center py-10"><div class="loader mx-auto"></div></td></tr>`;
+                
+                try {
+                    const q = query(collection(window.db, "registros_tiempos"), orderBy("fecha", "desc"), limit(100));
+                    const snap = await getDocs(q);
+                    tbody.innerHTML = '';
+                    let rCount = 0;
+
+                    snap.forEach(d => {
+                        const data = d.data();
+                        if(data.fecha) {
+                            const dateObj = data.fecha.toDate();
+                            const isoStr = new Date(dateObj.getTime() - (dateObj.getTimezoneOffset() * 60000)).toISOString().split('T')[0];
+                            
+                            if(isoStr === fecha) {
+                                rCount++;
+                                const fStr = dateObj.toLocaleTimeString('es-ES', {hour:'2-digit', minute:'2-digit'});
+                                const ui = App.config.meta[data.estado] || App.config.meta['null'];
+                                tbody.innerHTML += `
+                                <tr class="hover:bg-slate-50/80 transition-colors group border-b border-slate-100">
+                                    <td class="px-6 py-4 text-xs font-bold text-slate-500 bg-slate-50/30 group-hover:bg-slate-100/50 transition-colors w-32"><i class="ph-fill ph-clock text-slate-400"></i> ${fStr}</td>
+                                    <td class="px-6 py-4"><div class="font-bold text-slate-800">${data.asesor_nombre}</div><div class="text-[10px] font-mono font-bold text-slate-400 mt-0.5">ID: ${data.asesor_id}</div></td>
+                                    <td class="px-6 py-4"><span class="px-2.5 py-1 text-xs font-bold rounded-lg border inline-flex items-center gap-1.5 ${ui.cBg} ${ui.cText} ${ui.cBorder}"><i class="${ui.icon} text-sm"></i> ${ui.label}</span></td>
+                                    <td class="px-6 py-4 font-mono font-black text-blue-600 text-lg tracking-wider text-right">${Utils.formatSeg(data.duracion_segundos)}</td>
+                                </tr>`;
+                            }
+                        }
+                    });
+
+                    if(rCount === 0) tbody.innerHTML = `<tr><td colspan="4" class="text-center py-10 text-slate-400 font-bold italic">No hay registros para la fecha seleccionada.</td></tr>`;
+                } catch(e) { tbody.innerHTML = `<tr><td colspan="4" class="text-center py-10 text-red-500 font-bold">Error al cargar historial.</td></tr>`; }
+            }
+        };
+
+        // Expose to window for HTML inline onClick
+        window.App = App;
 
     </script>
 </body>
