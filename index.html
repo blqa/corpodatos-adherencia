@@ -4,17 +4,22 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Mi Panel de Adherencia</title>
+    
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/@phosphor-icons/web"></script>
+    
     <script>
         tailwind.config = {
             theme: {
                 extend: {
+                    fontFamily: { sans: ['Inter', 'sans-serif'] },
                     colors: {
                         card: '#ffffff', border: '#e5e7eb',
                         text: '#1f2937', 'text-mute': '#6b7280',
-                        brand: '#3b82f6', money: '#10b981', bg: '#f8fafc',
-                        bath: '#a855f7', food: '#f97316', quality: '#3b82f6'
+                        brand: '#3b82f6', money: '#10b981', bg: '#f8fafc'
                     }
                 }
             }
@@ -31,125 +36,145 @@
 
     <div class="max-w-6xl w-full">
         <!-- HEADER -->
-        <header class="bg-card p-6 rounded-2xl shadow-sm border border-border flex flex-col md:flex-row justify-between items-center mb-8 gap-4">
+        <header class="bg-card p-6 rounded-3xl shadow-sm border border-border flex flex-col md:flex-row justify-between items-center mb-8 gap-4">
             <div class="flex items-center gap-4">
-                <div class="w-12 h-12 bg-blue-50 text-brand rounded-xl flex items-center justify-center border border-blue-100">
+                <div class="w-12 h-12 bg-blue-50 text-brand rounded-xl flex items-center justify-center border border-blue-100 shadow-sm">
                     <i class="ph-fill ph-user-circle text-3xl"></i>
                 </div>
                 <div>
-                    <h1 class="text-2xl font-black leading-tight">Adherencia</h1>
+                    <h1 class="text-2xl font-black leading-tight tracking-tight">Mi Adherencia</h1>
                     <p class="text-sm text-text-mute font-medium" id="fecha-actual"></p>
                 </div>
             </div>
             <div class="flex items-center gap-4" id="header-user-info" style="display: none;">
                 <div class="text-right">
-                    <p class="font-bold text-lg leading-tight" id="agente-nombre-display">Cargando...</p>
-                    <p class="text-xs text-text-mute font-mono">ID: <span id="agente-id-display"></span></p>
+                    <p class="font-bold text-lg leading-tight text-slate-800" id="agente-nombre-display">Cargando...</p>
+                    <p class="text-xs text-text-mute font-mono font-bold bg-slate-100 px-2 py-0.5 rounded inline-block mt-0.5">ID: <span id="agente-id-display"></span></p>
                 </div>
-                <button onclick="cerrarSesion()" class="bg-red-50 text-red-600 hover:bg-red-100 border border-red-200 p-2 rounded-xl transition" title="Cambiar Agente">
+                <button onclick="cerrarSesion()" class="bg-red-50 text-red-600 hover:bg-red-100 border border-red-200 p-2.5 rounded-xl transition-colors shadow-sm" title="Cerrar Sesión">
                     <i class="ph-bold ph-sign-out text-xl"></i>
                 </button>
             </div>
         </header>
 
         <!-- PANEL DE LOGIN -->
-        <div id="panel-login" class="bg-card p-8 rounded-2xl shadow-sm border border-border max-w-md mx-auto text-center mt-10 transition-all">
-            <div class="w-16 h-16 bg-blue-50 text-brand rounded-full flex items-center justify-center mx-auto mb-4 border border-blue-100">
+        <div id="panel-login" class="bg-card p-8 rounded-3xl shadow-lg border border-border max-w-md mx-auto text-center mt-10 transition-all">
+            <div class="w-16 h-16 bg-gradient-to-br from-blue-500 to-indigo-600 text-white rounded-2xl flex items-center justify-center mx-auto mb-6 shadow-lg shadow-blue-500/30">
                 <i class="ph-bold ph-identification-card text-3xl"></i>
             </div>
-            <h2 class="text-xl font-bold text-text mb-2">Consulta tu Dashboard</h2>
-            <p class="text-sm text-text-mute mb-6">Ingresa tu ID para ver tus tiempos de hoy.</p>
-            <div class="flex flex-col gap-3">
-                <input type="text" id="input-id" placeholder="Ej. 1001" class="border border-border p-3 rounded-xl focus:ring-2 focus:ring-brand focus:border-brand focus:outline-none text-center font-mono text-lg shadow-inner bg-slate-50">
-                <button onclick="iniciarDashboard()" id="btn-login" class="bg-brand text-white font-bold py-3 rounded-xl hover:bg-blue-600 transition shadow-md shadow-brand/30">
-                    Ver mis tiempos
+            <h2 class="text-2xl font-black text-slate-800 mb-2">Consulta tu Dashboard</h2>
+            <p class="text-sm text-slate-500 mb-8">Ingresa tu ID corporativo para ver tus métricas de tiempos de hoy y tu historial.</p>
+            <form onsubmit="iniciarDashboard(event)" class="flex flex-col gap-4">
+                <input type="text" id="input-id" required placeholder="PIN o ID Corporativo" class="border-2 border-slate-200 p-4 rounded-xl focus:ring-4 focus:ring-blue-100 focus:border-brand focus:outline-none text-center font-mono text-xl tracking-widest shadow-inner bg-slate-50 transition-all font-bold text-slate-700 uppercase">
+                <button type="submit" id="btn-login" class="bg-slate-900 text-white font-bold py-4 rounded-xl hover:bg-slate-800 transition shadow-lg shadow-slate-900/20 active:scale-95 flex justify-center items-center gap-2">
+                    Ingresar <i class="ph-bold ph-arrow-right"></i>
                 </button>
-            </div>
-            <p id="login-error" class="text-red-500 text-sm mt-4 font-medium hidden bg-red-50 py-2 rounded-lg border border-red-100"></p>
+            </form>
+            <p id="login-error" class="text-red-600 text-sm mt-5 font-bold hidden bg-red-50 py-3 rounded-xl border border-red-100"></p>
         </div>
 
         <!-- DASHBOARD VISUAL (Oculto hasta loguearse) -->
         <div id="panel-dashboard" style="display: none;">
             
-            <!-- TARJETAS DE PROGRESO -->
+            <h3 class="font-black text-slate-800 mb-4 ml-2 flex items-center gap-2"><i class="ph-fill ph-clock text-brand"></i> Consumo de Hoy (En vivo)</h3>
+            
+            <!-- TARJETAS DE PROGRESO DE HOY -->
             <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-                
                 <!-- BAÑO -->
-                <div class="bg-card p-6 rounded-2xl shadow-sm border border-border relative overflow-hidden group" id="card-bath">
+                <div class="bg-card p-6 rounded-3xl shadow-sm border border-border relative overflow-hidden group transition-colors" id="card-bath">
                     <div class="flex justify-between items-start mb-4">
                         <div class="flex items-center gap-2 text-purple-600 font-black uppercase text-sm tracking-wider">
-                            <i class="ph-fill ph-toilet text-2xl"></i> Sanitario
+                            <div class="p-2 bg-purple-100 rounded-lg"><i class="ph-fill ph-toilet text-xl"></i></div> Sanitario
                         </div>
                         <div class="text-right">
-                            <span class="text-3xl font-black font-mono tracking-tighter" id="disp-bath">00:00</span>
-                            <span class="text-xs text-text-mute font-bold block" id="limit-bath">/ 00:00 min</span>
+                            <span class="text-3xl font-black font-mono tracking-tighter text-slate-800" id="disp-bath">00:00</span>
+                            <span class="text-xs text-slate-400 font-bold block" id="limit-bath">/ 00:00 min</span>
                         </div>
                     </div>
-                    <!-- Barra de progreso -->
-                    <div class="w-full bg-slate-100 h-3 rounded-full overflow-hidden border border-slate-200">
-                        <div id="bar-bath" class="bg-purple-500 h-full progress-bar w-0 rounded-full"></div>
+                    <div class="w-full bg-slate-100 h-3.5 rounded-full overflow-hidden border border-slate-200">
+                        <div id="bar-bath" class="bg-purple-500 h-full progress-bar w-0 rounded-r-full"></div>
                     </div>
-                    <p class="text-xs font-bold text-text-mute mt-3 text-center" id="rem-bath">Restan: --</p>
+                    <p class="text-xs font-bold text-slate-500 mt-3 text-center" id="rem-bath">Restan: --</p>
                 </div>
 
                 <!-- COMIDA -->
-                <div class="bg-card p-6 rounded-2xl shadow-sm border border-border relative overflow-hidden group" id="card-food">
+                <div class="bg-card p-6 rounded-3xl shadow-sm border border-border relative overflow-hidden group transition-colors" id="card-food">
                     <div class="flex justify-between items-start mb-4">
                         <div class="flex items-center gap-2 text-orange-600 font-black uppercase text-sm tracking-wider">
-                            <i class="ph-fill ph-hamburger text-2xl"></i> Comida
+                            <div class="p-2 bg-orange-100 rounded-lg"><i class="ph-fill ph-hamburger text-xl"></i></div> Comida
                         </div>
                         <div class="text-right">
-                            <span class="text-3xl font-black font-mono tracking-tighter" id="disp-food">00:00</span>
-                            <span class="text-xs text-text-mute font-bold block" id="limit-food">/ 00:00 min</span>
+                            <span class="text-3xl font-black font-mono tracking-tighter text-slate-800" id="disp-food">00:00</span>
+                            <span class="text-xs text-slate-400 font-bold block" id="limit-food">/ 00:00 min</span>
                         </div>
                     </div>
-                    <!-- Barra de progreso -->
-                    <div class="w-full bg-slate-100 h-3 rounded-full overflow-hidden border border-slate-200">
-                        <div id="bar-food" class="bg-orange-500 h-full progress-bar w-0 rounded-full"></div>
+                    <div class="w-full bg-slate-100 h-3.5 rounded-full overflow-hidden border border-slate-200">
+                        <div id="bar-food" class="bg-orange-500 h-full progress-bar w-0 rounded-r-full"></div>
                     </div>
-                    <p class="text-xs font-bold text-text-mute mt-3 text-center" id="rem-food">Restan: --</p>
+                    <p class="text-xs font-bold text-slate-500 mt-3 text-center" id="rem-food">Restan: --</p>
                 </div>
 
                 <!-- CALIDAD -->
-                <div class="bg-card p-6 rounded-2xl shadow-sm border border-border relative overflow-hidden group" id="card-quality">
+                <div class="bg-card p-6 rounded-3xl shadow-sm border border-border relative overflow-hidden group transition-colors" id="card-quality">
                     <div class="flex justify-between items-start mb-4">
                         <div class="flex items-center gap-2 text-blue-600 font-black uppercase text-sm tracking-wider">
-                            <i class="ph-fill ph-headset text-2xl"></i> Calidad
+                            <div class="p-2 bg-blue-100 rounded-lg"><i class="ph-fill ph-star text-xl"></i></div> Calidad
                         </div>
                         <div class="text-right">
-                            <span class="text-3xl font-black font-mono tracking-tighter" id="disp-quality">00:00</span>
-                            <span class="text-xs text-text-mute font-bold block" id="limit-quality">/ 00:00 min</span>
+                            <span class="text-3xl font-black font-mono tracking-tighter text-slate-800" id="disp-quality">00:00</span>
+                            <span class="text-xs text-slate-400 font-bold block" id="limit-quality">/ 00:00 min</span>
                         </div>
                     </div>
-                    <!-- Barra de progreso -->
-                    <div class="w-full bg-slate-100 h-3 rounded-full overflow-hidden border border-slate-200">
-                        <div id="bar-quality" class="bg-blue-500 h-full progress-bar w-0 rounded-full"></div>
+                    <div class="w-full bg-slate-100 h-3.5 rounded-full overflow-hidden border border-slate-200">
+                        <div id="bar-quality" class="bg-blue-500 h-full progress-bar w-0 rounded-r-full"></div>
                     </div>
-                    <p class="text-xs font-bold text-text-mute mt-3 text-center" id="rem-quality">Restan: --</p>
+                    <p class="text-xs font-bold text-slate-500 mt-3 text-center" id="rem-quality">Restan: --</p>
                 </div>
-
             </div>
 
-            <!-- HISTORIAL DETALLADO -->
-            <div class="bg-card rounded-2xl shadow-sm border border-border overflow-hidden">
-                <div class="p-6 border-b border-border bg-slate-50 flex justify-between items-center">
-                    <h3 class="text-lg font-black flex items-center gap-2">
-                        <i class="ph-bold ph-list-bullets text-brand"></i> Historial de Hoy
-                    </h3>
-                    <span class="text-xs font-bold text-text-mute bg-white px-3 py-1 rounded-full border border-border shadow-sm"></span>
+            <!-- HISTORIAL DETALLADO POR FECHA -->
+            <div class="bg-card rounded-3xl shadow-sm border border-border overflow-hidden flex flex-col">
+                <div class="p-6 border-b border-border bg-slate-50/50 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                    <div>
+                        <h3 class="text-lg font-black flex items-center gap-2 text-slate-800">
+                            <i class="ph-bold ph-calendar-check text-brand text-xl"></i> Mi Bitácora de Tiempos
+                        </h3>
+                        <p class="text-xs text-slate-500 mt-1">Selecciona una fecha para ver cuánto tiempo tomaste ese día.</p>
+                    </div>
+                    <div class="relative flex items-center shadow-sm">
+                        <i class="ph-bold ph-calendar-blank absolute left-4 text-slate-400"></i>
+                        <input type="date" id="filtro-fecha-agente" onchange="actualizarHistorialFecha()" class="pl-11 pr-4 py-3 border border-slate-200 rounded-xl text-sm font-bold text-slate-700 bg-white focus:border-brand outline-none transition-colors cursor-pointer w-full sm:w-auto">
+                    </div>
                 </div>
-                <div class="overflow-x-auto">
+
+                <!-- Resumen Total del Día Seleccionado -->
+                <div class="grid grid-cols-3 divide-x divide-slate-100 border-b border-slate-100 bg-white">
+                    <div class="p-4 text-center">
+                        <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Total Baño</p>
+                        <p class="text-xl font-mono font-black text-purple-600" id="hist-tot-bath">00:00</p>
+                    </div>
+                    <div class="p-4 text-center">
+                        <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Total Comida</p>
+                        <p class="text-xl font-mono font-black text-orange-600" id="hist-tot-food">00:00</p>
+                    </div>
+                    <div class="p-4 text-center">
+                        <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Total Calidad</p>
+                        <p class="text-xl font-mono font-black text-blue-600" id="hist-tot-quality">00:00</p>
+                    </div>
+                </div>
+
+                <div class="overflow-x-auto max-h-[400px] overflow-y-auto relative custom-scrollbar">
                     <table class="w-full text-left border-collapse">
-                        <thead>
-                            <tr class="bg-white border-b border-border text-xs text-text-mute uppercase tracking-widest font-bold">
-                                <th class="p-4">Hora de Registro</th>
-                                <th class="p-4">Tipo de Pausa</th>
-                                <th class="p-4 text-right">Duración Exacta</th>
+                        <thead class="sticky top-0 bg-white shadow-sm z-10">
+                            <tr class="border-b border-slate-100 text-xs text-slate-400 uppercase tracking-widest font-bold">
+                                <th class="px-6 py-4">Hora de Registro</th>
+                                <th class="px-6 py-4">Tipo de Pausa</th>
+                                <th class="px-6 py-4 text-right">Duración Exacta</th>
                             </tr>
                         </thead>
-                        <tbody id="tabla-historial" class="divide-y divide-border bg-white">
+                        <tbody id="tabla-historial" class="divide-y divide-slate-50 bg-white">
                             <!-- Filas dinámicas -->
-                            <tr><td colspan="3" class="text-center p-8 text-text-mute">No hay registros hoy. ¡Excelente trabajo!</td></tr>
+                            <tr><td colspan="3" class="text-center p-10"><div class="loader mx-auto"></div></td></tr>
                         </tbody>
                     </table>
                 </div>
@@ -177,37 +202,52 @@
 
         // Variables Globales
         let asesorDatos = JSON.parse(localStorage.getItem('asesorDashboard')) || null;
+        let configGlobal = { limites: { bano: 15, comida: 30 } };
         let sesionFirebase = { tiemposAcumulados: { bath: 0, food: 0, quality: 0 }, estadoActivo: null, tiempoInicioEstado: null };
         let timerRelojes = null;
-        let diaInicial = new Date().toLocaleDateString();
+        let misRegistrosTotales = []; // Aquí guardaremos todos los logs de este agente
+        
+        // Obtener fecha YYYY-MM-DD local segura
+        const getFechaISO = (dateObj = new Date()) => {
+            const tzOffset = dateObj.getTimezoneOffset() * 60000;
+            return new Date(dateObj.getTime() - tzOffset).toISOString().split('T')[0];
+        };
+        
+        let diaInicial = getFechaISO();
 
         // Mapeo visual de estados
         const metaEstado = {
-            'bath': { icon: 'ph-toilet text-purple-600', bg: 'bg-purple-100', label: 'Sanitario' },
-            'food': { icon: 'ph-hamburger text-orange-600', bg: 'bg-orange-100', label: 'Comida' },
-            'quality': { icon: 'ph-headset text-blue-600', bg: 'bg-blue-100', label: 'Calidad' }
+            'bath': { icon: 'ph-toilet text-purple-600', bg: 'bg-purple-50 border border-purple-200 text-purple-700', label: 'Sanitario', key: 'Baño' },
+            'food': { icon: 'ph-hamburger text-orange-600', bg: 'bg-orange-50 border border-orange-200 text-orange-700', label: 'Comida', key: 'Comida' },
+            'quality': { icon: 'ph-star text-blue-600', bg: 'bg-blue-50 border border-blue-200 text-blue-700', label: 'Calidad', key: 'Calidad' }
         };
 
-        // Mostrar fecha actual
+        const metaEstadoReverse = {
+            'Baño': metaEstado['bath'],
+            'Comida': metaEstado['food'],
+            'Calidad': metaEstado['quality']
+        };
+
+        // Mostrar fecha actual en el header
         const opcionesFecha = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
         document.getElementById('fecha-actual').innerText = new Date().toLocaleDateString('es-ES', opcionesFecha);
 
+        // Configurar el input de fecha a HOY por defecto
+        document.getElementById('filtro-fecha-agente').value = diaInicial;
+        document.getElementById('filtro-fecha-agente').max = diaInicial; // No pueden ver el futuro
+
         // --- SISTEMA DE CORTE DIARIO A MEDIANOCHE ---
         setInterval(() => {
-            const diaActual = new Date().toLocaleDateString();
-            if (diaActual !== diaInicial) {
-                // Si el día cambió, recargamos la página forzosamente para resetear a 0
-                location.reload();
-            }
-        }, 60000); // Revisa cada minuto
+            const diaActual = getFechaISO();
+            if (diaActual !== diaInicial) location.reload(); // Recarga si cambió de día
+        }, 60000);
 
-        // --- LOGIN ---
-        if (asesorDatos) {
-            cargarInterfazDashboard();
-        }
+        // --- INICIALIZAR Y LOGIN ---
+        if (asesorDatos) cargarInterfazDashboard();
 
-        window.iniciarDashboard = async function() {
-            const inputId = document.getElementById('input-id').value.trim();
+        window.iniciarDashboard = async function(e) {
+            e.preventDefault();
+            const inputId = document.getElementById('input-id').value.trim().toUpperCase();
             const btn = document.getElementById('btn-login');
             const errorMsg = document.getElementById('login-error');
 
@@ -224,14 +264,14 @@
                     localStorage.setItem('asesorDashboard', JSON.stringify(asesorDatos));
                     cargarInterfazDashboard();
                 } else {
-                    errorMsg.innerText = "ID no encontrado en el sistema.";
+                    errorMsg.innerHTML = '<i class="ph-bold ph-warning-circle"></i> ID no encontrado en el sistema.';
                     errorMsg.classList.remove('hidden');
                 }
             } catch (error) {
-                errorMsg.innerText = "Error al conectar con la base de datos.";
+                errorMsg.innerHTML = '<i class="ph-bold ph-warning-circle"></i> Error de conexión con el servidor.';
                 errorMsg.classList.remove('hidden');
             } finally {
-                btn.innerHTML = `Ver mis tiempos`;
+                btn.innerHTML = `Ingresar <i class="ph-bold ph-arrow-right"></i>`;
                 btn.disabled = false;
             }
         };
@@ -250,32 +290,51 @@
             document.getElementById('agente-nombre-display').innerText = asesorDatos.nombre;
             document.getElementById('agente-id-display').innerText = asesorDatos.id;
 
-            // Configurar límites en la UI
-            document.getElementById('limit-bath').innerText = `/ ${asesorDatos.limites?.bano || 0} min`;
-            document.getElementById('limit-food').innerText = `/ ${asesorDatos.limites?.comida || 0} min`;
-            document.getElementById('limit-quality').innerText = `/ ${asesorDatos.limites?.calidad || 0} min`;
+            // Obtener configuración global de límites por si no tiene individuales
+            onSnapshot(doc(db, "config", "global"), (d) => {
+                if(d.exists() && d.data().limites) configGlobal.limites = d.data().limites;
+                actualizarTextosLimitesUI();
+            });
 
-            escucharSesionActiva();
-            escucharHistorialHoy();
+            actualizarTextosLimitesUI();
+            escucharSesionActivaHOY();
+            escucharHistorialTotal(); // Cargar todo el historial del agente
             
             if(timerRelojes) clearInterval(timerRelojes);
-            timerRelojes = setInterval(actualizarCronometrosVisuales, 1000);
+            timerRelojes = setInterval(actualizarCronometrosVIVO, 1000);
         }
 
-        // --- ESCUCHA DE TIEMPOS ACUMULADOS EN VIVO ---
-        function escucharSesionActiva() {
+        function actualizarTextosLimitesUI() {
+            const limB = asesorDatos.limites?.bano || configGlobal.limites.bano;
+            const limC = asesorDatos.limites?.comida || configGlobal.limites.comida;
+            const limQ = asesorDatos.limites?.calidad || 999;
+
+            document.getElementById('limit-bath').innerText = `/ ${limB} min`;
+            document.getElementById('limit-food').innerText = `/ ${limC} min`;
+            document.getElementById('limit-quality').innerText = `Libre`;
+        }
+
+        // --- ESCUCHA DE TIEMPOS HOY (EN VIVO) ---
+        function escucharSesionActivaHOY() {
+            // El formato de fecha en la sesión usa .toLocaleDateString() del admin en la nueva v2.
+            // Para asegurar compatibilidad, checamos la estructura
             onSnapshot(doc(db, "sesiones_activas", asesorDatos.id), (docSnap) => {
                 const data = docSnap.exists() ? docSnap.data() : null;
-                if (data && data.fecha === diaInicial) {
+                // La versión Pro del supervisor guarda la fecha como DD/MM/YYYY local. 
+                // Adaptamos la lectura o simplemente confiamos en que si existe, es de hoy, 
+                // ya que el supervisor / agente lo resetean. 
+                const fechaNormal = new Date().toLocaleDateString();
+                
+                if (data && (data.fecha === fechaNormal || data.fecha === getFechaISO())) {
                     sesionFirebase = data;
                 } else {
                     sesionFirebase = { tiemposAcumulados: { bath: 0, food: 0, quality: 0 }, estadoActivo: null, tiempoInicioEstado: null };
                 }
-                actualizarCronometrosVisuales();
+                actualizarCronometrosVIVO();
             });
         }
 
-        function actualizarCronometrosVisuales() {
+        function actualizarCronometrosVIVO() {
             if (!asesorDatos) return;
             const ahora = Date.now();
 
@@ -286,13 +345,13 @@
                     segundosUsados += Math.floor((ahora - sesionFirebase.tiempoInicioEstado) / 1000);
                 }
 
-                // Actualizar Texto (MM:SS)
-                const m = Math.floor(segundosUsados / 60);
-                const s = segundosUsados % 60;
-                document.getElementById(`disp-${estado}`).innerText = `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
+                // Actualizar Texto Reloj
+                document.getElementById(`disp-${estado}`).innerText = formatTiempo(segundosUsados);
 
-                // Calcular Progreso de la Barra
-                const limiteMinutos = (estado === 'bath' ? asesorDatos.limites.bano : (estado === 'food' ? asesorDatos.limites.comida : asesorDatos.limites.calidad)) || 999;
+                // Calcular Progreso Barra
+                const limiteMinutos = (estado === 'bath' ? (asesorDatos.limites?.bano || configGlobal.limites.bano) : 
+                                      (estado === 'food' ? (asesorDatos.limites?.comida || configGlobal.limites.comida) : 999)) || 999;
+                
                 const limiteSegundos = limiteMinutos * 60;
                 let porcentaje = (segundosUsados / limiteSegundos) * 100;
                 if (porcentaje > 100) porcentaje = 100;
@@ -303,88 +362,116 @@
 
                 barra.style.width = `${porcentaje}%`;
 
-                // Colores y Alertas Visuales
+                // Alertas Visuales si excede el tiempo HOY
                 if (segundosUsados >= limiteSegundos) {
-                    // Corrección: Usar className de forma segura para evitar fallos con los tokens
-                    barra.className = 'progress-bar h-full rounded-full bg-red-500';
-                    caja.classList.add('border-red-400', 'bg-red-50', 'animate-pulse');
-                    textoRestante.innerHTML = `<span class="text-red-600 font-black"><i class="ph-bold ph-warning"></i> Tiempo Excedido por ${formatTiempo(segundosUsados - limiteSegundos)}</span>`;
+                    barra.className = 'progress-bar h-full rounded-r-full bg-red-500';
+                    caja.classList.add('border-red-300', 'bg-red-50');
+                    textoRestante.innerHTML = `<span class="text-red-600 font-black"><i class="ph-bold ph-warning"></i> Excedido por ${formatTiempo(segundosUsados - limiteSegundos)}</span>`;
                 } else {
-                    caja.classList.remove('border-red-400', 'bg-red-50', 'animate-pulse');
-                    
-                    // Restauración segura del color de la barra usando className
-                    barra.className = `progress-bar h-full rounded-full ${estado === 'bath' ? 'bg-purple-500' : (estado === 'food' ? 'bg-orange-500' : 'bg-blue-500')}`;
+                    caja.classList.remove('border-red-300', 'bg-red-50');
+                    barra.className = `progress-bar h-full rounded-r-full ${estado === 'bath' ? 'bg-purple-500' : (estado === 'food' ? 'bg-orange-500' : 'bg-blue-500')}`;
                     
                     const restan = limiteSegundos - segundosUsados;
                     textoRestante.innerHTML = `Te restan <strong>${formatTiempo(restan)}</strong>`;
                     
-                    if (restan <= 120) { // Menos de 2 mins
-                        textoRestante.innerHTML = `<span class="text-amber-600"><i class="ph-bold ph-clock"></i> ¡Atención! Te restan ${formatTiempo(restan)}</span>`;
+                    if (restan <= 120 && restan > 0 && estado !== 'quality') { 
+                        textoRestante.innerHTML = `<span class="text-orange-500"><i class="ph-bold ph-clock"></i> ¡Atención! Solo ${formatTiempo(restan)}</span>`;
                     }
                 }
 
-                // Destacar la tarjeta si es el estado actual
+                // Destacar tarjeta activa
                 if (sesionFirebase.estadoActivo === estado) {
-                    caja.classList.add('ring-4', 'ring-brand/30', 'scale-[1.02]');
+                    caja.classList.add('ring-4', estado === 'bath' ? 'ring-purple-500/20' : (estado==='food' ? 'ring-orange-500/20' : 'ring-blue-500/20'), 'scale-[1.02]');
                 } else {
-                    caja.classList.remove('ring-4', 'ring-brand/30', 'scale-[1.02]');
+                    caja.classList.remove('ring-4', 'ring-purple-500/20', 'ring-orange-500/20', 'ring-blue-500/20', 'scale-[1.02]');
                 }
             });
         }
 
         function formatTiempo(segundosTotales) {
+            if(isNaN(segundosTotales) || segundosTotales < 0) return "00:00";
             const m = Math.floor(segundosTotales / 60);
             const s = segundosTotales % 60;
-            return `${m}m ${s.toString().padStart(2, '0')}s`;
+            return `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
         }
 
-        // --- ESCUCHA DEL HISTORIAL (LÍNEA DE TIEMPO) ---
-        function escucharHistorialHoy() {
-            // Regla Firestore: Traemos todo y filtramos en memoria para evitar errores de índices
+        // --- ESCUCHA DEL HISTORIAL COMPLETO ---
+        function escucharHistorialTotal() {
+            // Traemos TODOS los registros y filtramos los del agente
             onSnapshot(collection(db, "registros_tiempos"), (snapshot) => {
-                let logsHoy = [];
+                misRegistrosTotales = [];
                 snapshot.forEach(doc => {
                     const data = doc.data();
-                    if (data.asesor_id === asesorDatos.id) {
-                        const fechaLog = data.fecha ? data.fecha.toDate() : new Date();
-                        if (fechaLog.toLocaleDateString() === diaInicial) {
-                            logsHoy.push({ ...data, fechaReal: fechaLog });
-                        }
+                    if (data.asesor_id === asesorDatos.id && data.fecha) {
+                        // Guardar con su objeto Date real
+                        misRegistrosTotales.push({ ...data, fechaObj: data.fecha.toDate() });
                     }
                 });
-
-                // Ordenamos del más reciente al más antiguo
-                logsHoy.sort((a, b) => b.fechaReal - a.fechaReal);
-                renderTablaHistorial(logsHoy);
+                
+                // Ordenar del más nuevo al más viejo
+                misRegistrosTotales.sort((a, b) => b.fechaObj - a.fechaObj);
+                
+                // Forzar el render de la fecha que esté seleccionada
+                window.actualizarHistorialFecha();
             });
         }
 
-        function renderTablaHistorial(logs) {
+        // --- FILTRADO DE FECHAS (DIAS PASADOS) ---
+        window.actualizarHistorialFecha = function() {
             const tbody = document.getElementById('tabla-historial');
+            const fechaInput = document.getElementById('filtro-fecha-agente').value; // Formato YYYY-MM-DD
+            if(!fechaInput) return;
+
+            // Filtrar registros que pertenezcan a la fecha seleccionada
+            const registrosDelDia = misRegistrosTotales.filter(log => {
+                const logFechaISO = getFechaISO(log.fechaObj);
+                return logFechaISO === fechaInput;
+            });
+
+            // Llenar tabla
             tbody.innerHTML = '';
 
-            if (logs.length === 0) {
-                tbody.innerHTML = `<tr><td colspan="3" class="text-center p-8 text-text-mute"><i class="ph-fill ph-check-circle text-4xl text-slate-300 mb-2 block"></i> No hay registros de pausas finalizadas hoy.</td></tr>`;
+            if (registrosDelDia.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="3" class="text-center py-12"><div class="w-16 h-16 bg-slate-100 rounded-full flex items-center justify-center mx-auto mb-3"><i class="ph-fill ph-coffee text-3xl text-slate-300"></i></div><p class="text-slate-500 font-bold text-sm">No tomaste pausas este día o no trabajaste.</p></td></tr>`;
+                
+                // Limpiar resumen
+                document.getElementById('hist-tot-bath').innerText = '00:00';
+                document.getElementById('hist-tot-food').innerText = '00:00';
+                document.getElementById('hist-tot-quality').innerText = '00:00';
                 return;
             }
 
-            logs.forEach(log => {
-                const horaStr = log.fechaReal.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit', hour12: true });
-                const meta = metaEstado[log.estado] || { icon: 'ph-question', bg: 'bg-slate-100', label: log.estado };
+            // Sumadores para el resumen del día pasado
+            let totalB = 0, totalC = 0, totalQ = 0;
+
+            registrosDelDia.forEach(log => {
+                // Sumar al total del día
+                if(log.estado === 'Baño' || log.estado === 'bath') totalB += log.duracion_segundos;
+                if(log.estado === 'Comida' || log.estado === 'food') totalC += log.duracion_segundos;
+                if(log.estado === 'Calidad' || log.estado === 'quality') totalQ += log.duracion_segundos;
+
+                const horaStr = log.fechaObj.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit', hour12: true });
+                const meta = metaEstado[log.estado] || metaEstadoReverse[log.estado] || { icon: 'ph-question', bg: 'bg-slate-100 text-slate-600 border border-slate-200', label: log.estado };
                 
                 tbody.innerHTML += `
-                    <tr class="hover:bg-slate-50 transition-colors">
-                        <td class="p-4 font-bold text-text">${horaStr}</td>
-                        <td class="p-4">
-                            <span class="px-3 py-1.5 ${meta.bg} text-[11px] font-black uppercase rounded-lg border border-white flex items-center gap-2 inline-flex">
-                                <i class="${meta.icon} text-lg"></i> ${meta.label}
+                    <tr class="hover:bg-slate-50/80 transition-colors group border-b border-slate-50">
+                        <td class="px-6 py-4 font-bold text-slate-500 text-sm group-hover:text-slate-700 transition-colors"><i class="ph-fill ph-clock text-slate-400"></i> ${horaStr}</td>
+                        <td class="px-6 py-4">
+                            <span class="px-3 py-1 ${meta.bg} text-[11px] font-black uppercase rounded-lg inline-flex items-center gap-2">
+                                <i class="${meta.icon} text-sm"></i> ${meta.label}
                             </span>
                         </td>
-                        <td class="p-4 text-right font-mono font-black text-text">${formatTiempo(log.duracion_segundos)}</td>
+                        <td class="px-6 py-4 text-right font-mono font-black text-slate-800 text-lg">${formatTiempo(log.duracion_segundos)}</td>
                     </tr>
                 `;
             });
+
+            // Pintar totales en el resumen de arriba de la tabla
+            document.getElementById('hist-tot-bath').innerText = formatTiempo(totalB);
+            document.getElementById('hist-tot-food').innerText = formatTiempo(totalC);
+            document.getElementById('hist-tot-quality').innerText = formatTiempo(totalQ);
         }
+
     </script>
 </body>
 </html>
