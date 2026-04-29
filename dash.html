@@ -272,16 +272,45 @@
                 </div>
             </section>
 
-            <!-- Historial -->
-            <section class="bg-white rounded-3xl shadow-sm border border-slate-200 overflow-hidden">
-                <div class="px-6 py-5 border-b border-slate-100 flex flex-wrap justify-between items-center gap-4 bg-slate-50/50">
-                    <h2 class="font-bold text-slate-800 flex items-center gap-2 text-lg"><i class="ph ph-clock-counter-clockwise text-blue-500 text-xl"></i> Bitácora de Movimientos</h2>
-                    <div class="relative">
-                        <i class="ph ph-calendar-blank absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400"></i>
-                        <input type="date" id="filtro-fecha-historial" onchange="App.Firebase.fetchReportes()" class="pl-10 pr-4 py-2 border border-slate-200 bg-white rounded-xl text-sm text-slate-600 font-medium outline-none focus:border-blue-500 transition-all cursor-pointer">
+            <!-- Historial Avanzado con Filtros -->
+            <section class="bg-white rounded-3xl shadow-sm border border-slate-200 overflow-hidden flex flex-col h-full max-h-[800px]">
+                <div class="px-6 py-5 border-b border-slate-100 flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-slate-50/50 shrink-0">
+                    <div>
+                        <h2 class="font-bold text-slate-800 flex items-center gap-2 text-lg"><i class="ph ph-clock-counter-clockwise text-blue-500 text-xl"></i> Bitácora de Movimientos</h2>
+                        <p class="text-xs text-slate-500 mt-1">Busca y audita tiempos por fecha y por nombre/ID de colaborador.</p>
+                    </div>
+                    <div class="flex flex-col sm:flex-row items-center gap-3 w-full md:w-auto">
+                        <div class="relative w-full sm:w-56 group">
+                            <i class="ph ph-magnifying-glass absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400 group-focus-within:text-blue-500 transition-colors"></i>
+                            <input type="text" id="filtro-agente-historial" onkeyup="App.UI.renderHistorialLocal()" placeholder="Buscar por agente..." class="w-full border border-slate-200 rounded-xl pl-9 pr-4 py-2.5 text-sm focus:border-blue-500 focus:ring-2 focus:ring-blue-100 outline-none transition-all shadow-sm bg-white">
+                        </div>
+                        <div class="relative w-full sm:w-auto">
+                            <i class="ph ph-calendar-blank absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400"></i>
+                            <input type="date" id="filtro-fecha-historial" onchange="App.UI.renderHistorialLocal()" class="pl-9 pr-4 py-2.5 w-full border border-slate-200 bg-white rounded-xl text-sm text-slate-600 font-bold outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 transition-all cursor-pointer shadow-sm">
+                        </div>
+                        <button onclick="App.UI.renderHistorialLocal()" class="bg-white border border-border text-slate-700 font-bold py-3 px-6 rounded-xl hover:bg-slate-50 transition shadow-sm flex items-center gap-2 shrink-0">
+                            <i class="ph-bold ph-arrows-clockwise text-lg"></i> Actualizar
+                        </button>
                     </div>
                 </div>
-                <div class="overflow-x-auto max-h-[500px] custom-scrollbar relative">
+
+                <!-- Resumen Total Dinámico de la Búsqueda -->
+                <div class="grid grid-cols-3 divide-x divide-slate-100 border-b border-slate-100 bg-white shrink-0">
+                    <div class="p-3 text-center bg-purple-50/20 transition-colors">
+                        <p class="text-[10px] font-bold text-purple-500 uppercase tracking-widest mb-0.5">Total Baño</p>
+                        <p class="text-xl font-mono font-black text-purple-700" id="super-hist-tot-bath">00:00</p>
+                    </div>
+                    <div class="p-3 text-center bg-orange-50/20 transition-colors">
+                        <p class="text-[10px] font-bold text-orange-500 uppercase tracking-widest mb-0.5">Total Comida</p>
+                        <p class="text-xl font-mono font-black text-orange-700" id="super-hist-tot-food">00:00</p>
+                    </div>
+                    <div class="p-3 text-center bg-blue-50/20 transition-colors">
+                        <p class="text-[10px] font-bold text-blue-500 uppercase tracking-widest mb-0.5">Total Calidad</p>
+                        <p class="text-xl font-mono font-black text-blue-700" id="super-hist-tot-quality">00:00</p>
+                    </div>
+                </div>
+
+                <div class="overflow-x-auto overflow-y-auto flex-1 custom-scrollbar relative">
                     <table class="w-full text-left border-collapse min-w-[900px]">
                         <thead class="sticky top-0 bg-slate-50 shadow-sm z-10 backdrop-blur-md bg-white/90 border-b border-slate-200">
                             <tr class="text-slate-500 text-[11px] uppercase tracking-wider">
@@ -311,6 +340,7 @@
             state: {
                 operadores: {},
                 sesiones: {},
+                registrosHistorial: [], // Almacena el historial para filtrado local en vivo
                 fechaFiltro: new Date().toLocaleDateString('en-CA') // YYYY-MM-DD local
             },
             config: {
@@ -318,7 +348,10 @@
                 meta: {
                     'bath': { icon: 'ph-toilet', label: 'Sanitario', cText: 'text-purple-600', cBg: 'bg-purple-100', cBorder: 'border-purple-200', cBar: 'bg-purple-500' },
                     'food': { icon: 'ph-hamburger', label: 'Comida', cText: 'text-orange-600', cBg: 'bg-orange-100', cBorder: 'border-orange-200', cBar: 'bg-orange-500' },
-                    'quality': { icon: 'ph-star', label: 'Calidad', cText: 'text-blue-600', cBg: 'bg-blue-100', cBorder: 'border-blue-200', cBar: 'bg-blue-500' }
+                    'quality': { icon: 'ph-star', label: 'Calidad', cText: 'text-blue-600', cBg: 'bg-blue-100', cBorder: 'border-blue-200', cBar: 'bg-blue-500' },
+                    'Baño': { icon: 'ph-toilet', label: 'Sanitario', cText: 'text-purple-600', cBg: 'bg-purple-100', cBorder: 'border-purple-200', cBar: 'bg-purple-500' },
+                    'Comida': { icon: 'ph-hamburger', label: 'Comida', cText: 'text-orange-600', cBg: 'bg-orange-100', cBorder: 'border-orange-200', cBar: 'bg-orange-500' },
+                    'Calidad': { icon: 'ph-star', label: 'Calidad', cText: 'text-blue-600', cBg: 'bg-blue-100', cBorder: 'border-blue-200', cBar: 'bg-blue-500' }
                 }
             },
             tempId: null // Para modals
@@ -595,10 +628,6 @@
                 const searchEl = document.getElementById('search-monitor');
                 const term = searchEl ? searchEl.value.toLowerCase() : '';
                 
-                // NOTA: Como en este diseño el usuario solicitó conservar su diseño plano y 
-                // eliminamos el checkbox "toggle-active" para dejar todo visible o buscable,
-                // aseguramos que este valor siempre sea false para que no rompa o bien leemos 
-                // con protección.
                 const toggleEl = document.getElementById('toggle-active');
                 const soloActivos = toggleEl ? toggleEl.checked : false;
                 
@@ -700,10 +729,85 @@
                         }
                     }
                 });
+            },
+            renderHistorialLocal: () => {
+                const tbody = document.getElementById('tabla-registros-global');
+                const filtroFechaEl = document.getElementById('filtro-fecha-historial');
+                const filtroAgenteEl = document.getElementById('filtro-agente-historial');
+                if(!tbody || !filtroFechaEl) return;
+                
+                const fechaFiltro = filtroFechaEl.value; // Formato YYYY-MM-DD
+                const agenteFiltro = filtroAgenteEl ? filtroAgenteEl.value.trim().toLowerCase() : '';
+                
+                tbody.innerHTML = '';
+                let rCount = 0;
+                let totB = 0, totC = 0, totQ = 0;
+
+                App.state.registrosHistorial.forEach(data => {
+                    // Validar si coincide fecha
+                    const dateObj = data.fecha.toDate();
+                    const isoStr = new Date(dateObj.getTime() - (dateObj.getTimezoneOffset() * 60000)).toISOString().split('T')[0];
+                    
+                    if (isoStr === fechaFiltro) {
+                        // Validar si coincide agente (Nombre o ID)
+                        if (agenteFiltro && !data.asesor_nombre.toLowerCase().includes(agenteFiltro) && !data.asesor_id.toLowerCase().includes(agenteFiltro)) {
+                            return; 
+                        }
+
+                        rCount++;
+                        
+                        // Sumar totales para el resumen
+                        if (data.estado === 'bath' || data.estado === 'Baño') totB += data.duracion_segundos;
+                        if (data.estado === 'food' || data.estado === 'Comida') totC += data.duracion_segundos;
+                        if (data.estado === 'quality' || data.estado === 'Calidad') totQ += data.duracion_segundos;
+
+                        const fStr = dateObj.toLocaleTimeString('es-ES', {hour:'2-digit', minute:'2-digit'});
+                        const ui = App.config.meta[data.estado] || App.config.meta['null'];
+                        
+                        tbody.innerHTML += `
+                        <tr class="hover:bg-slate-50/80 transition-colors group border-b border-slate-100">
+                            <td class="px-6 py-4 text-xs font-bold text-slate-500 bg-slate-50/30 group-hover:bg-slate-100/50 transition-colors w-32"><i class="ph-fill ph-clock text-slate-400"></i> ${fStr}</td>
+                            <td class="px-6 py-4"><div class="font-bold text-slate-800">${data.asesor_nombre}</div><div class="text-[10px] font-mono font-bold text-slate-400 mt-0.5">ID: ${data.asesor_id}</div></td>
+                            <td class="px-6 py-4"><span class="px-2.5 py-1 text-xs font-bold rounded-lg border inline-flex items-center gap-1.5 ${ui.cBg} ${ui.cText} ${ui.cBorder}"><i class="${ui.icon} text-sm"></i> ${ui.label}</span></td>
+                            <td class="px-6 py-4 font-mono font-black text-blue-600 text-lg tracking-wider text-right">${Utils.formatSeg(data.duracion_segundos)}</td>
+                        </tr>`;
+                    }
+                });
+
+                // Actualizar contadores del resumen
+                const sumB = document.getElementById('super-hist-tot-bath');
+                const sumC = document.getElementById('super-hist-tot-food');
+                const sumQ = document.getElementById('super-hist-tot-quality');
+                if(sumB) sumB.innerText = Utils.formatSeg(totB);
+                if(sumC) sumC.innerText = Utils.formatSeg(totC);
+                if(sumQ) sumQ.innerText = Utils.formatSeg(totQ);
+
+                if(rCount === 0) tbody.innerHTML = `<tr><td colspan="4" class="text-center py-10 text-slate-400 font-bold italic">No hay registros para los filtros seleccionados.</td></tr>`;
             }
         };
 
         App.Firebase = {
+            listenReportes: () => {
+                const tbody = document.getElementById('tabla-registros-global');
+                if(!tbody) return;
+                
+                // Limit 2000 permite tener en memoria registros extensos para que los filtros funcionen
+                // rápidos e interactivamente sin llamar continuamente a la DB.
+                const q = query(collection(window.db, "registros_tiempos"), orderBy("fecha", "desc"), limit(2000));
+                
+                onSnapshot(q, (snap) => {
+                    App.state.registrosHistorial = [];
+                    snap.forEach(d => {
+                        const data = d.data();
+                        if(data.fecha) App.state.registrosHistorial.push(data);
+                    });
+                    
+                    // Actualizar la tabla si la vista está activa
+                    App.UI.renderHistorialLocal();
+                }, (error) => {
+                    console.error("Error escuchando reportes", error);
+                });
+            },
             init: async () => {
                 // Fetch config
                 onSnapshot(doc(window.db, "config", "global"), (d) => { if(d.exists() && d.data().limites) App.config.limites = d.data().limites; });
@@ -725,48 +829,11 @@
                 // Clock Engine
                 setInterval(App.UI.tickRelojes, 1000);
                 
-                // Initial History
+                // Initial History Setup
                 const filtroHistorial = document.getElementById('filtro-fecha-historial');
                 if(filtroHistorial) filtroHistorial.value = App.state.fechaFiltro;
-                App.Firebase.fetchReportes();
-            },
-            fetchReportes: async () => {
-                const tbody = document.getElementById('tabla-registros-global');
-                const filtroEl = document.getElementById('filtro-fecha-historial');
-                if(!tbody) return;
                 
-                const fecha = filtroEl ? filtroEl.value : ''; // YYYY-MM-DD
-                tbody.innerHTML = `<tr><td colspan="4" class="text-center py-10"><div class="loader mx-auto"></div></td></tr>`;
-                
-                try {
-                    const q = query(collection(window.db, "registros_tiempos"), orderBy("fecha", "desc"), limit(100));
-                    const snap = await getDocs(q);
-                    tbody.innerHTML = '';
-                    let rCount = 0;
-
-                    snap.forEach(d => {
-                        const data = d.data();
-                        if(data.fecha) {
-                            const dateObj = data.fecha.toDate();
-                            const isoStr = new Date(dateObj.getTime() - (dateObj.getTimezoneOffset() * 60000)).toISOString().split('T')[0];
-                            
-                            if(isoStr === fecha) {
-                                rCount++;
-                                const fStr = dateObj.toLocaleTimeString('es-ES', {hour:'2-digit', minute:'2-digit'});
-                                const ui = App.config.meta[data.estado] || App.config.meta['null'];
-                                tbody.innerHTML += `
-                                <tr class="hover:bg-slate-50/80 transition-colors group border-b border-slate-100">
-                                    <td class="px-6 py-4 text-xs font-bold text-slate-500 bg-slate-50/30 group-hover:bg-slate-100/50 transition-colors w-32"><i class="ph-fill ph-clock text-slate-400"></i> ${fStr}</td>
-                                    <td class="px-6 py-4"><div class="font-bold text-slate-800">${data.asesor_nombre}</div><div class="text-[10px] font-mono font-bold text-slate-400 mt-0.5">ID: ${data.asesor_id}</div></td>
-                                    <td class="px-6 py-4"><span class="px-2.5 py-1 text-xs font-bold rounded-lg border inline-flex items-center gap-1.5 ${ui.cBg} ${ui.cText} ${ui.cBorder}"><i class="${ui.icon} text-sm"></i> ${ui.label}</span></td>
-                                    <td class="px-6 py-4 font-mono font-black text-blue-600 text-lg tracking-wider text-right">${Utils.formatSeg(data.duracion_segundos)}</td>
-                                </tr>`;
-                            }
-                        }
-                    });
-
-                    if(rCount === 0) tbody.innerHTML = `<tr><td colspan="4" class="text-center py-10 text-slate-400 font-bold italic">No hay registros para la fecha seleccionada.</td></tr>`;
-                } catch(e) { tbody.innerHTML = `<tr><td colspan="4" class="text-center py-10 text-red-500 font-bold">Error al cargar historial.</td></tr>`; }
+                App.Firebase.listenReportes();
             }
         };
 
