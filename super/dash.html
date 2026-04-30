@@ -50,10 +50,10 @@
     </div>
 
     <!-- Modales -->
-    <div id="modal-overlay" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 hidden flex items-center justify-center px-4 transition-opacity duration-300 opacity-0">
+    <div id="modal-overlay" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 hidden flex items-center justify-center px-4 py-6 transition-opacity duration-300 opacity-0 overflow-y-auto">
         
         <!-- Modal: Confirmar Eliminar -->
-        <div id="modal-confirm" class="bg-white rounded-3xl shadow-2xl w-full max-w-sm p-6 transform scale-95 transition-transform duration-300 hidden border border-transparent">
+        <div id="modal-confirm" class="bg-white rounded-3xl shadow-2xl w-full max-w-sm p-6 transform scale-95 transition-transform duration-300 hidden border border-transparent m-auto">
             <div class="w-12 h-12 rounded-full bg-red-100 flex items-center justify-center mb-4 mx-auto"><i class="ph ph-trash text-red-600 text-2xl"></i></div>
             <h3 class="text-xl font-bold text-slate-800 mb-2 text-center">¿Eliminar Colaborador?</h3>
             <p class="text-slate-500 text-sm mb-6 text-center">Esta acción es irreversible. Se borrarán sus accesos y configuraciones.</p>
@@ -64,7 +64,7 @@
         </div>
 
         <!-- Modal: Confirmar Reset -->
-        <div id="modal-confirm-reset" class="bg-white rounded-3xl shadow-2xl w-full max-w-sm p-6 transform scale-95 transition-transform duration-300 hidden border border-transparent">
+        <div id="modal-confirm-reset" class="bg-white rounded-3xl shadow-2xl w-full max-w-sm p-6 transform scale-95 transition-transform duration-300 hidden border border-transparent m-auto">
             <div class="w-12 h-12 rounded-full bg-orange-100 flex items-center justify-center mb-4 mx-auto"><i class="ph ph-warning-circle text-orange-600 text-2xl"></i></div>
             <h3 class="text-xl font-bold text-slate-800 mb-2 text-center">¿Reiniciar tiempos de hoy?</h3>
             <p class="text-slate-500 text-sm mb-6 text-center">Esto pondrá en 00:00 los consumos del día para todos los colaboradores.</p>
@@ -74,56 +74,156 @@
             </div>
         </div>
 
-        <!-- Modal: Editar Agente (Tiempos y Límites) -->
-        <div id="modal-editar" class="bg-white rounded-3xl shadow-2xl w-full max-w-md p-6 transform scale-95 transition-transform duration-300 hidden max-h-[90vh] overflow-y-auto custom-scrollbar border border-transparent">
-            <div class="flex items-center justify-between mb-5">
+        <!-- Modal: Importar Conexiones -->
+        <div id="modal-importar" class="bg-white rounded-3xl shadow-2xl w-full max-w-2xl p-6 transform scale-95 transition-transform duration-300 hidden border border-transparent m-auto">
+            <div class="flex items-center justify-between mb-4">
+                <h3 class="text-xl font-bold text-slate-800 flex items-center gap-2">
+                    <div class="p-2 bg-blue-100 text-blue-600 rounded-lg"><i class="ph ph-download-simple"></i></div> Importar Reporte
+                </h3>
+                <button onclick="App.Modals.cerrarTodos()" class="text-slate-400 hover:text-slate-600 bg-slate-100 p-1.5 rounded-full transition-colors"><i class="ph ph-x"></i></button>
+            </div>
+            <p class="text-slate-500 text-sm mb-4 leading-relaxed">Copia y pega aquí las filas de tu archivo directamente. El sistema extraerá el XOC y lo mapeará automáticamente con el ID correcto.</p>
+            
+            <textarea id="import-textarea" class="w-full h-48 border border-slate-300 rounded-xl p-4 text-xs font-mono text-slate-600 focus:border-blue-500 outline-none custom-scrollbar mb-4 bg-slate-50" placeholder="Pega los datos aquí... Ejemplo:&#10;30/03/2026	X90G05Q	TORRES AVILA..."></textarea>
+            
+            <div class="flex gap-3 pt-2 border-t border-slate-100">
+                <button onclick="App.Modals.cerrarTodos()" class="flex-1 py-2.5 text-slate-600 bg-slate-100 hover:bg-slate-200 rounded-xl font-semibold transition-colors">Cancelar</button>
+                <button id="btn-importar" onclick="App.Handlers.procesarImportacion()" class="flex-[2] py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-semibold transition-colors shadow-sm shadow-blue-200 flex justify-center items-center gap-2">
+                    <i class="ph ph-magic-wand"></i> Procesar y Guardar
+                </button>
+            </div>
+        </div>
+
+        <!-- Modal: Editar Agente (Tiempos, Horarios, Vacaciones) -->
+        <div id="modal-editar" class="bg-white rounded-3xl shadow-2xl w-full max-w-xl p-6 transform scale-95 transition-transform duration-300 hidden border border-transparent m-auto">
+            <div class="flex items-center justify-between mb-2">
                 <h3 class="text-lg font-bold text-slate-800 flex items-center gap-2">
-                    <div class="p-2 bg-blue-100 text-blue-600 rounded-lg"><i class="ph ph-sliders-horizontal"></i></div> Ajustes de <span id="edit-nombre" class="text-blue-600 truncate max-w-[150px]"></span>
+                    <div class="p-2 bg-blue-100 text-blue-600 rounded-lg"><i class="ph ph-sliders-horizontal"></i></div> Perfil de <span id="edit-nombre" class="text-blue-600 truncate max-w-[200px]"></span>
                 </h3>
                 <button onclick="App.Modals.cerrarTodos()" class="text-slate-400 hover:text-slate-600 bg-slate-100 p-1.5 rounded-full"><i class="ph ph-x"></i></button>
             </div>
             
             <form onsubmit="App.Handlers.guardarEdicion(event)">
-                <input type="hidden" id="edit-id">
                 
-                <p class="text-slate-500 text-sm mb-5 leading-relaxed">Modifica el consumo de <strong class="text-slate-700">HOY</strong> o define límites específicos. <span class="text-blue-600 bg-blue-50 px-1 rounded">Deja vacío para usar los globales.</span></p>
-                
-                <div class="space-y-5">
-                    <!-- Tiempos de Hoy -->
-                    <div class="p-4 rounded-2xl border border-slate-200 bg-white shadow-sm">
-                        <h4 class="font-semibold text-xs uppercase tracking-wider text-slate-400 mb-3 flex items-center gap-2"><i class="ph ph-clock"></i> Consumido Hoy (Min:Seg)</h4>
-                        <div class="grid grid-cols-3 gap-3">
-                            <div class="relative">
-                                <label class="block text-[10px] uppercase font-semibold text-slate-500 mb-1">Baño</label>
-                                <div class="relative"><i class="ph ph-toilet absolute left-2.5 top-2.5 text-slate-400"></i><input type="text" id="edit-c-bano" placeholder="00:00" class="w-full border border-slate-300 bg-transparent rounded-xl pl-8 pr-2 py-2 text-sm font-mono focus:border-blue-500 focus:ring-2 focus:ring-blue-100 outline-none transition-all"></div>
-                            </div>
-                            <div class="relative">
-                                <label class="block text-[10px] uppercase font-semibold text-slate-500 mb-1">Comida</label>
-                                <div class="relative"><i class="ph ph-fork-knife absolute left-2.5 top-2.5 text-slate-400"></i><input type="text" id="edit-c-comida" placeholder="00:00" class="w-full border border-slate-300 bg-transparent rounded-xl pl-8 pr-2 py-2 text-sm font-mono focus:border-orange-500 focus:ring-2 focus:ring-orange-100 outline-none transition-all"></div>
-                            </div>
-                            <div class="relative">
-                                <label class="block text-[10px] uppercase font-semibold text-slate-500 mb-1">Calidad</label>
-                                <div class="relative"><i class="ph ph-star absolute left-2.5 top-2.5 text-slate-400"></i><input type="text" id="edit-c-calidad" placeholder="00:00" class="w-full border border-slate-300 bg-transparent rounded-xl pl-8 pr-2 py-2 text-sm font-mono focus:border-purple-500 focus:ring-2 focus:ring-purple-100 outline-none transition-all"></div>
-                            </div>
-                        </div>
+                <!-- Datos Clave Visibles y Editables -->
+                <div class="flex gap-4 mb-2 mt-4 p-3 bg-slate-50 rounded-xl border border-slate-200">
+                    <div class="flex-1">
+                        <label class="block text-[10px] uppercase font-bold text-slate-500 mb-1">ID de Empleado (Login)</label>
+                        <input type="text" id="edit-id" readonly class="w-full border border-transparent bg-transparent p-1 text-sm font-bold text-slate-700 outline-none cursor-not-allowed">
                     </div>
-
-                    <!-- Límites -->
-                    <div class="p-4 rounded-2xl border border-slate-200 bg-white shadow-sm">
-                        <h4 class="font-semibold text-xs uppercase tracking-wider text-slate-400 mb-3 flex items-center gap-2"><i class="ph ph-lock-key"></i> Límites Individuales (Min)</h4>
-                        <div class="grid grid-cols-2 gap-3">
-                            <div class="relative">
-                                <label class="block text-[10px] uppercase font-semibold text-slate-500 mb-1">Límite Baño</label>
-                                <input type="number" id="edit-l-bano" class="w-full border border-slate-300 bg-transparent rounded-xl p-2.5 text-sm focus:border-blue-500 outline-none transition-all font-mono" placeholder="Global">
-                            </div>
-                            <div class="relative">
-                                <label class="block text-[10px] uppercase font-semibold text-slate-500 mb-1">Límite Comida</label>
-                                <input type="number" id="edit-l-comida" class="w-full border border-slate-300 bg-transparent rounded-xl p-2.5 text-sm focus:border-orange-500 outline-none transition-all font-mono" placeholder="Global">
-                            </div>
-                        </div>
+                    <div class="flex-1">
+                        <label class="block text-[10px] uppercase font-bold text-slate-500 mb-1">Código XOC</label>
+                        <input type="text" id="edit-xoc" class="w-full border border-slate-300 bg-white rounded-lg p-2 text-sm focus:border-blue-500 outline-none" placeholder="Ej. X90G0DF">
                     </div>
                 </div>
 
+                <!-- Navegación de Pestañas -->
+                <div class="flex gap-1 border-b border-slate-200 mb-5 overflow-x-auto custom-scrollbar mt-2">
+                    <button type="button" onclick="App.UI.switchTab(this, 'tab-adherencia')" class="tab-btn text-blue-600 font-bold border-b-2 border-blue-600 pb-2 px-3 text-sm shrink-0">Adherencia</button>
+                    <button type="button" onclick="App.UI.switchTab(this, 'tab-conexiones')" class="tab-btn text-slate-500 hover:text-slate-700 font-medium pb-2 px-3 text-sm shrink-0 border-b-2 border-transparent">Conexiones</button>
+                    <button type="button" onclick="App.UI.switchTab(this, 'tab-horarios')" class="tab-btn text-slate-500 hover:text-slate-700 font-medium pb-2 px-3 text-sm shrink-0 border-b-2 border-transparent">Horarios</button>
+                    <button type="button" onclick="App.UI.switchTab(this, 'tab-vacaciones')" class="tab-btn text-slate-500 hover:text-slate-700 font-medium pb-2 px-3 text-sm shrink-0 border-b-2 border-transparent">Vacaciones</button>
+                </div>
+                
+                <!-- CONTENIDO PESTAÑAS -->
+                <div class="min-h-[300px]">
+                    
+                    <!-- PESTAÑA: ADHERENCIA -->
+                    <div id="tab-adherencia" class="tab-pane space-y-5">
+                        <p class="text-slate-500 text-sm mb-2 leading-relaxed">Modifica el consumo de <strong class="text-slate-700">HOY</strong> o define límites específicos.</p>
+                        
+                        <div class="p-4 rounded-2xl border border-slate-200 bg-slate-50/50 shadow-sm">
+                            <h4 class="font-semibold text-xs uppercase tracking-wider text-slate-400 mb-3 flex items-center gap-2"><i class="ph ph-clock"></i> Consumido Hoy (Min:Seg)</h4>
+                            <div class="grid grid-cols-3 gap-3">
+                                <div class="relative">
+                                    <label class="block text-[10px] uppercase font-semibold text-slate-500 mb-1">Baño</label>
+                                    <div class="relative"><i class="ph ph-toilet absolute left-2.5 top-2.5 text-slate-400"></i><input type="text" id="edit-c-bano" placeholder="00:00" class="w-full border border-slate-300 bg-white rounded-xl pl-8 pr-2 py-2 text-sm font-mono focus:border-blue-500 outline-none transition-all"></div>
+                                </div>
+                                <div class="relative">
+                                    <label class="block text-[10px] uppercase font-semibold text-slate-500 mb-1">Comida</label>
+                                    <div class="relative"><i class="ph ph-fork-knife absolute left-2.5 top-2.5 text-slate-400"></i><input type="text" id="edit-c-comida" placeholder="00:00" class="w-full border border-slate-300 bg-white rounded-xl pl-8 pr-2 py-2 text-sm font-mono focus:border-orange-500 outline-none transition-all"></div>
+                                </div>
+                                <div class="relative">
+                                    <label class="block text-[10px] uppercase font-semibold text-slate-500 mb-1">Calidad</label>
+                                    <div class="relative"><i class="ph ph-star absolute left-2.5 top-2.5 text-slate-400"></i><input type="text" id="edit-c-calidad" placeholder="00:00" class="w-full border border-slate-300 bg-white rounded-xl pl-8 pr-2 py-2 text-sm font-mono focus:border-purple-500 outline-none transition-all"></div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="p-4 rounded-2xl border border-slate-200 bg-slate-50/50 shadow-sm">
+                            <h4 class="font-semibold text-xs uppercase tracking-wider text-slate-400 mb-3 flex items-center gap-2"><i class="ph ph-lock-key"></i> Límites Individuales (Min)</h4>
+                            <div class="grid grid-cols-2 gap-3">
+                                <div class="relative">
+                                    <label class="block text-[10px] uppercase font-semibold text-slate-500 mb-1">Límite Baño</label>
+                                    <input type="number" id="edit-l-bano" class="w-full border border-slate-300 bg-white rounded-xl p-2.5 text-sm focus:border-blue-500 outline-none transition-all font-mono" placeholder="Global">
+                                </div>
+                                <div class="relative">
+                                    <label class="block text-[10px] uppercase font-semibold text-slate-500 mb-1">Límite Comida</label>
+                                    <input type="number" id="edit-l-comida" class="w-full border border-slate-300 bg-white rounded-xl p-2.5 text-sm focus:border-orange-500 outline-none transition-all font-mono" placeholder="Global">
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- PESTAÑA: CONEXIONES -->
+                    <div id="tab-conexiones" class="tab-pane hidden space-y-5">
+                        <div class="p-4 rounded-2xl border border-slate-200 bg-slate-50/50 shadow-sm">
+                            <h4 class="font-semibold text-xs uppercase tracking-wider text-slate-400 mb-3 flex items-center gap-2"><i class="ph ph-plug"></i> Configuración de Conexión</h4>
+                            <div>
+                                <label class="block text-xs uppercase font-bold text-slate-500 mb-1">Meta de Horas Diarias</label>
+                                <div class="relative w-1/2">
+                                    <i class="ph ph-clock absolute left-3 top-3 text-slate-400"></i>
+                                    <input type="number" id="edit-meta-horas" class="w-full border border-slate-300 bg-white rounded-xl pl-9 p-2.5 text-sm focus:border-blue-500 outline-none transition-all" placeholder="Ej. 9">
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- PESTAÑA: HORARIOS -->
+                    <div id="tab-horarios" class="tab-pane hidden space-y-4">
+                        <div class="p-4 rounded-2xl border border-slate-200 bg-slate-50/50 shadow-sm">
+                            <h4 class="font-semibold text-xs uppercase tracking-wider text-slate-400 mb-3 flex items-center gap-2"><i class="ph ph-calendar"></i> Configuración de Turno</h4>
+                            
+                            <div class="mb-4">
+                                <label class="block text-[10px] uppercase font-bold text-slate-500 mb-1">Nombre del Turno</label>
+                                <input type="text" id="edit-turno" class="w-full border border-slate-300 bg-white rounded-xl p-2 text-sm outline-none focus:border-blue-500" placeholder="Ej. Turno Matutino">
+                            </div>
+
+                            <label class="block text-[10px] uppercase font-bold text-slate-500 mb-2">Jornada Semanal (Entrada - Salida)</label>
+                            <div class="space-y-2" id="grid-horarios">
+                                <!-- Generado por JS -->
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- PESTAÑA: VACACIONES Y GUARDIAS -->
+                    <div id="tab-vacaciones" class="tab-pane hidden space-y-5">
+                        <div class="p-4 rounded-2xl border border-slate-200 bg-slate-50/50 shadow-sm">
+                            <h4 class="font-semibold text-xs uppercase tracking-wider text-slate-400 mb-3 flex items-center gap-2"><i class="ph ph-airplane-tilt"></i> Balance de Días</h4>
+                            <div>
+                                <label class="block text-[10px] uppercase font-bold text-slate-500 mb-1">Días Disponibles</label>
+                                <input type="number" id="edit-vacaciones-dias" class="w-1/3 border border-slate-300 bg-white rounded-xl p-2.5 text-sm focus:border-blue-500 outline-none" placeholder="Ej. 6">
+                            </div>
+                        </div>
+
+                        <div class="p-4 rounded-2xl border border-orange-200 bg-orange-50 shadow-sm">
+                            <h4 class="font-semibold text-xs uppercase tracking-wider text-orange-600 mb-3 flex items-center gap-2"><i class="ph-fill ph-warning-circle"></i> Próxima Guardia</h4>
+                            <div class="grid grid-cols-2 gap-4">
+                                <div>
+                                    <label class="block text-[10px] uppercase font-bold text-orange-600/70 mb-1">Fecha</label>
+                                    <input type="date" id="edit-guardia-fecha" class="w-full border border-orange-300 bg-white rounded-xl p-2 text-sm focus:border-orange-500 outline-none">
+                                </div>
+                                <div>
+                                    <label class="block text-[10px] uppercase font-bold text-orange-600/70 mb-1">Horario</label>
+                                    <input type="text" id="edit-guardia-horario" class="w-full border border-orange-300 bg-white rounded-xl p-2 text-sm focus:border-orange-500 outline-none" placeholder="Ej. 10:00 a 14:00">
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                </div>
+
+                <!-- Botones de Acción -->
                 <div class="flex gap-3 mt-6 pt-4 border-t border-slate-100">
                     <button type="button" onclick="App.Modals.cerrarTodos()" class="flex-1 px-4 py-2.5 text-slate-600 bg-slate-100 hover:bg-slate-200 rounded-xl font-medium transition-colors">Cancelar</button>
                     <button type="submit" id="btn-save-edit" class="flex-[2] px-4 py-2.5 bg-slate-900 hover:bg-slate-800 text-white rounded-xl font-medium transition-colors shadow-md flex justify-center items-center gap-2">
@@ -150,7 +250,6 @@
                     <h3 class="font-bold text-slate-800 mb-4 flex items-center gap-2 text-sm border-b border-slate-100 pb-2">
                         <i class="ph ph-timer text-slate-400"></i> Políticas Globales
                     </h3>
-                    <p class="text-xs text-slate-500 mb-4 leading-relaxed">Establece los límites predeterminados para todos los empleados que no tengan límites personalizados.</p>
                     <div class="flex gap-3 mb-4">
                         <div class="flex-1">
                             <label class="block text-[10px] uppercase text-slate-500 font-bold mb-1.5 ml-1">Baño (min)</label>
@@ -170,13 +269,14 @@
                     <button onclick="App.Handlers.guardarGlobales()" class="w-full bg-slate-100 hover:bg-slate-200 text-slate-800 text-xs font-bold py-2.5 rounded-xl transition-colors flex items-center justify-center gap-2"><i class="ph ph-check-circle"></i> Aplicar Límites</button>
                 </div>
 
-                <!-- Alta Empleado -->
+                <!-- Alta Empleado (Con XOC) -->
                 <div class="bg-slate-900 rounded-2xl shadow-sm border border-slate-800 p-5 text-white">
                     <h3 class="font-bold mb-4 flex items-center gap-2 text-sm border-b border-slate-700 pb-2">
                         <i class="ph ph-user-plus text-blue-400"></i> Alta de Empleado
                     </h3>
                     <form onsubmit="App.Handlers.crearAgente(event)" class="space-y-3 mb-4">
-                        <input type="text" id="nuevo-pin" required placeholder="PIN / ID Único" class="w-full border border-slate-700 rounded-xl bg-slate-800/50 p-2.5 text-sm outline-none focus:border-blue-500 transition-all font-mono text-white uppercase">
+                        <input type="text" id="nuevo-pin" required placeholder="ID de Empleado (Ej. 20718)" class="w-full border border-slate-700 rounded-xl bg-slate-800/50 p-2.5 text-sm outline-none focus:border-blue-500 transition-all font-mono text-white uppercase">
+                        <input type="text" id="nuevo-xoc" required placeholder="Código XOC (Ej. X90G0DF)" class="w-full border border-slate-700 rounded-xl bg-slate-800/50 p-2.5 text-sm outline-none focus:border-blue-500 transition-all font-mono text-white uppercase">
                         <input type="text" id="nuevo-nombre" required placeholder="Nombre Completo" class="w-full border border-slate-700 rounded-xl bg-slate-800/50 p-2.5 text-sm outline-none focus:border-blue-500 transition-all text-white">
                         <button type="submit" id="btn-crear-agente" class="w-full bg-blue-600 hover:bg-blue-500 text-white text-sm font-bold py-2.5 rounded-xl transition-colors flex justify-center items-center gap-2 shadow-sm shadow-blue-900/50 mt-2">
                             Registrar Empleado <i class="ph ph-plus-bold"></i>
@@ -223,6 +323,7 @@
             
             <div class="flex items-center gap-3 sm:gap-5">
                 <button onclick="App.Modals.abrirReset()" class="text-slate-600 hover:text-orange-600 bg-white hover:bg-orange-50 border border-slate-200 p-2 sm:px-3 sm:py-1.5 rounded-lg transition-colors flex items-center gap-2 shadow-sm text-sm font-medium" title="Reiniciar Tiempos"><i class="ph ph-arrow-counter-clockwise text-lg"></i> <span class="hidden sm:inline">Reset Día</span></button>
+                <button onclick="App.Modals.abrirImportar()" class="text-slate-600 hover:text-blue-600 bg-white hover:bg-blue-50 border border-slate-200 p-2 sm:px-3 sm:py-1.5 rounded-lg transition-colors flex items-center gap-2 shadow-sm text-sm font-medium" title="Importar Conexiones"><i class="ph ph-download-simple text-lg"></i> <span class="hidden sm:inline">Importar</span></button>
                 <div class="w-px h-6 bg-slate-200 hidden sm:block"></div>
                 <button onclick="App.Modals.abrirConfig()" class="text-slate-500 hover:text-slate-800 p-2 rounded-lg transition-colors flex items-center justify-center" title="Configuración"><i class="ph ph-gear text-xl"></i></button>
                 <button onclick="App.Auth.logout()" class="text-slate-500 hover:text-red-600 p-2 sm:px-3 sm:py-1.5 rounded-lg transition-colors flex items-center gap-2 text-sm font-medium" title="Cerrar Sesión"><span class="hidden sm:inline">Salir</span> <i class="ph ph-sign-out text-lg"></i></button>
@@ -294,7 +395,6 @@
                     </div>
                 </div>
 
-                <!-- Resumen Total Dinámico de la Búsqueda -->
                 <div class="grid grid-cols-3 divide-x divide-slate-100 border-b border-slate-100 bg-white shrink-0">
                     <div class="p-3 text-center bg-purple-50/20 transition-colors">
                         <p class="text-[10px] font-bold text-purple-500 uppercase tracking-widest mb-0.5">Total Baño</p>
@@ -340,11 +440,12 @@
             state: {
                 operadores: {},
                 sesiones: {},
-                registrosHistorial: [], // Almacena el historial para filtrado local en vivo
-                fechaFiltro: new Date().toLocaleDateString('en-CA') // YYYY-MM-DD local
+                registrosHistorial: [], 
+                fechaFiltro: new Date().toLocaleDateString('en-CA') 
             },
             config: {
                 limites: { bano: 15, comida: 30 },
+                diasSemana: ['lunes', 'martes', 'miercoles', 'jueves', 'viernes', 'sabado', 'domingo'],
                 meta: {
                     'bath': { icon: 'ph-toilet', label: 'Sanitario', cText: 'text-purple-600', cBg: 'bg-purple-100', cBorder: 'border-purple-200', cBar: 'bg-purple-500' },
                     'food': { icon: 'ph-hamburger', label: 'Comida', cText: 'text-orange-600', cBg: 'bg-orange-100', cBorder: 'border-orange-200', cBar: 'bg-orange-500' },
@@ -354,7 +455,7 @@
                     'Calidad': { icon: 'ph-star', label: 'Calidad', cText: 'text-blue-600', cBg: 'bg-blue-100', cBorder: 'border-blue-200', cBar: 'bg-blue-500' }
                 }
             },
-            tempId: null // Para modals
+            tempId: null 
         };
 
         const firebaseConfig = {
@@ -366,7 +467,6 @@
             appId: "1:634601793039:web:4412da30d31ff6f6e5657a"
         };
 
-        // --- INICIALIZAR FIREBASE ---
         const app = initializeApp(firebaseConfig);
         window.db = getFirestore(app);
         App.db = window.db;
@@ -399,7 +499,7 @@
                 c.classList.remove('hidden');
                 setTimeout(() => c.classList.add('hidden'), 4000);
             },
-            fechaHoyNormal: () => new Date().toLocaleDateString() // DD/MM/YYYY local
+            fechaHoyNormal: () => new Date().toLocaleDateString() 
         };
 
         ['edit-c-bano','edit-c-comida','edit-c-calidad'].forEach(id => {
@@ -459,16 +559,28 @@
                     setTimeout(() => { overlay.classList.remove('opacity-0'); m.classList.remove('scale-95'); }, 10);
                 }
             },
+            abrirImportar: () => {
+                const overlay = document.getElementById('modal-overlay');
+                const m = document.getElementById('modal-importar');
+                const txt = document.getElementById('import-textarea');
+                if (txt) txt.value = ''; // Limpiar textarea al abrir
+                
+                if (overlay && m) {
+                    overlay.classList.remove('hidden');
+                    m.classList.remove('hidden'); 
+                    setTimeout(() => { overlay.classList.remove('opacity-0'); m.classList.remove('scale-95'); }, 10);
+                }
+            },
             cerrarTodos: () => {
                 const o = document.getElementById('modal-overlay');
                 if (!o) return;
                 o.classList.add('opacity-0');
-                ['modal-confirm', 'modal-confirm-reset', 'modal-editar'].forEach(id => {
+                ['modal-confirm', 'modal-confirm-reset', 'modal-editar', 'modal-importar'].forEach(id => {
                     const el = document.getElementById(id); if(el) el.classList.add('scale-95');
                 });
                 setTimeout(() => { 
                     o.classList.add('hidden'); 
-                    ['modal-confirm', 'modal-confirm-reset', 'modal-editar'].forEach(id => {
+                    ['modal-confirm', 'modal-confirm-reset', 'modal-editar', 'modal-importar'].forEach(id => {
                         const el = document.getElementById(id);
                         if (el) el.classList.add('hidden');
                     }); 
@@ -477,28 +589,124 @@
         };
 
         App.Handlers = {
+            procesarImportacion: async () => {
+                const text = document.getElementById('import-textarea').value.trim();
+                if (!text) {
+                    Utils.toast('Por favor, pega los datos primero.', 'error');
+                    return;
+                }
+
+                const btn = document.getElementById('btn-importar');
+                if (btn) btn.disabled = true;
+
+                const rows = text.split('\n');
+                const batch = [];
+                let procesados = 0;
+
+                rows.forEach((row) => {
+                    const cols = row.split('\t');
+                    // Verificamos que tenga suficientes columnas y que no sea la fila de encabezados
+                    if (cols.length < 14 || cols[0].toLowerCase().includes('fecha')) return;
+
+                    // Formatear Fecha DD/MM/YYYY a YYYY-MM-DD para guardarla
+                    const dateParts = cols[0].trim().split('/');
+                    const isoDate = dateParts.length === 3 ? `${dateParts[2]}-${dateParts[1]}-${dateParts[0]}` : cols[0].trim();
+                    const xocImportado = cols[1].trim().toUpperCase();
+
+                    if (!xocImportado) return;
+
+                    let asesorId = null;
+                    const asesorNom = cols[2].trim();
+
+                    // Mapeo: Buscar al agente a través de su código XOC (o por el mismo ID si es igual)
+                    const operador = Object.values(App.state.operadores).find(o => (o.xoc && o.xoc.toUpperCase() === xocImportado) || o.id === xocImportado);
+                    
+                    if (operador) {
+                        asesorId = operador.id; // Utilizar el ID real de login del empleado
+                    } else {
+                        asesorId = xocImportado; // Fallback: si no se encuentra, usar el mismo XOC importado
+                    }
+
+                    const dataToSave = {
+                        fecha_reporte: cols[0].trim(),
+                        fecha_iso: isoDate,
+                        asesor_id: asesorId, // ID Mapeado correctamente
+                        asesor_nombre: asesorNom,
+                        hora_inicio: cols[3].trim(),
+                        hora_fin: cols[4].trim(),
+                        duracion_dia_laboral: cols[5].trim(),
+                        duracion_firmado: cols[6].trim(),
+                        llamadas_contestadas: parseInt(cols[7]) || 0,
+                        llamadas_salientes: parseInt(cols[8]) || 0,
+                        dato_extra: cols[9].trim(),
+                        desconexiones: cols[10].trim(),
+                        comida_total: cols[11].trim(),
+                        bano_total: cols[12].trim(),
+                        calidad_total: cols[13].trim(),
+                        timestamp_subida: Date.now()
+                    };
+
+                    // ID único para evitar duplicados del mismo agente el mismo día
+                    const docId = `${asesorId}_${isoDate}`;
+                    const ref = doc(App.db, "conexiones_diarias", docId);
+                    batch.push(setDoc(ref, dataToSave, { merge: true }));
+                    procesados++;
+                });
+
+                if (procesados === 0) {
+                    Utils.toast("No se encontraron filas válidas para importar.", 'error');
+                    if (btn) btn.disabled = false;
+                    return;
+                }
+
+                try {
+                    await Promise.all(batch);
+                    App.Modals.cerrarTodos();
+                    Utils.toast(`${procesados} registros importados correctamente.`);
+                } catch (error) {
+                    Utils.toast("Error al guardar los datos en la base.", 'error');
+                } finally {
+                    if (btn) btn.disabled = false;
+                }
+            },
             crearAgente: async (e) => {
                 e.preventDefault();
                 const btn = document.getElementById('btn-crear-agente'); 
                 if (btn) btn.disabled = true;
                 const idInput = document.getElementById('nuevo-pin');
+                const xocInput = document.getElementById('nuevo-xoc');
                 const nombreInput = document.getElementById('nuevo-nombre');
                 
                 const id = idInput ? idInput.value.trim().toUpperCase() : '';
+                const xoc = xocInput ? xocInput.value.trim().toUpperCase() : '';
                 const nombre = nombreInput ? nombreInput.value.trim() : '';
                 
-                if (!id || !nombre) {
+                if (!id || !xoc || !nombre) {
                     Utils.toast("Completa todos los campos.", "error");
                     if (btn) btn.disabled = false;
                     return;
                 }
                 
                 try {
-                    await setDoc(doc(App.db, "operadores", id), { id, nombre, limites: {bano: null, comida: null, calidad: null} });
+                    // Estructura de base por defecto (Agrega campo xoc)
+                    const nuevoOperador = {
+                        id, xoc, nombre, 
+                        limites: {bano: null, comida: null, calidad: null},
+                        horarios: { turno: 'Turno Matutino' },
+                        vacaciones: { diasDisponibles: 0, proximaGuardia: '', horarioGuardia: '' },
+                        conexiones: { metaHoras: 9 }
+                    };
+
+                    App.config.diasSemana.forEach(d => {
+                        nuevoOperador.horarios[d] = { activo: (d!=='sabado' && d!=='domingo'), entrada: '09:00', salida: '18:00' };
+                    });
+
+                    await setDoc(doc(App.db, "operadores", id), nuevoOperador);
                     if (idInput) idInput.value = ''; 
+                    if (xocInput) xocInput.value = ''; 
                     if (nombreInput) nombreInput.value = '';
                     App.Modals.cerrarConfig(); 
-                    Utils.toast("Agente registrado.");
+                    Utils.toast("Agente registrado correctamente.");
                 } catch(err) { 
                     Utils.toast("Error al registrar.", "error"); 
                 } finally { 
@@ -522,21 +730,41 @@
                 App.tempId = id; const ag = App.state.operadores[id]; const ses = App.state.sesiones[id] || { tiemposAcumulados: {} };
                 if (!ag) return;
                 
-                const editNombre = document.getElementById('edit-nombre');
-                const editId = document.getElementById('edit-id');
-                const editCBano = document.getElementById('edit-c-bano');
-                const editCComida = document.getElementById('edit-c-comida');
-                const editCCalidad = document.getElementById('edit-c-calidad');
-                const editLBano = document.getElementById('edit-l-bano');
-                const editLComida = document.getElementById('edit-l-comida');
+                // Reiniciar pestaña a Adherencia
+                App.UI.switchTab(document.querySelector('.tab-btn'), 'tab-adherencia');
+
+                // Llenar Datos Generales y Adherencia
+                document.getElementById('edit-nombre').innerText = ag.nombre;
+                document.getElementById('edit-id').value = id;
+                document.getElementById('edit-xoc').value = ag.xoc || ''; // Nuevo Campo Código XOC
+                document.getElementById('edit-c-bano').value = Utils.formatSeg(ses.tiemposAcumulados?.bath || 0);
+                document.getElementById('edit-c-comida').value = Utils.formatSeg(ses.tiemposAcumulados?.food || 0);
+                document.getElementById('edit-c-calidad').value = Utils.formatSeg(ses.tiemposAcumulados?.quality || 0);
+                document.getElementById('edit-l-bano').value = ag.limites?.bano || '';
+                document.getElementById('edit-l-comida').value = ag.limites?.comida || '';
                 
-                if (editNombre) editNombre.innerText = ag.nombre;
-                if (editId) editId.value = id;
-                if (editCBano) editCBano.value = Utils.formatSeg(ses.tiemposAcumulados?.bath || 0);
-                if (editCComida) editCComida.value = Utils.formatSeg(ses.tiemposAcumulados?.food || 0);
-                if (editCCalidad) editCCalidad.value = Utils.formatSeg(ses.tiemposAcumulados?.quality || 0);
-                if (editLBano) editLBano.value = ag.limites?.bano || '';
-                if (editLComida) editLComida.value = ag.limites?.comida || '';
+                // Llenar Horarios
+                const h = ag.horarios || {};
+                document.getElementById('edit-turno').value = h.turno || 'Turno Matutino';
+                App.config.diasSemana.forEach(dia => {
+                    const dData = h[dia] || { activo: false, entrada: '', salida: '' };
+                    const elCheck = document.getElementById(`edit-dia-${dia}-activo`);
+                    const elIn = document.getElementById(`edit-dia-${dia}-in`);
+                    const elOut = document.getElementById(`edit-dia-${dia}-out`);
+                    if(elCheck) elCheck.checked = dData.activo;
+                    if(elIn) elIn.value = dData.entrada;
+                    if(elOut) elOut.value = dData.salida;
+                });
+
+                // Llenar Vacaciones
+                const v = ag.vacaciones || {};
+                document.getElementById('edit-vacaciones-dias').value = v.diasDisponibles !== undefined ? v.diasDisponibles : 0;
+                document.getElementById('edit-guardia-fecha').value = v.proximaGuardia || '';
+                document.getElementById('edit-guardia-horario').value = v.horarioGuardia || '';
+
+                // Llenar Conexiones
+                const c = ag.conexiones || {};
+                document.getElementById('edit-meta-horas').value = c.metaHoras || 9;
                 
                 const overlay = document.getElementById('modal-overlay');
                 const m = document.getElementById('modal-editar');
@@ -550,12 +778,15 @@
             guardarEdicion: async (e) => {
                 e.preventDefault(); 
                 const idInput = document.getElementById('edit-id');
+                const xocInput = document.getElementById('edit-xoc');
                 if (!idInput) return;
                 const id = idInput.value;
+                const xoc = xocInput ? xocInput.value.trim().toUpperCase() : '';
                 
                 const btn = document.getElementById('btn-save-edit'); 
                 if (btn) btn.disabled = true;
                 
+                // 1. Recolectar Adherencia
                 const cbano = document.getElementById('edit-c-bano');
                 const ccomida = document.getElementById('edit-c-comida');
                 const ccalidad = document.getElementById('edit-c-calidad');
@@ -571,10 +802,38 @@
                 const lB = (lbano && lbano.value) ? parseInt(lbano.value) : null;
                 const lC = (lcomida && lcomida.value) ? parseInt(lcomida.value) : null;
 
+                // 2. Recolectar Horarios
+                const horarios = { turno: document.getElementById('edit-turno').value || '' };
+                App.config.diasSemana.forEach(dia => {
+                    horarios[dia] = {
+                        activo: document.getElementById(`edit-dia-${dia}-activo`).checked,
+                        entrada: document.getElementById(`edit-dia-${dia}-in`).value,
+                        salida: document.getElementById(`edit-dia-${dia}-out`).value
+                    };
+                });
+
+                // 3. Recolectar Vacaciones y Conexiones
+                const vacaciones = {
+                    diasDisponibles: parseInt(document.getElementById('edit-vacaciones-dias').value) || 0,
+                    proximaGuardia: document.getElementById('edit-guardia-fecha').value || '',
+                    horarioGuardia: document.getElementById('edit-guardia-horario').value || ''
+                };
+
+                const conexiones = {
+                    metaHoras: parseInt(document.getElementById('edit-meta-horas').value) || 9
+                };
+
                 try {
-                    // Update Limits
-                    await updateDoc(doc(App.db, "operadores", id), { "limites.bano": lB, "limites.comida": lC });
-                    // Update Today's time
+                    // Actualizar Config Operador
+                    await updateDoc(doc(App.db, "operadores", id), { 
+                        xoc, // Nuevo Campo
+                        "limites.bano": lB, "limites.comida": lC,
+                        horarios,
+                        vacaciones,
+                        conexiones
+                    });
+
+                    // Actualizar tiempos de hoy en la Sesión
                     const refSes = doc(App.db, "sesiones_activas", id);
                     if(App.state.sesiones[id]) { 
                         await updateDoc(refSes, { tiemposAcumulados: nwTiempos }); 
@@ -582,7 +841,7 @@
                         await setDoc(refSes, { estadoActivo: null, tiempoInicioEstado: null, fecha: Utils.fechaHoyNormal(), tiemposAcumulados: nwTiempos }); 
                     }
                     
-                    App.Modals.cerrarTodos(); Utils.toast("Cambios guardados.");
+                    App.Modals.cerrarTodos(); Utils.toast("Cambios guardados correctamente.");
                 } catch(err) { 
                     Utils.toast("Error al guardar.", "error"); 
                 } finally { 
@@ -606,7 +865,7 @@
                     App.Modals.cerrarTodos(); 
                     Utils.toast("Agente eliminado."); 
                 } catch(err) { 
-                    Utils.toast("Error al eliminar.", "error"); 
+                    Utils.toast("Error al intentar eliminar.", "error"); 
                 }
             },
             resetearDia: async () => {
@@ -621,15 +880,47 @@
         };
 
         App.UI = {
+            generarGridHorarios: () => {
+                const container = document.getElementById('grid-horarios');
+                if(!container) return;
+                let html = '';
+                App.config.diasSemana.forEach(dia => {
+                    const labelDia = dia.charAt(0).toUpperCase() + dia.slice(1);
+                    html += `
+                        <div class="flex items-center gap-3 bg-white p-2 rounded-xl border border-slate-200">
+                            <label class="flex items-center gap-2 w-28 cursor-pointer">
+                                <input type="checkbox" id="edit-dia-${dia}-activo" class="w-4 h-4 rounded text-blue-600 focus:ring-blue-500 border-slate-300">
+                                <span class="text-sm font-semibold text-slate-700">${labelDia}</span>
+                            </label>
+                            <div class="flex items-center gap-2 flex-1">
+                                <input type="time" id="edit-dia-${dia}-in" class="w-full border border-slate-200 rounded-lg px-2 py-1.5 text-xs text-slate-600 outline-none focus:border-blue-500 transition-colors">
+                                <span class="text-slate-300">-</span>
+                                <input type="time" id="edit-dia-${dia}-out" class="w-full border border-slate-200 rounded-lg px-2 py-1.5 text-xs text-slate-600 outline-none focus:border-blue-500 transition-colors">
+                            </div>
+                        </div>
+                    `;
+                });
+                container.innerHTML = html;
+            },
+            switchTab: (btn, paneId) => {
+                // Estilos de botones
+                document.querySelectorAll('.tab-btn').forEach(b => { 
+                    b.classList.remove('text-blue-600', 'font-bold', 'border-b-2', 'border-blue-600'); 
+                    b.classList.add('text-slate-500', 'font-medium', 'border-transparent'); 
+                });
+                btn.classList.remove('text-slate-500', 'font-medium', 'border-transparent');
+                btn.classList.add('text-blue-600', 'font-bold', 'border-b-2', 'border-blue-600');
+                
+                // Mostrar paneles
+                document.querySelectorAll('.tab-pane').forEach(p => p.classList.add('hidden'));
+                document.getElementById(paneId).classList.remove('hidden');
+            },
             renderMonitor: () => {
                 const grid = document.getElementById('lista-activos');
                 if (!grid) return;
                 
                 const searchEl = document.getElementById('search-monitor');
                 const term = searchEl ? searchEl.value.toLowerCase() : '';
-                
-                const toggleEl = document.getElementById('toggle-active');
-                const soloActivos = toggleEl ? toggleEl.checked : false;
                 
                 let html = ''; let excedidos = 0; let activos = 0; let total = Object.keys(App.state.operadores).length;
 
@@ -640,11 +931,10 @@
                     const isOffline = !ses;
 
                     if(term && !ag.nombre.toLowerCase().includes(term) && !ag.id.toLowerCase().includes(term)) return;
-                    if(soloActivos && isOffline) return;
 
                     if(isReceso) activos++;
 
-                    // Limites aplicables
+                    // Límites aplicables
                     const limB = ag.limites?.bano || App.config.limites.bano;
                     const limC = ag.limites?.comida || App.config.limites.comida;
                     
@@ -656,7 +946,7 @@
                     let opacity = isOffline ? 'opacity-60 grayscale-[20%] bg-slate-50' : 'bg-white shadow-sm';
 
                     if (isReceso) {
-                        const m = App.config.meta[ses.estadoActivo];
+                        const m = App.config.meta[ses.estadoActivo] || { icon: 'ph-question', label: ses.estadoActivo || 'Desconocido', cText: 'text-slate-600', cBg: 'bg-slate-100', cBorder: 'border-slate-200', cBar: 'bg-slate-500' };
                         statusHtml = `<span class="px-2 py-1 ${m.cBg} ${m.cText} text-[10px] font-bold rounded flex items-center gap-1.5 shrink-0 border ${m.cBorder}"><span class="w-1.5 h-1.5 ${m.cBar} rounded-full animate-pulse"></span> ${m.label}</span>`;
                         timerHtml = `
                             <div class="${m.cBg} rounded-2xl p-4 flex flex-col items-center justify-center border ${m.cBorder} relative overflow-hidden mb-4">
@@ -675,10 +965,13 @@
                     html += `
                     <div class="${opacity} rounded-3xl p-5 border border-slate-200 flex flex-col hover:border-blue-200 transition-all relative group h-full">
                         <div class="absolute top-4 right-4 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity z-10 bg-white/90 backdrop-blur-md rounded-xl p-1 shadow-sm border border-slate-200">
-                            <button onclick="App.Handlers.abrirEditar('${ag.id}')" class="text-slate-500 hover:text-blue-600 p-1.5 rounded-lg hover:bg-blue-50 transition-colors" title="Ajustar"><i class="ph-bold ph-sliders-horizontal"></i></button>
+                            <button onclick="App.Handlers.abrirEditar('${ag.id}')" class="text-slate-500 hover:text-blue-600 p-1.5 rounded-lg hover:bg-blue-50 transition-colors" title="Ajustar Perfil"><i class="ph-bold ph-pencil-simple"></i></button>
                         </div>
                         <div class="flex justify-between items-start mb-4 pr-10 min-h-[44px]">
-                            <div class="min-w-0"><h3 class="font-bold text-slate-800 text-base leading-tight truncate mb-1" title="${ag.nombre}">${ag.nombre}</h3><span class="text-[10px] text-slate-500 font-mono font-bold bg-slate-100 px-1.5 py-0.5 rounded">ID: ${ag.id}</span></div>
+                            <div class="min-w-0">
+                                <h3 class="font-bold text-slate-800 text-base leading-tight truncate mb-1" title="${ag.nombre}">${ag.nombre}</h3>
+                                <span class="text-[10px] text-slate-500 font-mono font-bold bg-slate-100 px-1.5 py-0.5 rounded">ID: ${ag.id}</span>
+                            </div>
                         </div>
                         ${timerHtml}
                         <div class="flex justify-between items-end mb-3 mt-auto pt-2 border-t border-slate-100">${statusHtml}<span class="text-[9px] text-slate-400 font-bold uppercase tracking-widest bg-slate-100 px-2 py-1 rounded">Consumo Hoy</span></div>
@@ -699,7 +992,7 @@
                 if (kpiExced) kpiExced.innerText = excedidos;
                 
                 grid.innerHTML = html || `<div class="col-span-full py-10 text-center text-slate-400 font-bold">No hay coincidencias con tu búsqueda.</div>`;
-                App.UI.tickRelojes(); // Ejecutar inmediato
+                App.UI.tickRelojes(); 
             },
             tickRelojes: () => {
                 const ahora = Date.now();
@@ -736,7 +1029,7 @@
                 const filtroAgenteEl = document.getElementById('filtro-agente-historial');
                 if(!tbody || !filtroFechaEl) return;
                 
-                const fechaFiltro = filtroFechaEl.value; // Formato YYYY-MM-DD
+                const fechaFiltro = filtroFechaEl.value; 
                 const agenteFiltro = filtroAgenteEl ? filtroAgenteEl.value.trim().toLowerCase() : '';
                 
                 tbody.innerHTML = '';
@@ -744,25 +1037,22 @@
                 let totB = 0, totC = 0, totQ = 0;
 
                 App.state.registrosHistorial.forEach(data => {
-                    // Validar si coincide fecha
                     const dateObj = data.fecha.toDate();
                     const isoStr = new Date(dateObj.getTime() - (dateObj.getTimezoneOffset() * 60000)).toISOString().split('T')[0];
                     
                     if (isoStr === fechaFiltro) {
-                        // Validar si coincide agente (Nombre o ID)
                         if (agenteFiltro && !data.asesor_nombre.toLowerCase().includes(agenteFiltro) && !data.asesor_id.toLowerCase().includes(agenteFiltro)) {
                             return; 
                         }
 
                         rCount++;
                         
-                        // Sumar totales para el resumen
                         if (data.estado === 'bath' || data.estado === 'Baño') totB += data.duracion_segundos;
                         if (data.estado === 'food' || data.estado === 'Comida') totC += data.duracion_segundos;
                         if (data.estado === 'quality' || data.estado === 'Calidad') totQ += data.duracion_segundos;
 
                         const fStr = dateObj.toLocaleTimeString('es-ES', {hour:'2-digit', minute:'2-digit'});
-                        const ui = App.config.meta[data.estado] || App.config.meta['null'];
+                        const ui = App.config.meta[data.estado] || { icon: 'ph-question', label: data.estado || 'Desconocido', cText: 'text-slate-600', cBg: 'bg-slate-100', cBorder: 'border-slate-200', cBar: 'bg-slate-500' };
                         
                         tbody.innerHTML += `
                         <tr class="hover:bg-slate-50/80 transition-colors group border-b border-slate-100">
@@ -774,7 +1064,6 @@
                     }
                 });
 
-                // Actualizar contadores del resumen
                 const sumB = document.getElementById('super-hist-tot-bath');
                 const sumC = document.getElementById('super-hist-tot-food');
                 const sumQ = document.getElementById('super-hist-tot-quality');
@@ -791,8 +1080,6 @@
                 const tbody = document.getElementById('tabla-registros-global');
                 if(!tbody) return;
                 
-                // Limit 2000 permite tener en memoria registros extensos para que los filtros funcionen
-                // rápidos e interactivamente sin llamar continuamente a la DB.
                 const q = query(collection(window.db, "registros_tiempos"), orderBy("fecha", "desc"), limit(2000));
                 
                 onSnapshot(q, (snap) => {
@@ -802,13 +1089,15 @@
                         if(data.fecha) App.state.registrosHistorial.push(data);
                     });
                     
-                    // Actualizar la tabla si la vista está activa
                     App.UI.renderHistorialLocal();
                 }, (error) => {
-                    console.error("Error escuchando reportes", error);
+                    console.error("Error escuchando los reportes", error);
                 });
             },
             init: async () => {
+                // Initialize grids UI
+                App.UI.generarGridHorarios();
+
                 // Fetch config
                 onSnapshot(doc(window.db, "config", "global"), (d) => { if(d.exists() && d.data().limites) App.config.limites = d.data().limites; });
                 
