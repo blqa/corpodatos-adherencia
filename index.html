@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Info - OMT</title>
+    <title>Portal de Asesores - WFM</title>
     
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -43,7 +43,7 @@
             <div class="w-16 h-16 bg-gradient-to-br from-blue-500 to-indigo-600 text-white rounded-2xl flex items-center justify-center mx-auto mb-6 shadow-lg shadow-blue-500/30">
                 <i class="ph-bold ph-identification-card text-3xl"></i>
             </div>
-            <h2 class="text-2xl font-black text-slate-800 mb-2">Mi Portal OMT</h2>
+            <h2 class="text-2xl font-black text-slate-800 mb-2">Mi Portal WFM</h2>
             <p class="text-sm text-slate-500 mb-8">Ingresa tu ID corporativo para consultar tus horarios, métricas y solicitar vacaciones.</p>
             <form onsubmit="iniciarDashboard(event)" class="flex flex-col gap-4">
                 <input type="text" id="input-id" required placeholder="PIN o ID Corporativo" class="border-2 border-slate-200 p-4 rounded-xl focus:ring-4 focus:ring-blue-100 focus:border-brand focus:outline-none text-center font-mono text-xl tracking-widest shadow-inner bg-slate-50 transition-all font-bold text-slate-700 uppercase">
@@ -65,7 +65,7 @@
                     <div class="w-10 h-10 bg-brand text-white rounded-xl flex items-center justify-center shadow-lg shadow-blue-500/30 shrink-0">
                         <i class="ph-bold ph-headset text-2xl"></i>
                     </div>
-                    <span class="ml-3 font-black text-xl tracking-tight hidden md:block text-slate-800">Mi Portal OMT</span>
+                    <span class="ml-3 font-black text-xl tracking-tight hidden md:block text-slate-800">Mi Portal</span>
                 </div>
 
                 <nav class="p-4 space-y-2 flex flex-col items-center md:items-stretch mt-4">
@@ -246,23 +246,23 @@
                             </div>
                         </div>
 
-                        <!-- Formulario Demo -->
+                        <!-- Formulario de Solicitud de Permiso -->
                         <div class="bg-card p-6 rounded-3xl border border-border shadow-sm">
                             <h3 class="font-black text-lg text-slate-800 mb-4 flex items-center gap-2"><i class="ph-fill ph-paper-plane-tilt text-brand"></i> Solicitar Permiso</h3>
-                            <form class="flex flex-col gap-4">
+                            <form id="form-solicitud" class="flex flex-col gap-4">
                                 <div>
                                     <label class="text-xs font-bold text-slate-500 uppercase tracking-widest block mb-2">Motivo</label>
-                                    <select class="w-full border border-slate-200 p-3 rounded-xl bg-slate-50 font-medium text-slate-700 outline-none focus:border-brand">
-                                        <option>Vacaciones</option>
-                                        <option>Permiso Personal</option>
-                                        <option>Enfermedad</option>
+                                    <select id="req-motivo" class="w-full border border-slate-200 p-3 rounded-xl bg-slate-50 font-medium text-slate-700 outline-none focus:border-brand">
+                                        <option value="Vacaciones">Vacaciones de Ley</option>
+                                        <option value="Permiso Personal">Permiso sin goce de sueldo</option>
+                                        <option value="Enfermedad">Incapacidad Médica</option>
                                     </select>
                                 </div>
                                 <div class="grid grid-cols-2 gap-4">
-                                    <div><label class="text-xs font-bold text-slate-500 uppercase tracking-widest block mb-2">Inicio</label><input type="date" class="w-full border border-slate-200 p-3 rounded-xl bg-slate-50 font-medium text-slate-700 outline-none"></div>
-                                    <div><label class="text-xs font-bold text-slate-500 uppercase tracking-widest block mb-2">Fin</label><input type="date" class="w-full border border-slate-200 p-3 rounded-xl bg-slate-50 font-medium text-slate-700 outline-none"></div>
+                                    <div><label class="text-xs font-bold text-slate-500 uppercase tracking-widest block mb-2">Inicio</label><input type="date" id="req-inicio" class="w-full border border-slate-200 p-3 rounded-xl bg-slate-50 font-medium text-slate-700 outline-none"></div>
+                                    <div><label class="text-xs font-bold text-slate-500 uppercase tracking-widest block mb-2">Fin</label><input type="date" id="req-fin" class="w-full border border-slate-200 p-3 rounded-xl bg-slate-50 font-medium text-slate-700 outline-none"></div>
                                 </div>
-                                <button type="button" class="bg-slate-900 text-white font-bold py-3 rounded-xl mt-2 hover:bg-slate-800 transition" onclick="alert('Esta función avisará a tu supervisor próximamente.')">Enviar a WFM</button>
+                                <button type="button" onclick="enviarSolicitud()" class="bg-slate-900 text-white font-bold py-3 rounded-xl mt-2 hover:bg-slate-800 transition">Enviar a WFM</button>
                             </form>
                         </div>
                     </div>
@@ -275,7 +275,7 @@
     <!-- FIREBASE Y LÓGICA -->
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import { getFirestore, collection, onSnapshot, doc, getDoc, query, where, getDocs } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import { getFirestore, collection, onSnapshot, doc, getDoc, query, where, getDocs, addDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
         const firebaseConfig = {
             apiKey: "AIzaSyDT7iPaeRjlt-WIWWzwBh3deN2z_E-b2JA",
@@ -364,6 +364,42 @@
 
         window.cerrarSesion = function() {
             localStorage.removeItem('asesorDashboard'); location.reload();
+        };
+
+        window.enviarSolicitud = async function() {
+            const motivo = document.getElementById('req-motivo').value;
+            const inicio = document.getElementById('req-inicio').value;
+            const fin = document.getElementById('req-fin').value;
+
+            if(!inicio || !fin) { alert("Completa ambas fechas."); return; }
+            
+            // Calcula los días solicitados
+            const d1 = new Date(inicio); const d2 = new Date(fin);
+            const dias = Math.max(1, Math.ceil((d2 - d1) / (1000 * 60 * 60 * 24)) + 1);
+
+            const btn = document.querySelector('#form-solicitud button');
+            btn.disabled = true;
+            btn.innerText = "Enviando...";
+
+            try {
+                await addDoc(collection(db, "solicitudes"), {
+                    asesor_id: asesorDatos.id,
+                    asesor_nombre: asesorDatos.nombre,
+                    motivo: motivo,
+                    fecha_inicio: inicio,
+                    fecha_fin: fin,
+                    dias_solicitados: dias,
+                    estado: 'pendiente',
+                    timestamp: Date.now()
+                });
+                alert("¡Solicitud enviada! Tu supervisor la revisará.");
+                document.getElementById('form-solicitud').reset();
+            } catch(e) { 
+                alert("Error al enviar solicitud."); 
+            } finally {
+                btn.disabled = false;
+                btn.innerText = "Enviar a WFM";
+            }
         };
 
         // Renderizado del Dashboard
@@ -471,7 +507,6 @@
             metaDisplay.innerText = metaHoras;
 
             try {
-                // Hacemos que el sistema busque usando su ID numérico y también su XOC
                 const posiblesIds = [asesorDatos.id];
                 if (asesorDatos.xoc) posiblesIds.push(asesorDatos.xoc.toUpperCase());
 
