@@ -181,21 +181,24 @@
                     <div class="bg-card rounded-3xl shadow-sm border border-border overflow-hidden">
                         <div class="p-6 border-b border-slate-100 bg-slate-50/50 flex justify-between items-center">
                             <h3 class="font-bold text-slate-800 flex items-center gap-2"><i class="ph-fill ph-list-dashes text-brand"></i> Historial de Reportes</h3>
-                            <span class="text-xs font-bold text-slate-500 bg-white border border-slate-200 px-3 py-1 rounded-lg">Meta Diaria: <span id="meta-horas-display" class="text-brand">--</span> hrs</span>
+                            <span class="text-xs font-bold text-slate-500 bg-white border border-slate-200 px-3 py-1 rounded-lg shadow-sm">Meta Diaria: <span id="meta-horas-display" class="text-brand">--</span> hrs</span>
                         </div>
-                        <div class="overflow-x-auto">
+                        <div class="overflow-x-auto custom-scrollbar">
                             <table class="w-full text-left">
-                                <thead class="bg-white border-b border-slate-100 text-xs text-slate-400 uppercase tracking-widest font-bold">
+                                <thead class="bg-white border-b border-slate-100 text-[11px] text-slate-400 uppercase tracking-widest font-bold whitespace-nowrap">
                                     <tr>
-                                        <th class="px-6 py-4">Fecha</th>
-                                        <th class="px-6 py-4">Primer Login</th>
-                                        <th class="px-6 py-4">Último Logout</th>
-                                        <th class="px-6 py-4">Llamadas</th>
-                                        <th class="px-6 py-4 text-right">Duración Sistema</th>
+                                        <th class="px-4 py-4">Fecha</th>
+                                        <th class="px-4 py-4">P. Login</th>
+                                        <th class="px-4 py-4">Ú. Logout</th>
+                                        <th class="px-4 py-4">Llamadas</th>
+                                        <th class="px-4 py-4 text-center">Comida</th>
+                                        <th class="px-4 py-4 text-center">Baño</th>
+                                        <th class="px-4 py-4 text-center">Calidad</th>
+                                        <th class="px-4 py-4 text-right">Total Firmado</th>
                                     </tr>
                                 </thead>
                                 <tbody id="tabla-conexiones" class="divide-y divide-slate-50">
-                                    <tr><td colspan="5" class="text-center py-8 text-slate-400 font-medium">Buscando reportes...</td></tr>
+                                    <tr><td colspan="8" class="text-center py-8 text-slate-400 font-medium">Buscando reportes...</td></tr>
                                 </tbody>
                             </table>
                         </div>
@@ -209,7 +212,7 @@
                             <h1 class="text-3xl font-black text-slate-800">Mis Horarios</h1>
                             <p class="text-slate-500 font-medium mt-1">Tu jornada laboral actual en el sistema.</p>
                         </div>
-                        <span id="turno-display" class="bg-blue-100 text-brand font-bold px-4 py-2 rounded-lg text-sm border border-blue-200 w-fit">Cargando Turno...</span>
+                        <span id="turno-display" class="bg-blue-100 text-brand font-bold px-4 py-2 rounded-lg text-sm border border-blue-200 w-fit shadow-sm">Cargando Turno...</span>
                     </header>
                     <div id="grid-horarios" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-4">
                         <!-- Llenado por JS -->
@@ -468,7 +471,11 @@
             metaDisplay.innerText = metaHoras;
 
             try {
-                const q = query(collection(db, "conexiones_diarias"), where("asesor_id", "==", asesorDatos.id));
+                // Hacemos que el sistema busque usando su ID numérico y también su XOC
+                const posiblesIds = [asesorDatos.id];
+                if (asesorDatos.xoc) posiblesIds.push(asesorDatos.xoc.toUpperCase());
+
+                const q = query(collection(db, "conexiones_diarias"), where("asesor_id", "in", posiblesIds));
                 const snap = await getDocs(q);
                 
                 let reportes = [];
@@ -478,7 +485,7 @@
                 reportes.sort((a, b) => b.fecha_iso.localeCompare(a.fecha_iso));
 
                 if(reportes.length === 0) {
-                    tbody.innerHTML = `<tr><td colspan="5" class="text-center py-10 text-slate-400 font-medium">Aún no hay reportes de conexión subidos para ti.</td></tr>`;
+                    tbody.innerHTML = `<tr><td colspan="8" class="text-center py-10 text-slate-400 font-medium">Aún no hay reportes de conexión subidos para ti.</td></tr>`;
                     return;
                 }
 
@@ -494,18 +501,21 @@
                     const cColor = cumplio ? 'text-emerald-600' : 'text-slate-800';
 
                     html += `
-                    <tr class="hover:bg-slate-50 transition-colors">
-                        <td class="px-6 py-4 font-bold text-slate-600">${r.fecha_reporte}</td>
-                        <td class="px-6 py-4 text-slate-500 font-mono"><i class="ph-bold ph-arrow-down-left text-emerald-500 mr-1"></i> ${r.hora_inicio}</td>
-                        <td class="px-6 py-4 text-slate-500 font-mono"><i class="ph-bold ph-arrow-up-right text-red-500 mr-1"></i> ${r.hora_fin}</td>
-                        <td class="px-6 py-4 text-slate-500 font-mono font-bold">${r.llamadas_contestadas} <span class="text-xs font-normal text-slate-400">in</span> / ${r.llamadas_salientes} <span class="text-xs font-normal text-slate-400">out</span></td>
-                        <td class="px-6 py-4 text-right font-black ${cColor} font-mono">${r.duracion_firmado}</td>
+                    <tr class="hover:bg-slate-50 transition-colors whitespace-nowrap">
+                        <td class="px-4 py-4 font-bold text-slate-600">${r.fecha_reporte}</td>
+                        <td class="px-4 py-4 text-slate-500 font-mono text-sm"><i class="ph-bold ph-arrow-down-left text-emerald-500 mr-1"></i> ${r.hora_inicio}</td>
+                        <td class="px-4 py-4 text-slate-500 font-mono text-sm"><i class="ph-bold ph-arrow-up-right text-red-500 mr-1"></i> ${r.hora_fin}</td>
+                        <td class="px-4 py-4 text-slate-500 font-mono font-bold text-sm">${r.llamadas_contestadas} <span class="text-[10px] font-normal text-slate-400">IN</span> / ${r.llamadas_salientes} <span class="text-[10px] font-normal text-slate-400">OUT</span></td>
+                        <td class="px-4 py-4 text-center font-mono text-sm text-orange-600 font-medium">${r.comida_total || '00:00:00'}</td>
+                        <td class="px-4 py-4 text-center font-mono text-sm text-purple-600 font-medium">${r.bano_total || '00:00:00'}</td>
+                        <td class="px-4 py-4 text-center font-mono text-sm text-blue-600 font-medium">${r.calidad_total || '00:00:00'}</td>
+                        <td class="px-4 py-4 text-right font-black ${cColor} font-mono">${r.duracion_firmado}</td>
                     </tr>`;
                 });
                 tbody.innerHTML = html;
 
             } catch (error) {
-                tbody.innerHTML = `<tr><td colspan="5" class="text-center py-10 text-red-400 font-medium">Error al cargar historial.</td></tr>`;
+                tbody.innerHTML = `<tr><td colspan="8" class="text-center py-10 text-red-400 font-medium">Error al cargar historial.</td></tr>`;
             }
         }
 
