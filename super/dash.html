@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Dashboard Admin - Control de Tiempos</title>
+    <title>Monitor en Vivo - WFM</title>
     
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -32,18 +32,18 @@
         .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
         .custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
         .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
-        input[type=number]::-webkit-inner-spin-button, 
-        input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
         .glass-panel { background: rgba(255, 255, 255, 0.90); backdrop-filter: blur(12px); }
         .progress-transition { transition: width 1s linear, background-color 0.3s; }
+        .fade-in { animation: fadeIn 0.3s ease-in-out; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
     </style>
 </head>
-<body class="bg-slate-50 min-h-screen text-slate-800 pb-10 antialiased selection:bg-blue-100 selection:text-blue-900 transition-colors duration-300">
+<body class="bg-slate-50 font-sans text-slate-800 h-screen overflow-hidden flex selection:bg-blue-100 selection:text-blue-900 transition-colors duration-300">
 
-    <!-- Notificación Global -->
-    <div id="notificacion" class="fixed top-6 left-1/2 transform -translate-x-1/2 z-[100] hidden max-w-md w-full bg-slate-900 text-white shadow-2xl rounded-2xl p-4 transition-all duration-300 flex items-center gap-3 border border-slate-700">
+    <!-- Notificaciones -->
+    <div id="notificacion" class="fixed top-6 left-1/2 transform -translate-x-1/2 z-[100] hidden max-w-md w-full shadow-2xl rounded-2xl p-4 transition-all duration-300 flex items-center gap-3 border">
         <div id="notificacion-icon" class="text-2xl shrink-0"></div>
-        <p class="font-medium text-sm flex-1" id="notificacion-texto"></p>
+        <p class="font-medium text-sm flex-1 text-white" id="notificacion-texto"></p>
         <button onclick="document.getElementById('notificacion').classList.add('hidden')" class="text-slate-400 hover:text-white transition-colors">
             <i class="ph ph-x"></i>
         </button>
@@ -52,17 +52,6 @@
     <!-- Modales -->
     <div id="modal-overlay" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 hidden flex items-center justify-center px-4 py-6 transition-opacity duration-300 opacity-0 overflow-y-auto">
         
-        <!-- Modal: Confirmar Eliminar -->
-        <div id="modal-confirm" class="bg-white rounded-3xl shadow-2xl w-full max-w-sm p-6 transform scale-95 transition-transform duration-300 hidden border border-transparent m-auto">
-            <div class="w-12 h-12 rounded-full bg-red-100 flex items-center justify-center mb-4 mx-auto"><i class="ph ph-trash text-red-600 text-2xl"></i></div>
-            <h3 class="text-xl font-bold text-slate-800 mb-2 text-center">¿Eliminar Colaborador?</h3>
-            <p class="text-slate-500 text-sm mb-6 text-center">Esta acción es irreversible. Se borrarán sus accesos y configuraciones.</p>
-            <div class="flex gap-3">
-                <button onclick="App.Modals.cerrarTodos()" class="flex-1 py-2.5 text-slate-600 bg-slate-100 hover:bg-slate-200 rounded-xl font-semibold transition-colors">Cancelar</button>
-                <button onclick="App.Handlers.eliminarAgente()" class="flex-1 py-2.5 bg-red-600 hover:bg-red-700 text-white rounded-xl font-semibold transition-colors shadow-sm shadow-red-200">Sí, Eliminar</button>
-            </div>
-        </div>
-
         <!-- Modal: Confirmar Reset -->
         <div id="modal-confirm-reset" class="bg-white rounded-3xl shadow-2xl w-full max-w-sm p-6 transform scale-95 transition-transform duration-300 hidden border border-transparent m-auto">
             <div class="w-12 h-12 rounded-full bg-orange-100 flex items-center justify-center mb-4 mx-auto"><i class="ph ph-warning-circle text-orange-600 text-2xl"></i></div>
@@ -93,145 +82,6 @@
                 </button>
             </div>
         </div>
-
-        <!-- Modal: Editar Agente (Tiempos, Horarios, Vacaciones) -->
-        <div id="modal-editar" class="bg-white rounded-3xl shadow-2xl w-full max-w-xl p-6 transform scale-95 transition-transform duration-300 hidden border border-transparent m-auto">
-            <div class="flex items-center justify-between mb-2">
-                <h3 class="text-lg font-bold text-slate-800 flex items-center gap-2">
-                    <div class="p-2 bg-blue-100 text-blue-600 rounded-lg"><i class="ph ph-sliders-horizontal"></i></div> Perfil de <span id="edit-nombre" class="text-blue-600 truncate max-w-[200px]"></span>
-                </h3>
-                <button onclick="App.Modals.cerrarTodos()" class="text-slate-400 hover:text-slate-600 bg-slate-100 p-1.5 rounded-full"><i class="ph ph-x"></i></button>
-            </div>
-            
-            <form onsubmit="App.Handlers.guardarEdicion(event)">
-                
-                <!-- Datos Clave Visibles y Editables -->
-                <div class="flex gap-4 mb-2 mt-4 p-3 bg-slate-50 rounded-xl border border-slate-200">
-                    <div class="flex-1">
-                        <label class="block text-[10px] uppercase font-bold text-slate-500 mb-1">ID de Empleado (Login)</label>
-                        <input type="text" id="edit-id" readonly class="w-full border border-transparent bg-transparent p-1 text-sm font-bold text-slate-700 outline-none cursor-not-allowed">
-                    </div>
-                    <div class="flex-1">
-                        <label class="block text-[10px] uppercase font-bold text-slate-500 mb-1">Código XOC</label>
-                        <input type="text" id="edit-xoc" class="w-full border border-slate-300 bg-white rounded-lg p-2 text-sm focus:border-blue-500 outline-none" placeholder="Ej. X90G0DF">
-                    </div>
-                </div>
-
-                <!-- Navegación de Pestañas -->
-                <div class="flex gap-1 border-b border-slate-200 mb-5 overflow-x-auto custom-scrollbar mt-2">
-                    <button type="button" onclick="App.UI.switchTab(this, 'tab-adherencia')" class="tab-btn text-blue-600 font-bold border-b-2 border-blue-600 pb-2 px-3 text-sm shrink-0">Adherencia</button>
-                    <button type="button" onclick="App.UI.switchTab(this, 'tab-conexiones')" class="tab-btn text-slate-500 hover:text-slate-700 font-medium pb-2 px-3 text-sm shrink-0 border-b-2 border-transparent">Conexiones</button>
-                    <button type="button" onclick="App.UI.switchTab(this, 'tab-horarios')" class="tab-btn text-slate-500 hover:text-slate-700 font-medium pb-2 px-3 text-sm shrink-0 border-b-2 border-transparent">Horarios</button>
-                    <button type="button" onclick="App.UI.switchTab(this, 'tab-vacaciones')" class="tab-btn text-slate-500 hover:text-slate-700 font-medium pb-2 px-3 text-sm shrink-0 border-b-2 border-transparent">Vacaciones</button>
-                </div>
-                
-                <!-- CONTENIDO PESTAÑAS -->
-                <div class="min-h-[300px]">
-                    
-                    <!-- PESTAÑA: ADHERENCIA -->
-                    <div id="tab-adherencia" class="tab-pane space-y-5">
-                        <p class="text-slate-500 text-sm mb-2 leading-relaxed">Modifica el consumo de <strong class="text-slate-700">HOY</strong> o define límites específicos.</p>
-                        
-                        <div class="p-4 rounded-2xl border border-slate-200 bg-slate-50/50 shadow-sm">
-                            <h4 class="font-semibold text-xs uppercase tracking-wider text-slate-400 mb-3 flex items-center gap-2"><i class="ph ph-clock"></i> Consumido Hoy (Min:Seg)</h4>
-                            <div class="grid grid-cols-3 gap-3">
-                                <div class="relative">
-                                    <label class="block text-[10px] uppercase font-semibold text-slate-500 mb-1">Baño</label>
-                                    <div class="relative"><i class="ph ph-toilet absolute left-2.5 top-2.5 text-slate-400"></i><input type="text" id="edit-c-bano" placeholder="00:00" class="w-full border border-slate-300 bg-white rounded-xl pl-8 pr-2 py-2 text-sm font-mono focus:border-blue-500 outline-none transition-all"></div>
-                                </div>
-                                <div class="relative">
-                                    <label class="block text-[10px] uppercase font-semibold text-slate-500 mb-1">Comida</label>
-                                    <div class="relative"><i class="ph ph-fork-knife absolute left-2.5 top-2.5 text-slate-400"></i><input type="text" id="edit-c-comida" placeholder="00:00" class="w-full border border-slate-300 bg-white rounded-xl pl-8 pr-2 py-2 text-sm font-mono focus:border-orange-500 outline-none transition-all"></div>
-                                </div>
-                                <div class="relative">
-                                    <label class="block text-[10px] uppercase font-semibold text-slate-500 mb-1">Calidad</label>
-                                    <div class="relative"><i class="ph ph-star absolute left-2.5 top-2.5 text-slate-400"></i><input type="text" id="edit-c-calidad" placeholder="00:00" class="w-full border border-slate-300 bg-white rounded-xl pl-8 pr-2 py-2 text-sm font-mono focus:border-purple-500 outline-none transition-all"></div>
-                                </div>
-                            </div>
-                        </div>
-
-                        <div class="p-4 rounded-2xl border border-slate-200 bg-slate-50/50 shadow-sm">
-                            <h4 class="font-semibold text-xs uppercase tracking-wider text-slate-400 mb-3 flex items-center gap-2"><i class="ph ph-lock-key"></i> Límites Individuales (Min)</h4>
-                            <div class="grid grid-cols-2 gap-3">
-                                <div class="relative">
-                                    <label class="block text-[10px] uppercase font-semibold text-slate-500 mb-1">Límite Baño</label>
-                                    <input type="number" id="edit-l-bano" class="w-full border border-slate-300 bg-white rounded-xl p-2.5 text-sm focus:border-blue-500 outline-none transition-all font-mono" placeholder="Global">
-                                </div>
-                                <div class="relative">
-                                    <label class="block text-[10px] uppercase font-semibold text-slate-500 mb-1">Límite Comida</label>
-                                    <input type="number" id="edit-l-comida" class="w-full border border-slate-300 bg-white rounded-xl p-2.5 text-sm focus:border-orange-500 outline-none transition-all font-mono" placeholder="Global">
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- PESTAÑA: CONEXIONES -->
-                    <div id="tab-conexiones" class="tab-pane hidden space-y-5">
-                        <div class="p-4 rounded-2xl border border-slate-200 bg-slate-50/50 shadow-sm">
-                            <h4 class="font-semibold text-xs uppercase tracking-wider text-slate-400 mb-3 flex items-center gap-2"><i class="ph ph-plug"></i> Configuración de Conexión</h4>
-                            <div>
-                                <label class="block text-xs uppercase font-bold text-slate-500 mb-1">Meta de Horas Diarias</label>
-                                <div class="relative w-1/2">
-                                    <i class="ph ph-clock absolute left-3 top-3 text-slate-400"></i>
-                                    <input type="number" id="edit-meta-horas" class="w-full border border-slate-300 bg-white rounded-xl pl-9 p-2.5 text-sm focus:border-blue-500 outline-none transition-all" placeholder="Ej. 9">
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- PESTAÑA: HORARIOS -->
-                    <div id="tab-horarios" class="tab-pane hidden space-y-4">
-                        <div class="p-4 rounded-2xl border border-slate-200 bg-slate-50/50 shadow-sm">
-                            <h4 class="font-semibold text-xs uppercase tracking-wider text-slate-400 mb-3 flex items-center gap-2"><i class="ph ph-calendar"></i> Configuración de Turno</h4>
-                            
-                            <div class="mb-4">
-                                <label class="block text-[10px] uppercase font-bold text-slate-500 mb-1">Nombre del Turno</label>
-                                <input type="text" id="edit-turno" class="w-full border border-slate-300 bg-white rounded-xl p-2 text-sm outline-none focus:border-blue-500" placeholder="Ej. Turno Matutino">
-                            </div>
-
-                            <label class="block text-[10px] uppercase font-bold text-slate-500 mb-2">Jornada Semanal (Entrada - Salida)</label>
-                            <div class="space-y-2" id="grid-horarios">
-                                <!-- Generado por JS -->
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- PESTAÑA: VACACIONES Y GUARDIAS -->
-                    <div id="tab-vacaciones" class="tab-pane hidden space-y-5">
-                        <div class="p-4 rounded-2xl border border-slate-200 bg-slate-50/50 shadow-sm">
-                            <h4 class="font-semibold text-xs uppercase tracking-wider text-slate-400 mb-3 flex items-center gap-2"><i class="ph ph-airplane-tilt"></i> Balance de Días</h4>
-                            <div>
-                                <label class="block text-[10px] uppercase font-bold text-slate-500 mb-1">Días Disponibles</label>
-                                <input type="number" id="edit-vacaciones-dias" class="w-1/3 border border-slate-300 bg-white rounded-xl p-2.5 text-sm focus:border-blue-500 outline-none" placeholder="Ej. 6">
-                            </div>
-                        </div>
-
-                        <div class="p-4 rounded-2xl border border-orange-200 bg-orange-50 shadow-sm">
-                            <h4 class="font-semibold text-xs uppercase tracking-wider text-orange-600 mb-3 flex items-center gap-2"><i class="ph-fill ph-warning-circle"></i> Próxima Guardia</h4>
-                            <div class="grid grid-cols-2 gap-4">
-                                <div>
-                                    <label class="block text-[10px] uppercase font-bold text-orange-600/70 mb-1">Fecha</label>
-                                    <input type="date" id="edit-guardia-fecha" class="w-full border border-orange-300 bg-white rounded-xl p-2 text-sm focus:border-orange-500 outline-none">
-                                </div>
-                                <div>
-                                    <label class="block text-[10px] uppercase font-bold text-orange-600/70 mb-1">Horario</label>
-                                    <input type="text" id="edit-guardia-horario" class="w-full border border-orange-300 bg-white rounded-xl p-2 text-sm focus:border-orange-500 outline-none" placeholder="Ej. 10:00 a 14:00">
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                </div>
-
-                <!-- Botones de Acción -->
-                <div class="flex gap-3 mt-6 pt-4 border-t border-slate-100">
-                    <button type="button" onclick="App.Modals.cerrarTodos()" class="flex-1 px-4 py-2.5 text-slate-600 bg-slate-100 hover:bg-slate-200 rounded-xl font-medium transition-colors">Cancelar</button>
-                    <button type="submit" id="btn-save-edit" class="flex-[2] px-4 py-2.5 bg-slate-900 hover:bg-slate-800 text-white rounded-xl font-medium transition-colors shadow-md flex justify-center items-center gap-2">
-                        <i class="ph ph-floppy-disk"></i> Guardar Cambios
-                    </button>
-                </div>
-            </form>
-        </div>
     </div>
 
     <!-- PANEL LATERAL CONFIGURACIÓN -->
@@ -250,6 +100,7 @@
                     <h3 class="font-bold text-slate-800 mb-4 flex items-center gap-2 text-sm border-b border-slate-100 pb-2">
                         <i class="ph ph-timer text-slate-400"></i> Políticas Globales
                     </h3>
+                    <p class="text-xs text-slate-500 mb-4 leading-relaxed">Establece los límites predeterminados para todos los empleados que no tengan límites personalizados.</p>
                     <div class="flex gap-3 mb-4">
                         <div class="flex-1">
                             <label class="block text-[10px] uppercase text-slate-500 font-bold mb-1.5 ml-1">Baño (min)</label>
@@ -268,39 +119,19 @@
                     </div>
                     <button onclick="App.Handlers.guardarGlobales()" class="w-full bg-slate-100 hover:bg-slate-200 text-slate-800 text-xs font-bold py-2.5 rounded-xl transition-colors flex items-center justify-center gap-2"><i class="ph ph-check-circle"></i> Aplicar Límites</button>
                 </div>
-
-                <!-- Alta Empleado (Con XOC) -->
-                <div class="bg-slate-900 rounded-2xl shadow-sm border border-slate-800 p-5 text-white">
-                    <h3 class="font-bold mb-4 flex items-center gap-2 text-sm border-b border-slate-700 pb-2">
-                        <i class="ph ph-user-plus text-blue-400"></i> Alta de Empleado
-                    </h3>
-                    <form onsubmit="App.Handlers.crearAgente(event)" class="space-y-3 mb-4">
-                        <input type="text" id="nuevo-pin" required placeholder="ID de Empleado (Ej. 20718)" class="w-full border border-slate-700 rounded-xl bg-slate-800/50 p-2.5 text-sm outline-none focus:border-blue-500 transition-all font-mono text-white uppercase">
-                        <input type="text" id="nuevo-xoc" required placeholder="Código XOC (Ej. X90G0DF)" class="w-full border border-slate-700 rounded-xl bg-slate-800/50 p-2.5 text-sm outline-none focus:border-blue-500 transition-all font-mono text-white uppercase">
-                        <input type="text" id="nuevo-nombre" required placeholder="Nombre Completo" class="w-full border border-slate-700 rounded-xl bg-slate-800/50 p-2.5 text-sm outline-none focus:border-blue-500 transition-all text-white">
-                        <button type="submit" id="btn-crear-agente" class="w-full bg-blue-600 hover:bg-blue-500 text-white text-sm font-bold py-2.5 rounded-xl transition-colors flex justify-center items-center gap-2 shadow-sm shadow-blue-900/50 mt-2">
-                            Registrar Empleado <i class="ph ph-plus-bold"></i>
-                        </button>
-                    </form>
-                </div>
             </div>
         </div>
     </div>
 
     <!-- PANTALLAS DE ESTADO Y LOGIN -->
-    <div id="vista-cargando" class="flex flex-col items-center justify-center min-h-screen bg-slate-50 hidden">
-        <div class="relative"><div class="loader mb-6 relative z-10"></div><div class="absolute inset-0 bg-blue-400 blur-xl opacity-20 rounded-full"></div></div>
-        <p class="text-slate-600 font-medium tracking-wide animate-pulse">Conectando al servidor...</p>
-    </div>
-
-    <div id="vista-login-admin" class="min-h-screen flex items-center justify-center px-4 relative overflow-hidden bg-slate-50">
+    <div id="vista-login-admin" class="min-h-screen w-full flex items-center justify-center px-4 relative overflow-hidden bg-slate-50 absolute inset-0 z-50">
         <div class="absolute top-[-10%] left-[-10%] w-96 h-96 bg-blue-400 rounded-full mix-blend-multiply filter blur-3xl opacity-10 animate-pulse-slow"></div>
         <div class="absolute bottom-[-10%] right-[-10%] w-96 h-96 bg-purple-400 rounded-full mix-blend-multiply filter blur-3xl opacity-10 animate-pulse-slow" style="animation-delay: 2s;"></div>
 
         <div class="bg-white p-8 md:p-10 rounded-3xl shadow-2xl border border-slate-100 w-full max-w-sm relative z-10 transform transition-all hover:scale-[1.01]">
             <div class="w-16 h-16 bg-slate-900 rounded-2xl flex items-center justify-center mb-6 shadow-lg shadow-slate-200"><i class="ph ph-fingerprint text-3xl text-white"></i></div>
             <h2 class="text-2xl font-bold text-slate-900 mb-1">Acceso Root</h2>
-            <p class="text-slate-500 text-sm mb-8 font-medium">Panel de administración central</p>
+            <p class="text-slate-500 text-sm mb-8 font-medium">Monitor Táctico WFM</p>
             
             <div class="relative mb-6">
                 <input type="password" id="pin-admin" autocomplete="off" placeholder="Palabra clave" class="w-full text-center text-lg tracking-[0.3em] font-mono border-b-2 border-slate-200 bg-slate-50/50 rounded-t-xl p-4 focus:border-slate-900 outline-none transition-all" onkeypress="if(event.key === 'Enter') App.Auth.login()">
@@ -310,44 +141,63 @@
         </div>
     </div>
 
-    <!-- PANTALLA DASHBOARD ADMIN -->
-    <div id="vista-admin" class="hidden min-h-screen flex flex-col">
-        <nav class="glass-panel sticky top-0 z-40 px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between border-b border-slate-200 shadow-sm">
-            <div class="flex items-center gap-3">
-                <div class="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center shadow-inner"><i class="ph ph-chart-polar text-white text-lg"></i></div>
-                <div>
-                    <h1 class="text-lg font-bold text-slate-900 leading-tight">Admin<span class="text-blue-600">Dash</span></h1>
-                    <p class="text-[10px] text-slate-500 font-medium tracking-wide capitalize" id="fecha-admin-display">Hoy</p>
-                </div>
+    <!-- SIDEBAR (Navegación Admin) -->
+    <aside class="w-64 bg-slate-900 text-white hidden md:flex flex-col shadow-xl shrink-0 z-20" id="sidebar-admin">
+        <div class="h-20 flex items-center px-6 border-b border-slate-800">
+            <div class="w-10 h-10 bg-blue-600 rounded-xl flex items-center justify-center shadow-lg shadow-blue-600/30">
+                <i class="ph-bold ph-users-three text-2xl"></i>
             </div>
-            
-            <div class="flex items-center gap-3 sm:gap-5">
-                <button onclick="App.Modals.abrirReset()" class="text-slate-600 hover:text-orange-600 bg-white hover:bg-orange-50 border border-slate-200 p-2 sm:px-3 sm:py-1.5 rounded-lg transition-colors flex items-center gap-2 shadow-sm text-sm font-medium" title="Reiniciar Tiempos"><i class="ph ph-arrow-counter-clockwise text-lg"></i> <span class="hidden sm:inline">Reset Día</span></button>
-                <button onclick="App.Modals.abrirImportar()" class="text-slate-600 hover:text-blue-600 bg-white hover:bg-blue-50 border border-slate-200 p-2 sm:px-3 sm:py-1.5 rounded-lg transition-colors flex items-center gap-2 shadow-sm text-sm font-medium" title="Importar Conexiones"><i class="ph ph-download-simple text-lg"></i> <span class="hidden sm:inline">Importar</span></button>
-                <div class="w-px h-6 bg-slate-200 hidden sm:block"></div>
-                <button onclick="App.Modals.abrirConfig()" class="text-slate-500 hover:text-slate-800 p-2 rounded-lg transition-colors flex items-center justify-center" title="Configuración"><i class="ph ph-gear text-xl"></i></button>
-                <button onclick="App.Auth.logout()" class="text-slate-500 hover:text-red-600 p-2 sm:px-3 sm:py-1.5 rounded-lg transition-colors flex items-center gap-2 text-sm font-medium" title="Cerrar Sesión"><span class="hidden sm:inline">Salir</span> <i class="ph ph-sign-out text-lg"></i></button>
-            </div>
+            <span class="ml-3 font-black text-xl tracking-tight">WFM Admin</span>
+        </div>
+        <nav class="flex-1 p-4 space-y-2 overflow-y-auto">
+            <a href="#" class="flex items-center gap-3 p-3 rounded-xl bg-blue-600/10 text-blue-400 font-bold border border-blue-500/20 transition-colors">
+                <i class="ph-fill ph-chart-polar text-xl"></i> Monitor en Vivo
+            </a>
+            <a href="gestor_asesores.html" class="flex items-center gap-3 p-3 rounded-xl text-slate-400 hover:text-white hover:bg-slate-800 transition-colors font-medium">
+                <i class="ph-fill ph-address-book text-xl"></i> Gestión de Personal
+            </a>
         </nav>
+        <div class="p-4 border-t border-slate-800">
+            <button onclick="App.Auth.logout()" class="w-full flex items-center justify-center gap-2 p-3 rounded-xl text-slate-400 hover:text-red-400 hover:bg-red-500/10 transition-colors font-medium">
+                <i class="ph-bold ph-sign-out text-xl"></i> Cerrar Sesión
+            </button>
+        </div>
+    </aside>
 
-        <main class="max-w-[1400px] w-full mx-auto p-4 sm:p-6 lg:p-8 space-y-8 flex-1">
+    <!-- MAIN CONTENT AREA (Monitor) -->
+    <main class="flex-1 h-screen flex flex-col relative overflow-hidden bg-slate-50/50 hidden" id="vista-admin">
+        
+        <header class="bg-white border-b border-slate-200 px-8 py-6 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 shrink-0 shadow-sm z-10">
+            <div>
+                <h1 class="text-2xl font-black text-slate-900 leading-tight">Monitor de Operaciones</h1>
+                <p class="text-sm text-slate-500 font-medium" id="fecha-admin-display">Hoy</p>
+            </div>
+            <div class="flex items-center gap-3">
+                <button onclick="App.Modals.abrirReset()" class="text-slate-600 hover:text-orange-600 bg-white hover:bg-orange-50 border border-slate-200 px-4 py-2 rounded-xl transition-colors flex items-center gap-2 shadow-sm text-sm font-bold"><i class="ph-bold ph-arrow-counter-clockwise text-lg"></i> Reset Día</button>
+                <button onclick="App.Modals.abrirImportar()" class="text-white bg-blue-600 hover:bg-blue-700 px-4 py-2 rounded-xl transition-colors flex items-center gap-2 shadow-sm shadow-blue-200 text-sm font-bold"><i class="ph-bold ph-download-simple text-lg"></i> Importar Reporte</button>
+                <div class="w-px h-6 bg-slate-200 mx-1"></div>
+                <button onclick="App.Modals.abrirConfig()" class="text-slate-500 hover:text-slate-800 p-2.5 rounded-xl border border-slate-200 bg-white transition-colors" title="Límites Globales"><i class="ph-bold ph-gear text-lg"></i></button>
+            </div>
+        </header>
+
+        <div class="flex-1 overflow-y-auto custom-scrollbar p-6 space-y-6">
             
             <!-- KPIs -->
-            <div class="grid grid-cols-1 md:grid-cols-3 gap-4 lg:gap-6">
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
                 <div class="bg-white rounded-3xl shadow-sm border border-slate-200 p-6 flex items-center gap-5 relative overflow-hidden">
                     <div class="absolute -right-4 -top-4 w-24 h-24 bg-blue-50 rounded-full opacity-50 pointer-events-none"></div>
                     <div class="w-14 h-14 rounded-2xl bg-gradient-to-br from-blue-500 to-blue-600 text-white flex items-center justify-center shadow-lg shadow-blue-200 shrink-0"><i class="ph ph-users text-2xl"></i></div>
-                    <div><p class="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">Personal Total</p><p class="text-3xl font-black text-slate-800 leading-none" id="kpi-total">0</p></div>
+                    <div><p class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">Personal Total</p><p class="text-3xl font-black text-slate-800 leading-none" id="kpi-total">0</p></div>
                 </div>
                 <div class="bg-white rounded-3xl shadow-sm border border-slate-200 p-6 flex items-center gap-5 relative overflow-hidden">
                     <div class="absolute -right-4 -top-4 w-24 h-24 bg-emerald-50 rounded-full opacity-50 pointer-events-none"></div>
                     <div class="w-14 h-14 rounded-2xl bg-gradient-to-br from-emerald-400 to-emerald-500 text-white flex items-center justify-center shadow-lg shadow-emerald-200 shrink-0 relative"><div class="absolute inset-0 border-2 border-white/50 rounded-2xl animate-ping opacity-20"></div><i class="ph ph-broadcast text-2xl"></i></div>
-                    <div><p class="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">En Receso (Vivo)</p><p class="text-3xl font-black text-slate-800 leading-none" id="kpi-activos">0</p></div>
+                    <div><p class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">En Receso (Vivo)</p><p class="text-3xl font-black text-slate-800 leading-none" id="kpi-activos">0</p></div>
                 </div>
                 <div class="bg-white rounded-3xl shadow-sm border border-slate-200 p-6 flex items-center gap-5 relative overflow-hidden">
                     <div class="absolute -right-4 -top-4 w-24 h-24 bg-red-50 rounded-full opacity-50 pointer-events-none"></div>
                     <div class="w-14 h-14 rounded-2xl bg-gradient-to-br from-red-500 to-red-600 text-white flex items-center justify-center shadow-lg shadow-red-200 shrink-0"><i class="ph ph-warning text-2xl"></i></div>
-                    <div><p class="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">Excedidos Hoy</p><p class="text-3xl font-black text-red-600 leading-none" id="kpi-excedidos">0</p></div>
+                    <div><p class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">Excedidos Hoy</p><p class="text-3xl font-black text-red-600 leading-none" id="kpi-excedidos">0</p></div>
                 </div>
             </div>
 
@@ -357,41 +207,36 @@
                     <div>
                         <h2 class="font-bold text-slate-800 flex items-center gap-2 text-lg">
                             <span class="relative flex h-3 w-3"><span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span><span class="relative inline-flex rounded-full h-3 w-3 bg-emerald-500"></span></span>
-                            Monitor de Personal <span class="bg-slate-200 text-slate-600 text-[10px] px-2 py-0.5 rounded-full uppercase tracking-wider ml-2">Hoy</span>
+                            Rastreo en Tiempo Real
                         </h2>
-                        <p class="text-xs text-slate-500 mt-1">Supervisa en tiempo real el estado y consumo acumulado.</p>
                     </div>
                     <div class="relative w-full sm:w-64 group">
-                        <i class="ph ph-magnifying-glass absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400 group-focus-within:text-blue-500 transition-colors"></i>
-                        <input type="text" id="search-monitor" onkeyup="App.UI.renderMonitor()" placeholder="Buscar colaborador..." class="w-full border border-slate-200 rounded-xl pl-10 pr-4 py-2.5 text-sm focus:border-blue-500 focus:ring-2 focus:ring-blue-100 outline-none transition-all shadow-sm bg-white">
+                        <i class="ph-bold ph-magnifying-glass absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400 group-focus-within:text-blue-500 transition-colors"></i>
+                        <input type="text" id="search-monitor" onkeyup="App.UI.renderMonitor()" placeholder="Buscar colaborador..." class="w-full border border-slate-200 rounded-xl pl-10 pr-4 py-2.5 text-sm focus:border-blue-500 focus:ring-2 focus:ring-blue-100 outline-none transition-all shadow-sm bg-white font-medium">
                     </div>
                 </div>
-                <div class="p-6 bg-slate-50/30 flex-1">
+                <div class="p-6 bg-slate-50/30">
                     <div id="lista-activos" class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-5">
-                        <div class="col-span-full text-center py-10"><div class="loader mx-auto mb-4"></div><p class="text-slate-500 font-bold">Iniciando sistema...</p></div>
+                        <div class="col-span-full text-center py-10"><div class="loader mx-auto mb-4"></div><p class="text-slate-500 font-bold">Conectando al sistema...</p></div>
                     </div>
                 </div>
             </section>
 
             <!-- Historial Avanzado con Filtros -->
-            <section class="bg-white rounded-3xl shadow-sm border border-slate-200 overflow-hidden flex flex-col h-full max-h-[800px]">
+            <section class="bg-white rounded-3xl shadow-sm border border-slate-200 overflow-hidden flex flex-col mb-10">
                 <div class="px-6 py-5 border-b border-slate-100 flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-slate-50/50 shrink-0">
                     <div>
-                        <h2 class="font-bold text-slate-800 flex items-center gap-2 text-lg"><i class="ph ph-clock-counter-clockwise text-blue-500 text-xl"></i> Bitácora de Movimientos</h2>
-                        <p class="text-xs text-slate-500 mt-1">Busca y audita tiempos por fecha y por nombre/ID de colaborador.</p>
+                        <h2 class="font-bold text-slate-800 flex items-center gap-2 text-lg"><i class="ph-fill ph-clock-counter-clockwise text-blue-500 text-xl"></i> Bitácora de Movimientos</h2>
                     </div>
                     <div class="flex flex-col sm:flex-row items-center gap-3 w-full md:w-auto">
                         <div class="relative w-full sm:w-56 group">
-                            <i class="ph ph-magnifying-glass absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400 group-focus-within:text-blue-500 transition-colors"></i>
-                            <input type="text" id="filtro-agente-historial" onkeyup="App.UI.renderHistorialLocal()" placeholder="Buscar por agente..." class="w-full border border-slate-200 rounded-xl pl-9 pr-4 py-2.5 text-sm focus:border-blue-500 focus:ring-2 focus:ring-blue-100 outline-none transition-all shadow-sm bg-white">
+                            <i class="ph-bold ph-magnifying-glass absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400 group-focus-within:text-blue-500 transition-colors"></i>
+                            <input type="text" id="filtro-agente-historial" onkeyup="App.UI.renderHistorialLocal()" placeholder="Buscar en historial..." class="w-full border border-slate-200 rounded-xl pl-9 pr-4 py-2 text-sm focus:border-blue-500 focus:ring-2 focus:ring-blue-100 outline-none transition-all shadow-sm bg-white font-medium">
                         </div>
                         <div class="relative w-full sm:w-auto">
-                            <i class="ph ph-calendar-blank absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400"></i>
-                            <input type="date" id="filtro-fecha-historial" onchange="App.UI.renderHistorialLocal()" class="pl-9 pr-4 py-2.5 w-full border border-slate-200 bg-white rounded-xl text-sm text-slate-600 font-bold outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 transition-all cursor-pointer shadow-sm">
+                            <i class="ph-bold ph-calendar-blank absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400"></i>
+                            <input type="date" id="filtro-fecha-historial" onchange="App.UI.renderHistorialLocal()" class="pl-9 pr-4 py-2 w-full border border-slate-200 bg-white rounded-xl text-sm text-slate-600 font-bold outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 transition-all cursor-pointer shadow-sm">
                         </div>
-                        <button onclick="App.UI.renderHistorialLocal()" class="bg-white border border-border text-slate-700 font-bold py-3 px-6 rounded-xl hover:bg-slate-50 transition shadow-sm flex items-center gap-2 shrink-0">
-                            <i class="ph-bold ph-arrows-clockwise text-lg"></i> Actualizar
-                        </button>
                     </div>
                 </div>
 
@@ -410,8 +255,8 @@
                     </div>
                 </div>
 
-                <div class="overflow-x-auto overflow-y-auto flex-1 custom-scrollbar relative">
-                    <table class="w-full text-left border-collapse min-w-[900px]">
+                <div class="overflow-x-auto overflow-y-auto max-h-[500px] custom-scrollbar relative">
+                    <table class="w-full text-left border-collapse min-w-[800px]">
                         <thead class="sticky top-0 bg-slate-50 shadow-sm z-10 backdrop-blur-md bg-white/90 border-b border-slate-200">
                             <tr class="text-slate-500 text-[11px] uppercase tracking-wider">
                                 <th class="px-6 py-4 font-bold rounded-tl-lg">Hora (Fin)</th>
@@ -424,17 +269,14 @@
                     </table>
                 </div>
             </section>
-        </main>
-    </div>
+        </div>
+    </main>
 
-    <!-- ========================================== -->
-    <!-- NÚCLEO JAVASCRIPT (APP LOGIC)              -->
-    <!-- ========================================== -->
+    <!-- NÚCLEO JAVASCRIPT (APP LOGIC) -->
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import { getFirestore, collection, onSnapshot, doc, getDocs, setDoc, deleteDoc, updateDoc, query, where, orderBy, limit } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import { getFirestore, collection, onSnapshot, doc, getDocs, setDoc, updateDoc, query, orderBy, limit } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
-        // --- ESTADO Y CONFIGURACIÓN ---
         window.App = {
             db: null,
             state: {
@@ -445,7 +287,6 @@
             },
             config: {
                 limites: { bano: 15, comida: 30 },
-                diasSemana: ['lunes', 'martes', 'miercoles', 'jueves', 'viernes', 'sabado', 'domingo'],
                 meta: {
                     'bath': { icon: 'ph-toilet', label: 'Sanitario', cText: 'text-purple-600', cBg: 'bg-purple-100', cBorder: 'border-purple-200', cBar: 'bg-purple-500' },
                     'food': { icon: 'ph-hamburger', label: 'Comida', cText: 'text-orange-600', cBg: 'bg-orange-100', cBorder: 'border-orange-200', cBar: 'bg-orange-500' },
@@ -454,8 +295,7 @@
                     'Comida': { icon: 'ph-hamburger', label: 'Comida', cText: 'text-orange-600', cBg: 'bg-orange-100', cBorder: 'border-orange-200', cBar: 'bg-orange-500' },
                     'Calidad': { icon: 'ph-star', label: 'Calidad', cText: 'text-blue-600', cBg: 'bg-blue-100', cBorder: 'border-blue-200', cBar: 'bg-blue-500' }
                 }
-            },
-            tempId: null 
+            }
         };
 
         const firebaseConfig = {
@@ -471,7 +311,6 @@
         window.db = getFirestore(app);
         App.db = window.db;
 
-        // --- UTILIDADES ---
         const Utils = {
             formatSeg: (total) => {
                 if (isNaN(total) || total < 0) return "00:00";
@@ -479,35 +318,17 @@
                 const s = (total % 60).toString().padStart(2, '0');
                 return `${m}:${s}`;
             },
-            parseTime: (str) => {
-                if(!str) return 0;
-                const p = str.split(':');
-                return p.length === 2 ? (parseInt(p[0])||0)*60 + (parseInt(p[1])||0) : 0;
-            },
-            formatInput: (e) => {
-                let v = e.target.value.replace(/\D/g, '');
-                if(v.length > 4) v = v.substring(0,4);
-                if(v.length >= 3) v = v.substring(0, v.length-2) + ':' + v.substring(v.length-2);
-                e.target.value = v;
-            },
             toast: (msg, type = 'success') => {
-                const c = document.getElementById('notificacion');
-                const i = document.getElementById('notificacion-icon');
-                i.innerHTML = type === 'error' ? '<i class="ph ph-warning-circle text-red-400"></i>' : '<i class="ph ph-check-circle text-emerald-400"></i>';
-                c.className = `fixed top-6 left-1/2 transform -translate-x-1/2 z-[100] max-w-md w-full bg-slate-900 text-white shadow-2xl rounded-2xl p-4 flex items-center gap-3 border ${type === 'error' ? 'border-red-500/50' : 'border-emerald-500/50'}`;
+                const toast = document.getElementById('notificacion');
+                document.getElementById('notificacion-icon').innerHTML = type === 'error' ? '<i class="ph-fill ph-warning-circle text-red-200"></i>' : '<i class="ph-fill ph-check-circle text-emerald-200"></i>';
+                toast.className = `fixed top-6 left-1/2 transform -translate-x-1/2 z-[100] max-w-md w-full shadow-2xl rounded-2xl p-4 flex items-center gap-3 border ${type === 'error' ? 'bg-red-600 border-red-700' : 'bg-slate-900 border-slate-800'} fade-in`;
                 document.getElementById('notificacion-texto').textContent = msg;
-                c.classList.remove('hidden');
-                setTimeout(() => c.classList.add('hidden'), 4000);
+                toast.classList.remove('hidden');
+                setTimeout(() => toast.classList.add('hidden'), 4000);
             },
             fechaHoyNormal: () => new Date().toLocaleDateString() 
         };
 
-        ['edit-c-bano','edit-c-comida','edit-c-calidad'].forEach(id => {
-            const el = document.getElementById(id);
-            if (el) el.addEventListener('input', Utils.formatInput);
-        });
-
-        // --- MÓDULOS DE APP ---
         App.Auth = {
             login: () => {
                 const pinInput = document.getElementById('pin-admin');
@@ -515,8 +336,8 @@
                 if(pin === 'blqa') {
                     document.getElementById('vista-login-admin').classList.add('hidden');
                     document.getElementById('vista-admin').classList.remove('hidden');
-                    const display = document.getElementById('fecha-admin-display');
-                    if (display) display.innerText = new Date().toLocaleDateString('es-ES', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+                    document.getElementById('sidebar-admin').classList.remove('hidden');
+                    document.getElementById('fecha-admin-display').innerText = new Date().toLocaleDateString('es-ES', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
                     App.Firebase.init();
                 } else {
                     Utils.toast('PIN incorrecto', 'error');
@@ -524,6 +345,7 @@
             },
             logout: () => {
                 document.getElementById('vista-admin').classList.add('hidden');
+                document.getElementById('sidebar-admin').classList.add('hidden');
                 document.getElementById('vista-login-admin').classList.remove('hidden');
                 const pinInput = document.getElementById('pin-admin');
                 if (pinInput) pinInput.value = '';
@@ -563,7 +385,7 @@
                 const overlay = document.getElementById('modal-overlay');
                 const m = document.getElementById('modal-importar');
                 const txt = document.getElementById('import-textarea');
-                if (txt) txt.value = ''; // Limpiar textarea al abrir
+                if (txt) txt.value = ''; 
                 
                 if (overlay && m) {
                     overlay.classList.remove('hidden');
@@ -575,12 +397,12 @@
                 const o = document.getElementById('modal-overlay');
                 if (!o) return;
                 o.classList.add('opacity-0');
-                ['modal-confirm', 'modal-confirm-reset', 'modal-editar', 'modal-importar'].forEach(id => {
+                ['modal-confirm-reset', 'modal-importar'].forEach(id => {
                     const el = document.getElementById(id); if(el) el.classList.add('scale-95');
                 });
                 setTimeout(() => { 
                     o.classList.add('hidden'); 
-                    ['modal-confirm', 'modal-confirm-reset', 'modal-editar', 'modal-importar'].forEach(id => {
+                    ['modal-confirm-reset', 'modal-importar'].forEach(id => {
                         const el = document.getElementById(id);
                         if (el) el.classList.add('hidden');
                     }); 
@@ -591,10 +413,7 @@
         App.Handlers = {
             procesarImportacion: async () => {
                 const text = document.getElementById('import-textarea').value.trim();
-                if (!text) {
-                    Utils.toast('Por favor, pega los datos primero.', 'error');
-                    return;
-                }
+                if (!text) { Utils.toast('Por favor, pega los datos primero.', 'error'); return; }
 
                 const btn = document.getElementById('btn-importar');
                 if (btn) btn.disabled = true;
@@ -605,32 +424,25 @@
 
                 rows.forEach((row) => {
                     const cols = row.split('\t');
-                    // Verificamos que tenga suficientes columnas y que no sea la fila de encabezados
                     if (cols.length < 14 || cols[0].toLowerCase().includes('fecha')) return;
 
-                    // Formatear Fecha DD/MM/YYYY a YYYY-MM-DD para guardarla
                     const dateParts = cols[0].trim().split('/');
                     const isoDate = dateParts.length === 3 ? `${dateParts[2]}-${dateParts[1]}-${dateParts[0]}` : cols[0].trim();
                     const xocImportado = cols[1].trim().toUpperCase();
 
                     if (!xocImportado) return;
 
-                    let asesorId = null;
+                    let asesorId = xocImportado;
                     const asesorNom = cols[2].trim();
 
-                    // Mapeo: Buscar al agente a través de su código XOC (o por el mismo ID si es igual)
+                    // Buscar si este XOC le pertenece a algún ID
                     const operador = Object.values(App.state.operadores).find(o => (o.xoc && o.xoc.toUpperCase() === xocImportado) || o.id === xocImportado);
-                    
-                    if (operador) {
-                        asesorId = operador.id; // Utilizar el ID real de login del empleado
-                    } else {
-                        asesorId = xocImportado; // Fallback: si no se encuentra, usar el mismo XOC importado
-                    }
+                    if (operador) asesorId = operador.id;
 
                     const dataToSave = {
                         fecha_reporte: cols[0].trim(),
                         fecha_iso: isoDate,
-                        asesor_id: asesorId, // ID Mapeado correctamente
+                        asesor_id: asesorId, 
                         asesor_nombre: asesorNom,
                         hora_inicio: cols[3].trim(),
                         hora_fin: cols[4].trim(),
@@ -646,7 +458,6 @@
                         timestamp_subida: Date.now()
                     };
 
-                    // ID único para evitar duplicados del mismo agente el mismo día
                     const docId = `${asesorId}_${isoDate}`;
                     const ref = doc(App.db, "conexiones_diarias", docId);
                     batch.push(setDoc(ref, dataToSave, { merge: true }));
@@ -669,50 +480,6 @@
                     if (btn) btn.disabled = false;
                 }
             },
-            crearAgente: async (e) => {
-                e.preventDefault();
-                const btn = document.getElementById('btn-crear-agente'); 
-                if (btn) btn.disabled = true;
-                const idInput = document.getElementById('nuevo-pin');
-                const xocInput = document.getElementById('nuevo-xoc');
-                const nombreInput = document.getElementById('nuevo-nombre');
-                
-                const id = idInput ? idInput.value.trim().toUpperCase() : '';
-                const xoc = xocInput ? xocInput.value.trim().toUpperCase() : '';
-                const nombre = nombreInput ? nombreInput.value.trim() : '';
-                
-                if (!id || !xoc || !nombre) {
-                    Utils.toast("Completa todos los campos.", "error");
-                    if (btn) btn.disabled = false;
-                    return;
-                }
-                
-                try {
-                    // Estructura de base por defecto (Agrega campo xoc)
-                    const nuevoOperador = {
-                        id, xoc, nombre, 
-                        limites: {bano: null, comida: null, calidad: null},
-                        horarios: { turno: 'Turno Matutino' },
-                        vacaciones: { diasDisponibles: 0, proximaGuardia: '', horarioGuardia: '' },
-                        conexiones: { metaHoras: 9 }
-                    };
-
-                    App.config.diasSemana.forEach(d => {
-                        nuevoOperador.horarios[d] = { activo: (d!=='sabado' && d!=='domingo'), entrada: '09:00', salida: '18:00' };
-                    });
-
-                    await setDoc(doc(App.db, "operadores", id), nuevoOperador);
-                    if (idInput) idInput.value = ''; 
-                    if (xocInput) xocInput.value = ''; 
-                    if (nombreInput) nombreInput.value = '';
-                    App.Modals.cerrarConfig(); 
-                    Utils.toast("Agente registrado correctamente.");
-                } catch(err) { 
-                    Utils.toast("Error al registrar.", "error"); 
-                } finally { 
-                    if (btn) btn.disabled = false; 
-                }
-            },
             guardarGlobales: async () => {
                 const banoInput = document.getElementById('cfg-global-bano');
                 const comidaInput = document.getElementById('cfg-global-comida');
@@ -726,148 +493,6 @@
                     App.Modals.cerrarConfig(); Utils.toast("Límites globales aplicados.");
                 } catch(err) { Utils.toast("Error al guardar.", "error"); }
             },
-            abrirEditar: (id) => {
-                App.tempId = id; const ag = App.state.operadores[id]; const ses = App.state.sesiones[id] || { tiemposAcumulados: {} };
-                if (!ag) return;
-                
-                // Reiniciar pestaña a Adherencia
-                App.UI.switchTab(document.querySelector('.tab-btn'), 'tab-adherencia');
-
-                // Llenar Datos Generales y Adherencia
-                document.getElementById('edit-nombre').innerText = ag.nombre;
-                document.getElementById('edit-id').value = id;
-                document.getElementById('edit-xoc').value = ag.xoc || ''; // Nuevo Campo Código XOC
-                document.getElementById('edit-c-bano').value = Utils.formatSeg(ses.tiemposAcumulados?.bath || 0);
-                document.getElementById('edit-c-comida').value = Utils.formatSeg(ses.tiemposAcumulados?.food || 0);
-                document.getElementById('edit-c-calidad').value = Utils.formatSeg(ses.tiemposAcumulados?.quality || 0);
-                document.getElementById('edit-l-bano').value = ag.limites?.bano || '';
-                document.getElementById('edit-l-comida').value = ag.limites?.comida || '';
-                
-                // Llenar Horarios
-                const h = ag.horarios || {};
-                document.getElementById('edit-turno').value = h.turno || 'Turno Matutino';
-                App.config.diasSemana.forEach(dia => {
-                    const dData = h[dia] || { activo: false, entrada: '', salida: '' };
-                    const elCheck = document.getElementById(`edit-dia-${dia}-activo`);
-                    const elIn = document.getElementById(`edit-dia-${dia}-in`);
-                    const elOut = document.getElementById(`edit-dia-${dia}-out`);
-                    if(elCheck) elCheck.checked = dData.activo;
-                    if(elIn) elIn.value = dData.entrada;
-                    if(elOut) elOut.value = dData.salida;
-                });
-
-                // Llenar Vacaciones
-                const v = ag.vacaciones || {};
-                document.getElementById('edit-vacaciones-dias').value = v.diasDisponibles !== undefined ? v.diasDisponibles : 0;
-                document.getElementById('edit-guardia-fecha').value = v.proximaGuardia || '';
-                document.getElementById('edit-guardia-horario').value = v.horarioGuardia || '';
-
-                // Llenar Conexiones
-                const c = ag.conexiones || {};
-                document.getElementById('edit-meta-horas').value = c.metaHoras || 9;
-                
-                const overlay = document.getElementById('modal-overlay');
-                const m = document.getElementById('modal-editar');
-                
-                if (overlay && m) {
-                    overlay.classList.remove('hidden'); 
-                    m.classList.remove('hidden'); 
-                    setTimeout(() => { overlay.classList.remove('opacity-0'); m.classList.remove('scale-95'); }, 10);
-                }
-            },
-            guardarEdicion: async (e) => {
-                e.preventDefault(); 
-                const idInput = document.getElementById('edit-id');
-                const xocInput = document.getElementById('edit-xoc');
-                if (!idInput) return;
-                const id = idInput.value;
-                const xoc = xocInput ? xocInput.value.trim().toUpperCase() : '';
-                
-                const btn = document.getElementById('btn-save-edit'); 
-                if (btn) btn.disabled = true;
-                
-                // 1. Recolectar Adherencia
-                const cbano = document.getElementById('edit-c-bano');
-                const ccomida = document.getElementById('edit-c-comida');
-                const ccalidad = document.getElementById('edit-c-calidad');
-                const lbano = document.getElementById('edit-l-bano');
-                const lcomida = document.getElementById('edit-l-comida');
-                
-                const nwTiempos = {
-                    bath: cbano ? Utils.parseTime(cbano.value) : 0,
-                    food: ccomida ? Utils.parseTime(ccomida.value) : 0,
-                    quality: ccalidad ? Utils.parseTime(ccalidad.value) : 0
-                };
-                
-                const lB = (lbano && lbano.value) ? parseInt(lbano.value) : null;
-                const lC = (lcomida && lcomida.value) ? parseInt(lcomida.value) : null;
-
-                // 2. Recolectar Horarios
-                const horarios = { turno: document.getElementById('edit-turno').value || '' };
-                App.config.diasSemana.forEach(dia => {
-                    horarios[dia] = {
-                        activo: document.getElementById(`edit-dia-${dia}-activo`).checked,
-                        entrada: document.getElementById(`edit-dia-${dia}-in`).value,
-                        salida: document.getElementById(`edit-dia-${dia}-out`).value
-                    };
-                });
-
-                // 3. Recolectar Vacaciones y Conexiones
-                const vacaciones = {
-                    diasDisponibles: parseInt(document.getElementById('edit-vacaciones-dias').value) || 0,
-                    proximaGuardia: document.getElementById('edit-guardia-fecha').value || '',
-                    horarioGuardia: document.getElementById('edit-guardia-horario').value || ''
-                };
-
-                const conexiones = {
-                    metaHoras: parseInt(document.getElementById('edit-meta-horas').value) || 9
-                };
-
-                try {
-                    // Actualizar Config Operador
-                    await updateDoc(doc(App.db, "operadores", id), { 
-                        xoc, // Nuevo Campo
-                        "limites.bano": lB, "limites.comida": lC,
-                        horarios,
-                        vacaciones,
-                        conexiones
-                    });
-
-                    // Actualizar tiempos de hoy en la Sesión
-                    const refSes = doc(App.db, "sesiones_activas", id);
-                    if(App.state.sesiones[id]) { 
-                        await updateDoc(refSes, { tiemposAcumulados: nwTiempos }); 
-                    } else { 
-                        await setDoc(refSes, { estadoActivo: null, tiempoInicioEstado: null, fecha: Utils.fechaHoyNormal(), tiemposAcumulados: nwTiempos }); 
-                    }
-                    
-                    App.Modals.cerrarTodos(); Utils.toast("Cambios guardados correctamente.");
-                } catch(err) { 
-                    Utils.toast("Error al guardar.", "error"); 
-                } finally { 
-                    if (btn) btn.disabled = false; 
-                }
-            },
-            abrirEliminar: (id) => {
-                App.tempId = id; 
-                const overlay = document.getElementById('modal-overlay');
-                const m = document.getElementById('modal-confirm');
-                if (overlay && m) {
-                    overlay.classList.remove('hidden'); 
-                    m.classList.remove('hidden'); 
-                    setTimeout(() => { overlay.classList.remove('opacity-0'); m.classList.remove('scale-95'); }, 10);
-                }
-            },
-            eliminarAgente: async () => {
-                if(!App.tempId) return;
-                try { 
-                    await deleteDoc(doc(App.db, "operadores", App.tempId)); 
-                    App.Modals.cerrarTodos(); 
-                    Utils.toast("Agente eliminado."); 
-                } catch(err) { 
-                    Utils.toast("Error al intentar eliminar.", "error"); 
-                }
-            },
             resetearDia: async () => {
                 App.Modals.cerrarTodos();
                 try {
@@ -880,41 +505,6 @@
         };
 
         App.UI = {
-            generarGridHorarios: () => {
-                const container = document.getElementById('grid-horarios');
-                if(!container) return;
-                let html = '';
-                App.config.diasSemana.forEach(dia => {
-                    const labelDia = dia.charAt(0).toUpperCase() + dia.slice(1);
-                    html += `
-                        <div class="flex items-center gap-3 bg-white p-2 rounded-xl border border-slate-200">
-                            <label class="flex items-center gap-2 w-28 cursor-pointer">
-                                <input type="checkbox" id="edit-dia-${dia}-activo" class="w-4 h-4 rounded text-blue-600 focus:ring-blue-500 border-slate-300">
-                                <span class="text-sm font-semibold text-slate-700">${labelDia}</span>
-                            </label>
-                            <div class="flex items-center gap-2 flex-1">
-                                <input type="time" id="edit-dia-${dia}-in" class="w-full border border-slate-200 rounded-lg px-2 py-1.5 text-xs text-slate-600 outline-none focus:border-blue-500 transition-colors">
-                                <span class="text-slate-300">-</span>
-                                <input type="time" id="edit-dia-${dia}-out" class="w-full border border-slate-200 rounded-lg px-2 py-1.5 text-xs text-slate-600 outline-none focus:border-blue-500 transition-colors">
-                            </div>
-                        </div>
-                    `;
-                });
-                container.innerHTML = html;
-            },
-            switchTab: (btn, paneId) => {
-                // Estilos de botones
-                document.querySelectorAll('.tab-btn').forEach(b => { 
-                    b.classList.remove('text-blue-600', 'font-bold', 'border-b-2', 'border-blue-600'); 
-                    b.classList.add('text-slate-500', 'font-medium', 'border-transparent'); 
-                });
-                btn.classList.remove('text-slate-500', 'font-medium', 'border-transparent');
-                btn.classList.add('text-blue-600', 'font-bold', 'border-b-2', 'border-blue-600');
-                
-                // Mostrar paneles
-                document.querySelectorAll('.tab-pane').forEach(p => p.classList.add('hidden'));
-                document.getElementById(paneId).classList.remove('hidden');
-            },
             renderMonitor: () => {
                 const grid = document.getElementById('lista-activos');
                 if (!grid) return;
@@ -930,11 +520,10 @@
                     const isWorking = ses && (!ses.estadoActivo || ses.estadoActivo === 'null');
                     const isOffline = !ses;
 
-                    if(term && !ag.nombre.toLowerCase().includes(term) && !ag.id.toLowerCase().includes(term)) return;
+                    if(term && !ag.nombre.toLowerCase().includes(term) && !ag.id.toLowerCase().includes(term) && !(ag.xoc && ag.xoc.toLowerCase().includes(term))) return;
 
                     if(isReceso) activos++;
 
-                    // Límites aplicables
                     const limB = ag.limites?.bano || App.config.limites.bano;
                     const limC = ag.limites?.comida || App.config.limites.comida;
                     
@@ -963,11 +552,8 @@
                     }
 
                     html += `
-                    <div class="${opacity} rounded-3xl p-5 border border-slate-200 flex flex-col hover:border-blue-200 transition-all relative group h-full">
-                        <div class="absolute top-4 right-4 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity z-10 bg-white/90 backdrop-blur-md rounded-xl p-1 shadow-sm border border-slate-200">
-                            <button onclick="App.Handlers.abrirEditar('${ag.id}')" class="text-slate-500 hover:text-blue-600 p-1.5 rounded-lg hover:bg-blue-50 transition-colors" title="Ajustar Perfil"><i class="ph-bold ph-pencil-simple"></i></button>
-                        </div>
-                        <div class="flex justify-between items-start mb-4 pr-10 min-h-[44px]">
+                    <div class="${opacity} rounded-3xl p-5 border border-slate-200 flex flex-col transition-all h-full relative">
+                        <div class="flex justify-between items-start mb-4 pr-2 min-h-[44px]">
                             <div class="min-w-0">
                                 <h3 class="font-bold text-slate-800 text-base leading-tight truncate mb-1" title="${ag.nombre}">${ag.nombre}</h3>
                                 <span class="text-[10px] text-slate-500 font-mono font-bold bg-slate-100 px-1.5 py-0.5 rounded">ID: ${ag.id}</span>
@@ -983,13 +569,9 @@
                     </div>`;
                 });
 
-                const kpiTotal = document.getElementById('kpi-total');
-                const kpiActivos = document.getElementById('kpi-activos');
-                const kpiExced = document.getElementById('kpi-excedidos');
-                
-                if (kpiTotal) kpiTotal.innerText = total;
-                if (kpiActivos) kpiActivos.innerText = activos;
-                if (kpiExced) kpiExced.innerText = excedidos;
+                document.getElementById('kpi-total').innerText = total;
+                document.getElementById('kpi-activos').innerText = activos;
+                document.getElementById('kpi-excedidos').innerText = excedidos;
                 
                 grid.innerHTML = html || `<div class="col-span-full py-10 text-center text-slate-400 font-bold">No hay coincidencias con tu búsqueda.</div>`;
                 App.UI.tickRelojes(); 
@@ -1064,12 +646,9 @@
                     }
                 });
 
-                const sumB = document.getElementById('super-hist-tot-bath');
-                const sumC = document.getElementById('super-hist-tot-food');
-                const sumQ = document.getElementById('super-hist-tot-quality');
-                if(sumB) sumB.innerText = Utils.formatSeg(totB);
-                if(sumC) sumC.innerText = Utils.formatSeg(totC);
-                if(sumQ) sumQ.innerText = Utils.formatSeg(totQ);
+                document.getElementById('super-hist-tot-bath').innerText = Utils.formatSeg(totB);
+                document.getElementById('super-hist-tot-food').innerText = Utils.formatSeg(totC);
+                document.getElementById('super-hist-tot-quality').innerText = Utils.formatSeg(totQ);
 
                 if(rCount === 0) tbody.innerHTML = `<tr><td colspan="4" class="text-center py-10 text-slate-400 font-bold italic">No hay registros para los filtros seleccionados.</td></tr>`;
             }
@@ -1091,34 +670,26 @@
                     
                     App.UI.renderHistorialLocal();
                 }, (error) => {
-                    console.error("Error escuchando los reportes", error);
+                    console.error("Error escuchando reportes", error);
                 });
             },
             init: async () => {
-                // Initialize grids UI
-                App.UI.generarGridHorarios();
-
-                // Fetch config
                 onSnapshot(doc(window.db, "config", "global"), (d) => { if(d.exists() && d.data().limites) App.config.limites = d.data().limites; });
                 
-                // Fetch agents
                 onSnapshot(collection(window.db, "operadores"), (snap) => {
                     App.state.operadores = {};
                     snap.forEach(d => App.state.operadores[d.id] = d.data());
                     App.UI.renderMonitor();
                 });
 
-                // Fetch live sessions
                 onSnapshot(collection(window.db, "sesiones_activas"), (snap) => {
                     App.state.sesiones = {};
                     snap.forEach(d => { if(d.data().fecha === Utils.fechaHoyNormal()) App.state.sesiones[d.id] = d.data(); });
                     App.UI.renderMonitor();
                 });
 
-                // Clock Engine
                 setInterval(App.UI.tickRelojes, 1000);
                 
-                // Initial History Setup
                 const filtroHistorial = document.getElementById('filtro-fecha-historial');
                 if(filtroHistorial) filtroHistorial.value = App.state.fechaFiltro;
                 
@@ -1126,7 +697,6 @@
             }
         };
 
-        // Expose to window for HTML inline onClick
         window.App = App;
 
     </script>
