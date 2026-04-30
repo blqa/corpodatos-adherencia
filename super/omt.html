@@ -1,0 +1,650 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Portal de Asesores - WFM</title>
+    
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+    
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: { sans: ['Inter', 'sans-serif'] },
+                    colors: {
+                        card: '#ffffff', border: '#e5e7eb',
+                        text: '#1f2937', 'text-mute': '#6b7280',
+                        brand: '#3b82f6', money: '#10b981', bg: '#f8fafc'
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
+        .progress-bar { transition: width 1s ease-in-out; }
+        
+        /* Animaciones para cambio de pestañas */
+        .modulo { display: none; animation: fadeIn 0.3s ease-in-out; }
+        .modulo.activo { display: block; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+    </style>
+</head>
+<body class="bg-bg font-sans text-text h-screen w-full overflow-hidden">
+
+    <!-- ==================== PANTALLA DE LOGIN ==================== -->
+    <div id="login-view" class="h-screen w-full flex items-center justify-center p-4">
+        <div id="panel-login" class="bg-card p-8 rounded-3xl shadow-lg border border-border max-w-md w-full mx-auto text-center transition-all">
+            <div class="w-16 h-16 bg-gradient-to-br from-blue-500 to-indigo-600 text-white rounded-2xl flex items-center justify-center mx-auto mb-6 shadow-lg shadow-blue-500/30">
+                <i class="ph-bold ph-identification-card text-3xl"></i>
+            </div>
+            <h2 class="text-2xl font-black text-slate-800 mb-2">Consulta tu Dashboard</h2>
+            <p class="text-sm text-slate-500 mb-8">Ingresa tu ID corporativo para ver tus métricas de tiempos de hoy y tu historial.</p>
+            <form onsubmit="iniciarDashboard(event)" class="flex flex-col gap-4">
+                <input type="text" id="input-id" required placeholder="PIN o ID Corporativo" class="border-2 border-slate-200 p-4 rounded-xl focus:ring-4 focus:ring-blue-100 focus:border-brand focus:outline-none text-center font-mono text-xl tracking-widest shadow-inner bg-slate-50 transition-all font-bold text-slate-700 uppercase">
+                <button type="submit" id="btn-login" class="bg-slate-900 text-white font-bold py-4 rounded-xl hover:bg-slate-800 transition shadow-lg shadow-slate-900/20 active:scale-95 flex justify-center items-center gap-2">
+                    Ingresar <i class="ph-bold ph-arrow-right"></i>
+                </button>
+            </form>
+            <p id="login-error" class="text-red-600 text-sm mt-5 font-bold hidden bg-red-50 py-3 rounded-xl border border-red-100"></p>
+        </div>
+    </div>
+
+    <!-- ==================== DASHBOARD PRINCIPAL (Oculto inicio) ==================== -->
+    <div id="dashboard-view" class="h-screen w-full flex hidden">
+        
+        <!-- MENÚ LATERAL (SIDEBAR) -->
+        <aside class="w-20 md:w-64 bg-card border-r border-border flex flex-col justify-between transition-all duration-300 z-20 shadow-sm shrink-0">
+            <div>
+                <!-- Logo -->
+                <div class="h-20 flex items-center justify-center md:justify-start md:px-6 border-b border-border">
+                    <div class="w-10 h-10 bg-brand text-white rounded-xl flex items-center justify-center shadow-lg shadow-blue-500/30 shrink-0">
+                        <i class="ph-bold ph-headset text-2xl"></i>
+                    </div>
+                    <span class="ml-3 font-black text-xl tracking-tight hidden md:block text-slate-800">Mi Portal</span>
+                </div>
+
+                <!-- Navegación -->
+                <nav class="p-4 space-y-2 flex flex-col items-center md:items-stretch mt-4">
+                    <button onclick="cambiarModulo('mod-adherencia', this)" class="nav-btn w-full flex items-center p-3 rounded-xl bg-blue-50 text-brand font-bold transition-all group" title="Adherencia">
+                        <i class="ph-fill ph-chart-pie-slice text-2xl md:mr-3"></i>
+                        <span class="hidden md:block">Adherencia</span>
+                    </button>
+                    
+                    <button onclick="cambiarModulo('mod-conexiones', this)" class="nav-btn w-full flex items-center p-3 rounded-xl text-slate-500 hover:bg-slate-50 hover:text-slate-800 font-medium transition-all group" title="Conexiones Diarias">
+                        <i class="ph-fill ph-plug text-2xl md:mr-3 group-hover:text-brand transition-colors"></i>
+                        <span class="hidden md:block">Conexiones</span>
+                    </button>
+
+                    <!-- Icono corregido a ph-calendar -->
+                    <button onclick="cambiarModulo('mod-horarios', this)" class="nav-btn w-full flex items-center p-3 rounded-xl text-slate-500 hover:bg-slate-50 hover:text-slate-800 font-medium transition-all group" title="Mis Horarios">
+                        <i class="ph-fill ph-calendar text-2xl md:mr-3 group-hover:text-brand transition-colors"></i>
+                        <span class="hidden md:block">Horarios</span>
+                    </button>
+
+                    <button onclick="cambiarModulo('mod-vacaciones', this)" class="nav-btn w-full flex items-center p-3 rounded-xl text-slate-500 hover:bg-slate-50 hover:text-slate-800 font-medium transition-all group" title="Vacaciones y Guardias">
+                        <i class="ph-fill ph-airplane-tilt text-2xl md:mr-3 group-hover:text-brand transition-colors"></i>
+                        <span class="hidden md:block">Vacaciones</span>
+                    </button>
+                </nav>
+            </div>
+
+            <!-- Usuario Info Abajo -->
+            <div class="p-4 border-t border-border flex justify-center md:justify-between items-center bg-slate-50/50">
+                <div class="hidden md:flex items-center gap-3 overflow-hidden">
+                    <div class="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center text-brand border border-blue-200 shrink-0"><i class="ph-fill ph-user text-xl"></i></div>
+                    <div class="truncate">
+                        <p class="text-sm font-bold text-slate-800 leading-tight truncate" id="sidebar-user-name">Cargando...</p>
+                        <p class="text-xs text-slate-500 font-mono font-bold" id="sidebar-user-id">ID: --</p>
+                    </div>
+                </div>
+                <button onclick="cerrarSesion()" class="text-red-500 hover:bg-red-50 p-2.5 rounded-xl border border-transparent hover:border-red-100 transition-colors shrink-0" title="Cerrar Sesión">
+                    <i class="ph-bold ph-sign-out text-xl"></i>
+                </button>
+            </div>
+        </aside>
+
+        <!-- ÁREA DE CONTENIDO PRINCIPAL -->
+        <main class="flex-1 h-screen overflow-y-auto p-4 md:p-8 bg-bg relative">
+            <div class="max-w-6xl mx-auto w-full">
+
+                <!-- ==================== MÓDULO 1: ADHERENCIA ==================== -->
+                <section id="mod-adherencia" class="modulo activo">
+                    
+                    <header class="bg-card p-6 rounded-3xl shadow-sm border border-border flex flex-col md:flex-row justify-between items-center mb-8 gap-4">
+                        <div class="flex items-center gap-4">
+                            <div class="w-12 h-12 bg-blue-50 text-brand rounded-xl flex items-center justify-center border border-blue-100 shadow-sm">
+                                <i class="ph-fill ph-chart-pie-slice text-3xl"></i>
+                            </div>
+                            <div>
+                                <h1 class="text-2xl font-black leading-tight tracking-tight text-slate-800">Mi Adherencia</h1>
+                                <p class="text-sm text-text-mute font-medium" id="fecha-actual"></p>
+                            </div>
+                        </div>
+                    </header>
+
+                    <h3 class="font-black text-slate-800 mb-4 ml-2 flex items-center gap-2"><i class="ph-fill ph-clock text-brand"></i> Consumo de Hoy (En vivo)</h3>
+            
+                    <!-- TARJETAS DE PROGRESO DE HOY -->
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+                        <!-- BAÑO -->
+                        <div class="bg-card p-6 rounded-3xl shadow-sm border border-border relative overflow-hidden group transition-colors" id="card-bath">
+                            <div class="flex justify-between items-start mb-4">
+                                <div class="flex items-center gap-2 text-purple-600 font-black uppercase text-sm tracking-wider">
+                                    <div class="p-2 bg-purple-100 rounded-lg"><i class="ph-fill ph-toilet text-xl"></i></div> Sanitario
+                                </div>
+                                <div class="text-right">
+                                    <span class="text-3xl font-black font-mono tracking-tighter text-slate-800" id="disp-bath">00:00</span>
+                                    <span class="text-xs text-slate-400 font-bold block" id="limit-bath">/ 00:00 min</span>
+                                </div>
+                            </div>
+                            <div class="w-full bg-slate-100 h-3.5 rounded-full overflow-hidden border border-slate-200">
+                                <div id="bar-bath" class="bg-purple-500 h-full progress-bar w-0 rounded-r-full"></div>
+                            </div>
+                            <p class="text-xs font-bold text-slate-500 mt-3 text-center" id="rem-bath">Restan: --</p>
+                        </div>
+
+                        <!-- COMIDA -->
+                        <div class="bg-card p-6 rounded-3xl shadow-sm border border-border relative overflow-hidden group transition-colors" id="card-food">
+                            <div class="flex justify-between items-start mb-4">
+                                <div class="flex items-center gap-2 text-orange-600 font-black uppercase text-sm tracking-wider">
+                                    <div class="p-2 bg-orange-100 rounded-lg"><i class="ph-fill ph-hamburger text-xl"></i></div> Comida
+                                </div>
+                                <div class="text-right">
+                                    <span class="text-3xl font-black font-mono tracking-tighter text-slate-800" id="disp-food">00:00</span>
+                                    <span class="text-xs text-slate-400 font-bold block" id="limit-food">/ 00:00 min</span>
+                                </div>
+                            </div>
+                            <div class="w-full bg-slate-100 h-3.5 rounded-full overflow-hidden border border-slate-200">
+                                <div id="bar-food" class="bg-orange-500 h-full progress-bar w-0 rounded-r-full"></div>
+                            </div>
+                            <p class="text-xs font-bold text-slate-500 mt-3 text-center" id="rem-food">Restan: --</p>
+                        </div>
+
+                        <!-- CALIDAD -->
+                        <div class="bg-card p-6 rounded-3xl shadow-sm border border-border relative overflow-hidden group transition-colors" id="card-quality">
+                            <div class="flex justify-between items-start mb-4">
+                                <div class="flex items-center gap-2 text-blue-600 font-black uppercase text-sm tracking-wider">
+                                    <div class="p-2 bg-blue-100 rounded-lg"><i class="ph-fill ph-star text-xl"></i></div> Calidad
+                                </div>
+                                <div class="text-right">
+                                    <span class="text-3xl font-black font-mono tracking-tighter text-slate-800" id="disp-quality">00:00</span>
+                                    <span class="text-xs text-slate-400 font-bold block" id="limit-quality">/ 00:00 min</span>
+                                </div>
+                            </div>
+                            <div class="w-full bg-slate-100 h-3.5 rounded-full overflow-hidden border border-slate-200">
+                                <div id="bar-quality" class="bg-blue-500 h-full progress-bar w-0 rounded-r-full"></div>
+                            </div>
+                            <p class="text-xs font-bold text-slate-500 mt-3 text-center" id="rem-quality">Restan: --</p>
+                        </div>
+                    </div>
+
+                    <!-- HISTORIAL DETALLADO POR FECHA -->
+                    <div class="bg-card rounded-3xl shadow-sm border border-border overflow-hidden flex flex-col">
+                        <div class="p-6 border-b border-border bg-slate-50/50 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                            <div>
+                                <h3 class="text-lg font-black flex items-center gap-2 text-slate-800">
+                                    <i class="ph-bold ph-calendar-check text-brand text-xl"></i> Mi Bitácora de Tiempos
+                                </h3>
+                                <p class="text-xs text-slate-500 mt-1">Selecciona una fecha para ver cuánto tiempo tomaste ese día.</p>
+                            </div>
+                            <div class="relative flex items-center shadow-sm">
+                                <i class="ph-bold ph-calendar-blank absolute left-4 text-slate-400"></i>
+                                <input type="date" id="filtro-fecha-agente" onchange="actualizarHistorialFecha()" class="pl-11 pr-4 py-3 border border-slate-200 rounded-xl text-sm font-bold text-slate-700 bg-white focus:border-brand outline-none transition-colors cursor-pointer w-full sm:w-auto">
+                            </div>
+                        </div>
+
+                        <!-- Resumen Total del Día Seleccionado -->
+                        <div class="grid grid-cols-3 divide-x divide-slate-100 border-b border-slate-100 bg-white">
+                            <div class="p-4 text-center">
+                                <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Total Baño</p>
+                                <p class="text-xl font-mono font-black text-purple-600" id="hist-tot-bath">00:00</p>
+                            </div>
+                            <div class="p-4 text-center">
+                                <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Total Comida</p>
+                                <p class="text-xl font-mono font-black text-orange-600" id="hist-tot-food">00:00</p>
+                            </div>
+                            <div class="p-4 text-center">
+                                <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Total Calidad</p>
+                                <p class="text-xl font-mono font-black text-blue-600" id="hist-tot-quality">00:00</p>
+                            </div>
+                        </div>
+
+                        <div class="overflow-x-auto max-h-[400px] overflow-y-auto relative custom-scrollbar">
+                            <table class="w-full text-left border-collapse">
+                                <thead class="sticky top-0 bg-white shadow-sm z-10">
+                                    <tr class="border-b border-slate-100 text-xs text-slate-400 uppercase tracking-widest font-bold">
+                                        <th class="px-6 py-4">Hora de Registro</th>
+                                        <th class="px-6 py-4">Tipo de Pausa</th>
+                                        <th class="px-6 py-4 text-right">Duración Exacta</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="tabla-historial" class="divide-y divide-slate-50 bg-white">
+                                    <!-- Filas dinámicas -->
+                                    <tr><td colspan="3" class="text-center p-10"><div class="w-8 h-8 border-4 border-brand border-t-transparent rounded-full animate-spin mx-auto"></div></td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- ==================== MÓDULO 2: CONEXIONES ==================== -->
+                <section id="mod-conexiones" class="modulo">
+                    <header class="mb-8">
+                        <h1 class="text-3xl font-black text-slate-800">Conexiones Diarias</h1>
+                        <p class="text-slate-500 font-medium mt-1">Tu registro de login y logout del sistema.</p>
+                    </header>
+
+                    <div class="bg-card rounded-3xl shadow-sm border border-border overflow-hidden">
+                        <div class="p-6 border-b border-slate-100 bg-slate-50/50 flex justify-between items-center">
+                            <h3 class="font-bold text-slate-800 flex items-center gap-2"><i class="ph-fill ph-list-dashes text-brand"></i> Historial de la semana</h3>
+                        </div>
+                        <table class="w-full text-left">
+                            <thead class="bg-white border-b border-slate-100 text-xs text-slate-400 uppercase tracking-widest font-bold">
+                                <tr>
+                                    <th class="px-6 py-4">Fecha</th>
+                                    <th class="px-6 py-4">Primer Login</th>
+                                    <th class="px-6 py-4">Último Logout</th>
+                                    <th class="px-6 py-4 text-right">Horas en Sistema</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-slate-50">
+                                <tr class="hover:bg-slate-50 transition-colors">
+                                    <td class="px-6 py-4 font-bold text-slate-600">Hoy</td>
+                                    <td class="px-6 py-4 text-emerald-600 font-mono font-bold"><i class="ph-bold ph-arrow-down-left"></i> 08:55 AM</td>
+                                    <td class="px-6 py-4 text-slate-400 font-mono font-bold">En curso...</td>
+                                    <td class="px-6 py-4 text-right font-black text-slate-800">--</td>
+                                </tr>
+                                <tr class="hover:bg-slate-50 transition-colors">
+                                    <td class="px-6 py-4 font-bold text-slate-600">Ayer</td>
+                                    <td class="px-6 py-4 text-emerald-600 font-mono font-bold"><i class="ph-bold ph-arrow-down-left"></i> 09:02 AM</td>
+                                    <td class="px-6 py-4 text-red-500 font-mono font-bold"><i class="ph-bold ph-arrow-up-right"></i> 06:05 PM</td>
+                                    <td class="px-6 py-4 text-right font-black text-slate-800">9h 03m</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </section>
+
+                <!-- ==================== MÓDULO 3: HORARIOS ==================== -->
+                <section id="mod-horarios" class="modulo">
+                    <header class="mb-8 flex justify-between items-end">
+                        <div>
+                            <h1 class="text-3xl font-black text-slate-800">Mis Horarios</h1>
+                            <p class="text-slate-500 font-medium mt-1">Tu jornada laboral asignada por WFM.</p>
+                        </div>
+                        <span class="bg-blue-100 text-brand font-bold px-4 py-2 rounded-lg text-sm border border-blue-200">Turno Asignado</span>
+                    </header>
+
+                    <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-5 gap-4">
+                        <!-- Lunes -->
+                        <div class="bg-card p-5 rounded-2xl border border-brand ring-4 ring-blue-50 shadow-sm text-center relative overflow-hidden">
+                            <div class="absolute top-0 left-0 w-full h-1 bg-brand"></div>
+                            <p class="text-xs font-black uppercase tracking-widest text-brand mb-2">Lunes</p>
+                            <p class="text-2xl font-black text-slate-800 font-mono">09:00</p>
+                            <p class="text-xs text-slate-400 mb-1">a</p>
+                            <p class="text-2xl font-black text-slate-800 font-mono">18:00</p>
+                        </div>
+                        <!-- Martes -->
+                        <div class="bg-card p-5 rounded-2xl border border-border shadow-sm text-center opacity-70 grayscale">
+                            <p class="text-xs font-black uppercase tracking-widest text-slate-500 mb-2">Martes</p>
+                            <i class="ph-fill ph-check-circle text-4xl text-slate-300 my-2"></i>
+                            <p class="text-sm font-bold text-slate-400">Completado</p>
+                        </div>
+                        <!-- Miércoles -->
+                        <div class="bg-slate-50 p-5 rounded-2xl border border-slate-200 shadow-sm text-center">
+                            <p class="text-xs font-black uppercase tracking-widest text-slate-500 mb-2">Miércoles</p>
+                            <i class="ph-fill ph-bed text-4xl text-slate-400 my-2"></i>
+                            <p class="text-sm font-bold text-slate-500 uppercase tracking-widest">Descanso</p>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- ==================== MÓDULO 4: VACACIONES Y GUARDIAS ==================== -->
+                <section id="mod-vacaciones" class="modulo">
+                    <header class="mb-8">
+                        <h1 class="text-3xl font-black text-slate-800">Vacaciones y Guardias</h1>
+                        <p class="text-slate-500 font-medium mt-1">Gestiona tus días libres y consulta si te toca guardia.</p>
+                    </header>
+
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+                        <div class="bg-card p-6 rounded-3xl border border-border shadow-sm">
+                            <h3 class="font-black text-lg text-slate-800 mb-4 flex items-center gap-2"><i class="ph-fill ph-paper-plane-tilt text-brand"></i> Solicitar Días</h3>
+                            <form class="flex flex-col gap-4">
+                                <div>
+                                    <label class="text-xs font-bold text-slate-500 uppercase tracking-widest block mb-2">Tipo de Permiso</label>
+                                    <select class="w-full border border-slate-200 p-3 rounded-xl bg-slate-50 font-medium text-slate-700 outline-none focus:border-brand">
+                                        <option>Vacaciones de Ley</option>
+                                        <option>Permiso sin goce de sueldo</option>
+                                        <option>Incapacidad Médica</option>
+                                    </select>
+                                </div>
+                                <div class="grid grid-cols-2 gap-4">
+                                    <div>
+                                        <label class="text-xs font-bold text-slate-500 uppercase tracking-widest block mb-2">Desde</label>
+                                        <input type="date" class="w-full border border-slate-200 p-3 rounded-xl bg-slate-50 font-medium text-slate-700 outline-none focus:border-brand">
+                                    </div>
+                                    <div>
+                                        <label class="text-xs font-bold text-slate-500 uppercase tracking-widest block mb-2">Hasta</label>
+                                        <input type="date" class="w-full border border-slate-200 p-3 rounded-xl bg-slate-50 font-medium text-slate-700 outline-none focus:border-brand">
+                                    </div>
+                                </div>
+                                <button type="button" class="bg-slate-900 text-white font-bold py-3 rounded-xl mt-2 hover:bg-slate-800 transition shadow-lg shadow-slate-900/20">Enviar a WFM</button>
+                            </form>
+                        </div>
+
+                        <div class="flex flex-col gap-6">
+                            <div class="bg-gradient-to-br from-brand to-indigo-600 p-6 rounded-3xl shadow-lg shadow-blue-500/30 text-white flex items-center justify-between">
+                                <div>
+                                    <p class="text-blue-200 font-bold text-sm mb-1 uppercase tracking-widest">Días Disponibles</p>
+                                    <p class="text-4xl font-black">6 <span class="text-xl font-medium text-blue-200">días</span></p>
+                                </div>
+                                <i class="ph-fill ph-sun-horizon text-6xl opacity-50"></i>
+                            </div>
+                            
+                            <div class="bg-orange-50 border border-orange-200 p-6 rounded-3xl">
+                                <div class="flex items-center gap-3 mb-2">
+                                    <div class="p-2 bg-orange-100 text-orange-600 rounded-lg"><i class="ph-fill ph-warning-circle text-xl"></i></div>
+                                    <h3 class="font-black text-orange-800">Próxima Guardia Asignada</h3>
+                                </div>
+                                <p class="text-orange-700 font-medium mt-2">No tienes guardias próximas asignadas en el calendario.</p>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+            </div>
+        </main>
+    </div>
+
+    <!-- ==================== FIREBASE Y LÓGICA GENERAL ==================== -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getFirestore, collection, onSnapshot, doc, getDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyDT7iPaeRjlt-WIWWzwBh3deN2z_E-b2JA",
+            authDomain: "corpodatos-935f9.firebaseapp.com",
+            projectId: "corpodatos-935f9",
+            storageBucket: "corpodatos-935f9.firebasestorage.app",
+            messagingSenderId: "634601793039",
+            appId: "1:634601793039:web:4412da30d31ff6f6e5657a"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+
+        // Variables Globales
+        let asesorDatos = JSON.parse(localStorage.getItem('asesorDashboard')) || null;
+        let configGlobal = { limites: { bano: 15, comida: 30 } };
+        let sesionFirebase = { tiemposAcumulados: { bath: 0, food: 0, quality: 0 }, estadoActivo: null, tiempoInicioEstado: null };
+        let timerRelojes = null;
+        let misRegistrosTotales = []; 
+        
+        // Obtener fecha YYYY-MM-DD local segura
+        const getFechaISO = (dateObj = new Date()) => {
+            const tzOffset = dateObj.getTimezoneOffset() * 60000;
+            return new Date(dateObj.getTime() - tzOffset).toISOString().split('T')[0];
+        };
+        
+        let diaInicial = getFechaISO();
+
+        // Mapeo visual de estados
+        const metaEstado = {
+            'bath': { icon: 'ph-toilet text-purple-600', bg: 'bg-purple-50 border border-purple-200 text-purple-700', label: 'Sanitario', key: 'Baño' },
+            'food': { icon: 'ph-hamburger text-orange-600', bg: 'bg-orange-50 border border-orange-200 text-orange-700', label: 'Comida', key: 'Comida' },
+            'quality': { icon: 'ph-star text-blue-600', bg: 'bg-blue-50 border border-blue-200 text-blue-700', label: 'Calidad', key: 'Calidad' }
+        };
+
+        const metaEstadoReverse = {
+            'Baño': metaEstado['bath'],
+            'Comida': metaEstado['food'],
+            'Calidad': metaEstado['quality']
+        };
+
+        // Mostrar fecha actual en el header de adherencia
+        const opcionesFecha = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
+        document.getElementById('fecha-actual').innerText = new Date().toLocaleDateString('es-ES', opcionesFecha);
+        document.getElementById('filtro-fecha-agente').value = diaInicial;
+        document.getElementById('filtro-fecha-agente').max = diaInicial;
+
+        // Corte diario
+        setInterval(() => {
+            const diaActual = getFechaISO();
+            if (diaActual !== diaInicial) location.reload(); 
+        }, 60000);
+
+        // --- EXPORTAR FUNCIONES A WINDOW (Para que el HTML las pueda llamar en módulos) ---
+        
+        window.cambiarModulo = function(idModulo, btnElement) {
+            document.querySelectorAll('.modulo').forEach(el => el.classList.remove('activo'));
+            document.getElementById(idModulo).classList.add('activo');
+
+            document.querySelectorAll('.nav-btn').forEach(btn => {
+                btn.classList.remove('bg-blue-50', 'text-brand', 'font-bold');
+                btn.classList.add('text-slate-500', 'font-medium');
+                btn.querySelector('i').classList.remove('text-brand');
+            });
+
+            btnElement.classList.remove('text-slate-500', 'font-medium');
+            btnElement.classList.add('bg-blue-50', 'text-brand', 'font-bold');
+            btnElement.querySelector('i').classList.add('text-brand');
+        };
+
+        window.iniciarDashboard = async function(e) {
+            e.preventDefault();
+            const inputId = document.getElementById('input-id').value.trim().toUpperCase();
+            const btn = document.getElementById('btn-login');
+            const errorMsg = document.getElementById('login-error');
+
+            if (!inputId) return;
+
+            btn.innerHTML = `<div class="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin mx-auto"></div>`;
+            btn.disabled = true;
+            errorMsg.classList.add('hidden');
+
+            try {
+                const docSnap = await getDoc(doc(db, "operadores", inputId));
+                if (docSnap.exists()) {
+                    asesorDatos = { id: inputId, ...docSnap.data() };
+                    localStorage.setItem('asesorDashboard', JSON.stringify(asesorDatos));
+                    cargarInterfazDashboard();
+                } else {
+                    errorMsg.innerHTML = '<i class="ph-bold ph-warning-circle"></i> ID no encontrado en el sistema.';
+                    errorMsg.classList.remove('hidden');
+                }
+            } catch (error) {
+                errorMsg.innerHTML = '<i class="ph-bold ph-warning-circle"></i> Error de conexión con el servidor.';
+                errorMsg.classList.remove('hidden');
+            } finally {
+                btn.innerHTML = `Ingresar <i class="ph-bold ph-arrow-right"></i>`;
+                btn.disabled = false;
+            }
+        };
+
+        window.cerrarSesion = function() {
+            localStorage.removeItem('asesorDashboard');
+            location.reload();
+        };
+
+        // --- INTERFAZ PRINCIPAL ---
+        function cargarInterfazDashboard() {
+            // Cambiar de vista Login a vista Dashboard
+            document.getElementById('login-view').style.display = 'none';
+            document.getElementById('dashboard-view').style.display = 'flex';
+            document.getElementById('dashboard-view').classList.remove('hidden');
+            
+            // Llenar datos de usuario en la Sidebar
+            document.getElementById('sidebar-user-name').innerText = asesorDatos.nombre;
+            document.getElementById('sidebar-user-id').innerText = `ID: ${asesorDatos.id}`;
+
+            onSnapshot(doc(db, "config", "global"), (d) => {
+                if(d.exists() && d.data().limites) configGlobal.limites = d.data().limites;
+                actualizarTextosLimitesUI();
+            });
+
+            actualizarTextosLimitesUI();
+            escucharSesionActivaHOY();
+            escucharHistorialTotal(); 
+            
+            if(timerRelojes) clearInterval(timerRelojes);
+            timerRelojes = setInterval(actualizarCronometrosVIVO, 1000);
+        }
+
+        function actualizarTextosLimitesUI() {
+            const limB = asesorDatos.limites?.bano || configGlobal.limites.bano;
+            const limC = asesorDatos.limites?.comida || configGlobal.limites.comida;
+            const limQ = asesorDatos.limites?.calidad || 999;
+
+            document.getElementById('limit-bath').innerText = `/ ${limB} min`;
+            document.getElementById('limit-food').innerText = `/ ${limC} min`;
+            document.getElementById('limit-quality').innerText = `Libre`;
+        }
+
+        function escucharSesionActivaHOY() {
+            onSnapshot(doc(db, "sesiones_activas", asesorDatos.id), (docSnap) => {
+                const data = docSnap.exists() ? docSnap.data() : null;
+                const fechaNormal = new Date().toLocaleDateString();
+                
+                if (data && (data.fecha === fechaNormal || data.fecha === getFechaISO())) {
+                    sesionFirebase = data;
+                } else {
+                    sesionFirebase = { tiemposAcumulados: { bath: 0, food: 0, quality: 0 }, estadoActivo: null, tiempoInicioEstado: null };
+                }
+                actualizarCronometrosVIVO();
+            });
+        }
+
+        function actualizarCronometrosVIVO() {
+            if (!asesorDatos) return;
+            const ahora = Date.now();
+
+            ['bath', 'food', 'quality'].forEach(estado => {
+                let segundosUsados = sesionFirebase.tiemposAcumulados[estado] || 0;
+                
+                if (sesionFirebase.estadoActivo === estado && sesionFirebase.tiempoInicioEstado) {
+                    segundosUsados += Math.floor((ahora - sesionFirebase.tiempoInicioEstado) / 1000);
+                }
+
+                document.getElementById(`disp-${estado}`).innerText = formatTiempo(segundosUsados);
+
+                const limiteMinutos = (estado === 'bath' ? (asesorDatos.limites?.bano || configGlobal.limites.bano) : 
+                                      (estado === 'food' ? (asesorDatos.limites?.comida || configGlobal.limites.comida) : 999)) || 999;
+                
+                const limiteSegundos = limiteMinutos * 60;
+                let porcentaje = (segundosUsados / limiteSegundos) * 100;
+                if (porcentaje > 100) porcentaje = 100;
+                
+                const barra = document.getElementById(`bar-${estado}`);
+                const caja = document.getElementById(`card-${estado}`);
+                const textoRestante = document.getElementById(`rem-${estado}`);
+
+                barra.style.width = `${porcentaje}%`;
+
+                if (segundosUsados >= limiteSegundos) {
+                    barra.className = 'progress-bar h-full rounded-r-full bg-red-500';
+                    caja.classList.add('border-red-300', 'bg-red-50');
+                    textoRestante.innerHTML = `<span class="text-red-600 font-black"><i class="ph-bold ph-warning"></i> Excedido por ${formatTiempo(segundosUsados - limiteSegundos)}</span>`;
+                } else {
+                    caja.classList.remove('border-red-300', 'bg-red-50');
+                    barra.className = `progress-bar h-full rounded-r-full ${estado === 'bath' ? 'bg-purple-500' : (estado === 'food' ? 'bg-orange-500' : 'bg-blue-500')}`;
+                    
+                    const restan = limiteSegundos - segundosUsados;
+                    textoRestante.innerHTML = `Te restan <strong>${formatTiempo(restan)}</strong>`;
+                    
+                    if (restan <= 120 && restan > 0 && estado !== 'quality') { 
+                        textoRestante.innerHTML = `<span class="text-orange-500"><i class="ph-bold ph-clock"></i> ¡Atención! Solo ${formatTiempo(restan)}</span>`;
+                    }
+                }
+
+                if (sesionFirebase.estadoActivo === estado) {
+                    caja.classList.add('ring-4', estado === 'bath' ? 'ring-purple-500/20' : (estado==='food' ? 'ring-orange-500/20' : 'ring-blue-500/20'), 'scale-[1.02]');
+                } else {
+                    caja.classList.remove('ring-4', 'ring-purple-500/20', 'ring-orange-500/20', 'ring-blue-500/20', 'scale-[1.02]');
+                }
+            });
+        }
+
+        function formatTiempo(segundosTotales) {
+            if(isNaN(segundosTotales) || segundosTotales < 0) return "00:00";
+            const m = Math.floor(segundosTotales / 60);
+            const s = segundosTotales % 60;
+            return `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
+        }
+
+        function escucharHistorialTotal() {
+            onSnapshot(collection(db, "registros_tiempos"), (snapshot) => {
+                misRegistrosTotales = [];
+                snapshot.forEach(doc => {
+                    const data = doc.data();
+                    if (data.asesor_id === asesorDatos.id && data.fecha) {
+                        misRegistrosTotales.push({ ...data, fechaObj: data.fecha.toDate() });
+                    }
+                });
+                
+                misRegistrosTotales.sort((a, b) => b.fechaObj - a.fechaObj);
+                window.actualizarHistorialFecha();
+            });
+        }
+
+        window.actualizarHistorialFecha = function() {
+            const tbody = document.getElementById('tabla-historial');
+            const fechaInput = document.getElementById('filtro-fecha-agente').value; 
+            if(!fechaInput) return;
+
+            const registrosDelDia = misRegistrosTotales.filter(log => {
+                const logFechaISO = getFechaISO(log.fechaObj);
+                return logFechaISO === fechaInput;
+            });
+
+            tbody.innerHTML = '';
+
+            if (registrosDelDia.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="3" class="text-center py-12"><div class="w-16 h-16 bg-slate-100 rounded-full flex items-center justify-center mx-auto mb-3"><i class="ph-fill ph-coffee text-3xl text-slate-300"></i></div><p class="text-slate-500 font-bold text-sm">No tomaste pausas este día o no trabajaste.</p></td></tr>`;
+                document.getElementById('hist-tot-bath').innerText = '00:00';
+                document.getElementById('hist-tot-food').innerText = '00:00';
+                document.getElementById('hist-tot-quality').innerText = '00:00';
+                return;
+            }
+
+            let totalB = 0, totalC = 0, totalQ = 0;
+
+            registrosDelDia.forEach(log => {
+                if(log.estado === 'Baño' || log.estado === 'bath') totalB += log.duracion_segundos;
+                if(log.estado === 'Comida' || log.estado === 'food') totalC += log.duracion_segundos;
+                if(log.estado === 'Calidad' || log.estado === 'quality') totalQ += log.duracion_segundos;
+
+                const horaStr = log.fechaObj.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit', hour12: true });
+                const meta = metaEstado[log.estado] || metaEstadoReverse[log.estado] || { icon: 'ph-question', bg: 'bg-slate-100 text-slate-600 border border-slate-200', label: log.estado };
+                
+                tbody.innerHTML += `
+                    <tr class="hover:bg-slate-50/80 transition-colors group border-b border-slate-50">
+                        <td class="px-6 py-4 font-bold text-slate-500 text-sm group-hover:text-slate-700 transition-colors"><i class="ph-fill ph-clock text-slate-400"></i> ${horaStr}</td>
+                        <td class="px-6 py-4">
+                            <span class="px-3 py-1 ${meta.bg} text-[11px] font-black uppercase rounded-lg inline-flex items-center gap-2">
+                                <i class="${meta.icon} text-sm"></i> ${meta.label}
+                            </span>
+                        </td>
+                        <td class="px-6 py-4 text-right font-mono font-black text-slate-800 text-lg">${formatTiempo(log.duracion_segundos)}</td>
+                    </tr>
+                `;
+            });
+
+            document.getElementById('hist-tot-bath').innerText = formatTiempo(totalB);
+            document.getElementById('hist-tot-food').innerText = formatTiempo(totalC);
+            document.getElementById('hist-tot-quality').innerText = formatTiempo(totalQ);
+        };
+
+        // Autologin si ya hay datos
+        if (asesorDatos) cargarInterfazDashboard();
+
+    </script>
+</body>
+</html>
