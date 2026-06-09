@@ -189,7 +189,7 @@
                     <!-- SECCIÓN 3: Adherencia y Tiempos de Hoy -->
                     <section class="grid grid-cols-1 lg:grid-cols-2 gap-6">
                         
-                        <!-- Límites Permanentes -->
+                        <!-- Límites Permanentes (AQUÍ SE AGREGÓ EL LÍMITE DE CALIDAD) -->
                         <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6">
                             <div class="flex items-center gap-2 mb-6 border-b border-slate-100 pb-4">
                                 <div class="p-2 bg-orange-100 text-orange-600 rounded-lg"><i class="ph-fill ph-lock-key text-xl"></i></div>
@@ -198,14 +198,18 @@
                                     <p class="text-[10px] text-slate-500 font-bold uppercase">Dejar vacío para usar reglas globales</p>
                                 </div>
                             </div>
-                            <div class="grid grid-cols-2 gap-4">
+                            <div class="grid grid-cols-3 gap-4">
                                 <div>
-                                    <label class="block text-xs font-bold text-slate-500 uppercase mb-2">Límite Baño (min)</label>
+                                    <label class="block text-[11px] font-bold text-slate-500 uppercase mb-2">Baño (min)</label>
                                     <input type="number" id="f-l-bano" class="w-full border border-slate-300 rounded-xl p-3 text-sm focus:border-orange-500 outline-none font-mono font-bold text-slate-700 bg-slate-50 focus:bg-white transition-colors" placeholder="Global">
                                 </div>
                                 <div>
-                                    <label class="block text-xs font-bold text-slate-500 uppercase mb-2">Límite Comida (min)</label>
+                                    <label class="block text-[11px] font-bold text-slate-500 uppercase mb-2">Comida (min)</label>
                                     <input type="number" id="f-l-comida" class="w-full border border-slate-300 rounded-xl p-3 text-sm focus:border-orange-500 outline-none font-mono font-bold text-slate-700 bg-slate-50 focus:bg-white transition-colors" placeholder="Global">
+                                </div>
+                                <div>
+                                    <label class="block text-[11px] font-bold text-slate-500 uppercase mb-2">Calidad (min)</label>
+                                    <input type="number" id="f-l-calidad" class="w-full border border-slate-300 rounded-xl p-3 text-sm focus:border-blue-500 outline-none font-mono font-bold text-slate-700 bg-slate-50 focus:bg-white transition-colors" placeholder="Global">
                                 </div>
                             </div>
                         </div>
@@ -314,6 +318,16 @@
                 const p = str.split(':');
                 return p.length === 2 ? (parseInt(p[0])||0)*60 + (parseInt(p[1])||0) : 0;
             },
+            // Se agrega formatInput para prevenir errores con el evento input
+            formatInput: (e) => {
+                let val = e.target.value.replace(/\D/g, ''); // Quita letras
+                if (val.length > 4) val = val.slice(0, 4);
+                if (val.length >= 3) {
+                    e.target.value = val.slice(0, 2) + ':' + val.slice(2);
+                } else {
+                    e.target.value = val;
+                }
+            },
             toast: (msg, type = 'success') => {
                 const toast = document.getElementById('toast');
                 document.getElementById('toast-icon').innerHTML = type === 'error' ? '<i class="ph-fill ph-warning-circle text-red-200"></i>' : '<i class="ph-fill ph-check-circle text-emerald-200"></i>';
@@ -400,8 +414,10 @@
                 document.getElementById('f-c-comida').value = Utils.formatSeg(ses.tiemposAcumulados?.food || 0);
                 document.getElementById('f-c-calidad').value = Utils.formatSeg(ses.tiemposAcumulados?.quality || 0);
                 
+                // Límites permanentes (INCLUYE CALIDAD)
                 document.getElementById('f-l-bano').value = ag.limites?.bano || '';
                 document.getElementById('f-l-comida').value = ag.limites?.comida || '';
+                document.getElementById('f-l-calidad').value = ag.limites?.calidad || '';
 
                 // Vacaciones
                 document.getElementById('f-vacaciones').value = ag.vacaciones?.diasDisponibles || 0;
@@ -472,8 +488,10 @@
                 const xoc = document.getElementById('f-xoc').value.trim().toUpperCase();
                 const metaHoras = parseInt(document.getElementById('f-meta').value) || 9;
 
+                // Captura de límites (INCLUYE CALIDAD)
                 const lB = parseInt(document.getElementById('f-l-bano').value);
                 const lC = parseInt(document.getElementById('f-l-comida').value);
+                const lCal = parseInt(document.getElementById('f-l-calidad').value);
 
                 const nwTiempos = {
                     bath: Utils.parseTime(document.getElementById('f-c-bano').value),
@@ -498,7 +516,12 @@
 
                 const docData = {
                     id, xoc, nombre,
-                    limites: { bano: isNaN(lB) ? null : lB, comida: isNaN(lC) ? null : lC },
+                    // Se agrega calidad a los datos a guardar en Firebase
+                    limites: { 
+                        bano: isNaN(lB) ? null : lB, 
+                        comida: isNaN(lC) ? null : lC,
+                        calidad: isNaN(lCal) ? null : lCal
+                    },
                     conexiones: { metaHoras },
                     vacaciones, horarios
                 };
