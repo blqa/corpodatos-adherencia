@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Portal de Tiempos - AFK</title>
+    <title>Tiempos no listo - GP</title>
     
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -50,8 +50,8 @@
             <div class="w-20 h-20 bg-gradient-to-br from-blue-500 to-indigo-600 text-white rounded-2xl flex items-center justify-center mx-auto mb-6 shadow-lg shadow-blue-500/30 relative z-10">
                 <i class="ph-bold ph-identification-card text-4xl"></i>
             </div>
-            <h2 class="text-3xl font-black text-slate-800 mb-2 tracking-tight">Mi Portal WFM</h2>
-            <p class="text-slate-500 mb-8 font-medium">Ingresa tu ID corporativo para monitorear tu adherencia en tiempo real.</p>
+            <h2 class="text-3xl font-black text-slate-800 mb-2 tracking-tight">Mis tiempos No Listo</h2>
+            <p class="text-slate-500 mb-8 font-medium">Ingresa tu ID para monitorear tu adherencia en tiempo real.</p>
             
             <form onsubmit="iniciarDashboard(event)" class="flex flex-col gap-4 relative z-10">
                 <input type="text" id="input-id" required placeholder="PIN o ID Corporativo" class="border-2 border-slate-200 p-4 rounded-xl focus:ring-4 focus:ring-blue-100 focus:border-brand focus:outline-none text-center font-mono text-xl tracking-widest bg-slate-50 transition-all font-bold text-slate-700 uppercase placeholder-slate-300">
@@ -73,7 +73,7 @@
                     <i class="ph-bold ph-headset text-xl"></i>
                 </div>
                 <div>
-                    <h1 class="font-black text-xl tracking-tight text-slate-800 leading-none">WFM Adherencia</h1>
+                    <h1 class="font-black text-xl tracking-tight text-slate-800 leading-none">No listo</h1>
                     <p class="text-[10px] text-slate-400 font-bold uppercase tracking-widest mt-1" id="fecha-actual"></p>
                 </div>
             </div>
@@ -92,6 +92,20 @@
                 </button>
             </div>
         </header>
+
+        <!-- ALERTA DE EXTENSIÓN DESCONECTADA -->
+        <div id="alerta-extension" class="hidden bg-red-600 text-white px-4 md:px-8 py-3 flex flex-col sm:flex-row items-center justify-between gap-4 z-10 shrink-0 shadow-inner">
+            <div class="flex items-center gap-3 w-full sm:w-auto">
+                <i class="ph-bold ph-warning-octagon text-3xl animate-pulse"></i>
+                <div>
+                    <p class="font-black text-sm md:text-base tracking-tight">Extensión GP no detectada o desconectada.</p>
+                    <p class="text-xs md:text-sm text-red-200 font-medium">Tu tiempo y adherencia no se están registrando. Contacta a tu supervisor.</p>
+                </div>
+            </div>
+            <button onclick="verificarExtension()" class="bg-red-800 hover:bg-red-900 px-4 py-2 rounded-xl text-sm font-bold transition-all shadow-md active:scale-95 whitespace-nowrap shrink-0 flex items-center gap-2">
+                <i class="ph-bold ph-arrows-clockwise"></i> Reintentar
+            </button>
+        </div>
 
         <!-- ÁREA PRINCIPAL -->
         <main class="flex-1 overflow-y-auto p-4 md:p-6 lg:p-8 relative">
@@ -282,6 +296,35 @@
         // Auto-refresh diario
         setInterval(() => { if (getFechaISO() !== diaInicial) location.reload(); }, 60000);
 
+        // LÓGICA DE DETECCIÓN DE EXTENSIÓN
+        let extensionConectada = false;
+
+        window.addEventListener('message', (event) => {
+            // Escuchamos si la extensión responde
+            if (event.data && event.data.type === 'WFM_EXTENSION_ACTIVA') {
+                extensionConectada = true;
+                document.getElementById('alerta-extension').classList.add('hidden');
+            }
+        });
+
+        window.verificarExtension = function() {
+            extensionConectada = false;
+            // Enviamos un "ping" que la extensión debe escuchar
+            window.postMessage({ type: 'WFM_CHECK_EXTENSION' }, '*');
+            
+            const btn = document.querySelector('#alerta-extension button');
+            if(btn) btn.innerHTML = '<i class="ph-bold ph-spinner animate-spin"></i> Buscando...';
+            
+            // Esperamos 2 segundos a que la extensión responda
+            setTimeout(() => {
+                if(btn) btn.innerHTML = '<i class="ph-bold ph-arrows-clockwise"></i> Reintentar';
+                if (!extensionConectada) {
+                    document.getElementById('alerta-extension').classList.remove('hidden');
+                    document.getElementById('alerta-extension').classList.add('flex');
+                }
+            }, 2000); 
+        };
+
         window.iniciarDashboard = async function(e) {
             e.preventDefault();
             const inputId = document.getElementById('input-id').value.trim().toUpperCase();
@@ -336,6 +379,9 @@
             escucharSesionActivaHOY();
             escucharHistorialTiempos(); 
             
+            // Verificar extensión al entrar
+            verificarExtension();
+
             if(timerRelojes) clearInterval(timerRelojes);
             timerRelojes = setInterval(actualizarCronometrosVIVO, 1000);
         }
