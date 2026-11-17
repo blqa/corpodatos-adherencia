@@ -322,7 +322,7 @@
                 if (!e.touchpoint) return { nivel: 'bad', chip: 'chip-danger', icon: 'ph-sign-out', txt: 'Touchpoint sin sesión', det: 'La extensión está activa pero no ve una sesión de Touchpoint.' };
                 if (!e.botonSalida) return { nivel: 'warn', chip: 'chip-warn', icon: 'ph-warning', txt: 'Revisar extensión', det: 'No encuentra el botón de cerrar sesión: no podrá desconectarlo por tiempo.' };
                 if (Utils.versionMenor(e.version, VERSION_EXTENSION)) return { nivel: 'warn', chip: 'chip-warn', icon: 'ph-arrow-circle-up', txt: `Actualizar ext. (v${e.version || '?'})`, det: `Tiene la v${e.version || '?'} y la actual es v${VERSION_EXTENSION}. Que cierre y abra Chrome para que tome la nueva de la carpeta de red.` };
-                return { nivel: 'ok', chip: 'chip-ok', icon: 'ph-plugs-connected', txt: 'Extensión OK', det: `Conectada · v${e.version || '?'} · Touchpoint: ${e.estadoTP || '—'}` };
+                return { nivel: 'ok', chip: 'chip-ok', icon: 'ph-plugs-connected', txt: `Extensión v${e.version || '?'}`, det: `Conectada · v${e.version || '?'} · Touchpoint: ${e.estadoTP || '—'}` };
             },
             // Hora de primera conexión comparada con su horario de hoy
             puntualidad: (ag, ses) => {
