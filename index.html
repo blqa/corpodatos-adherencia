@@ -267,7 +267,7 @@
                         <div class="icon-tile soft-brand c-brand !w-8 !h-8 !text-base"><i class="ph-bold ph-list-bullets"></i></div>
                         <h3 class="h-card">Mi historial</h3>
                     </div>
-                    <input type="date" id="filtro-fecha-agente" onchange="actualizarHistorialFecha()" class="input !h-9 !w-auto !text-[13px] font-medium">
+                    <input type="date" id="filtro-fecha-agente" onchange="cambiarDiaHistorial()" class="input !h-9 !w-auto !text-[13px] font-medium">
                 </div>
 
                 <div class="grid grid-cols-3 border-b divider">
@@ -369,7 +369,7 @@
 
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import { getFirestore, collection, onSnapshot, doc, getDoc, updateDoc, setDoc, addDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import { getFirestore, collection, onSnapshot, doc, getDoc, updateDoc, setDoc, addDoc, query, where } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
         import { getAuth, signInWithEmailAndPassword, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
 
         const firebaseConfig = {
@@ -648,8 +648,14 @@
             return `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
         }
 
+        // Solo se leen los registros del DÍA elegido (no todo el historial): ahorra lecturas de Firebase
+        let cancelarHistorial = null;
         function escucharHistorialTiempos() {
-            onSnapshot(collection(db, "registros_tiempos"), (snapshot) => {
+            if (cancelarHistorial) cancelarHistorial();
+            const dia = document.getElementById('filtro-fecha-agente').value || getFechaISO();
+            const desde = new Date(dia + 'T00:00:00'), hasta = new Date(dia + 'T23:59:59');
+            const q = query(collection(db, "registros_tiempos"), where("fecha", ">=", desde), where("fecha", "<=", hasta));
+            cancelarHistorial = onSnapshot(q, (snapshot) => {
                 misRegistrosTotales = [];
                 snapshot.forEach(doc => {
                     const data = doc.data();
@@ -661,6 +667,8 @@
                 window.actualizarHistorialFecha();
             });
         }
+
+        window.cambiarDiaHistorial = () => escucharHistorialTiempos();
 
         window.actualizarHistorialFecha = function() {
             const tbody = document.getElementById('tabla-historial');
