@@ -13,7 +13,17 @@
     <script>document.documentElement.classList.add("dark", "super");</script>
     <script src="https://unpkg.com/@phosphor-icons/web"></script>
     <link rel="stylesheet" href="../assets/ui.css">
-    <style>.auth-pending .app-shell, .auth-pending .mobile-nav { visibility: hidden; }</style>
+    <style>
+        .auth-pending .app-shell, .auth-pending .mobile-nav { visibility: hidden; }
+        .mon-sum { list-style: none; display: flex; align-items: center; gap: 10px; cursor: pointer; user-select: none; padding: 6px 2px; border-radius: 10px; }
+        .mon-sum::-webkit-details-marker { display: none; }
+        .mon-sum:hover .chev { color: var(--brand-text); }
+        .mon-sum .chev { color: var(--text-3); transition: transform .18s; font-size: 15px; }
+        .mon-sec[open] > .mon-sum .chev { transform: rotate(90deg); }
+        .off-card { opacity: .55; filter: grayscale(.85); transition: opacity .15s, filter .15s; }
+        .off-card:hover { opacity: .9; filter: grayscale(.2); }
+        .rank { position: absolute; top: 10px; left: -1px; padding: 1px 8px 1px 6px; border-radius: 0 99px 99px 0; font-size: 11px; font-weight: 700; color: #fff; background: var(--brand); }
+    </style>
 </head>
 <body class="auth-pending">
 
@@ -118,7 +128,7 @@
                         </div>
                         <div class="card kpi">
                             <div class="icon-tile icon-tile-lg soft-ok c-ok"><i class="ph-bold ph-headset"></i></div>
-                            <div><p class="text-[13px] muted">Disponibles</p><p class="kpi-value tnum" id="kpi-conectados">0</p></div>
+                            <div><p class="text-[13px] muted">Conectados</p><p class="kpi-value tnum" id="kpi-conectados">0</p></div>
                         </div>
                         <div class="card kpi">
                             <div class="icon-tile icon-tile-lg soft-warn c-warn"><i class="ph-bold ph-pause-circle"></i></div>
@@ -143,9 +153,30 @@
                                 <input type="text" id="search-monitor" onkeyup="App.UI.renderMonitor()" placeholder="Buscar por nombre o ID" class="input">
                             </div>
                         </div>
-                        <div id="lista-activos" class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-4">
-                            <div class="col-span-full card empty"><span class="spinner spinner-lg"></span><p class="mt-3">Conectando…</p></div>
-                        </div>
+                        <details id="sec-conectados" class="mon-sec" open>
+                            <summary class="mon-sum">
+                                <i class="ph-bold ph-caret-right chev"></i>
+                                <span class="dot dot-live c-ok"></span>
+                                <span class="font-semibold text-1">Conectados</span>
+                                <span id="cnt-conectados" class="chip chip-ok tnum">0</span>
+                                <span id="cnt-nolisto" class="chip chip-warn tnum hidden"></span>
+                                <span class="flex-1 h-px divider border-t ml-2"></span>
+                            </summary>
+                            <div id="lista-activos" class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-4 pt-3">
+                                <div class="col-span-full card empty"><span class="spinner spinner-lg"></span><p class="mt-3">Conectando…</p></div>
+                            </div>
+                        </details>
+
+                        <details id="sec-desconectados" class="mon-sec mt-5" open>
+                            <summary class="mon-sum">
+                                <i class="ph-bold ph-caret-right chev"></i>
+                                <span class="dot" style="color:var(--text-3)"></span>
+                                <span class="font-semibold muted">Desconectados</span>
+                                <span id="cnt-desconectados" class="chip chip-neutral tnum">0</span>
+                                <span class="flex-1 h-px divider border-t ml-2"></span>
+                            </summary>
+                            <div id="lista-desconectados" class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-3 pt-3"></div>
+                        </details>
                     </section>
 
                     <!-- Bitácora -->
@@ -364,27 +395,49 @@
 
         App.UI = {
             cambiarSeccion: () => {},
+            // Estado real de conexión: la extensión mandó señal hace < 3 min y ve sesión de Touchpoint
+            conexion: (ag, ses) => {
+                const e = App.state.extension[ag.id];
+                const fresco = !!(e && e.ultimoPulso && Date.now() - e.ultimoPulso < 180000);
+                const enTP = fresco && e.touchpoint;
+                const enPausa = !!(ses && ses.estadoActivo && ses.estadoActivo !== 'null');
+                let motivo;
+                if (ses?.desconectadoEn) motivo = `${ses.motivoDesconexion === 'expulsion' ? 'Desconectado por exceder' : 'Salió de Touchpoint'} a las ${Utils.hora(ses.desconectadoEn)}`;
+                else if (fresco && !e.touchpoint) motivo = 'Chrome abierto, sin sesión de Touchpoint';
+                else if (e?.ultimoPulso && Utils.esHoy(new Date(e.ultimoPulso).toLocaleDateString())) motivo = `Última señal ${Utils.hace(e.ultimoPulso)}`;
+                else if (ses?.primeraConexion) motivo = 'Se conectó hoy, ya no envía señal';
+                else motivo = 'No se ha conectado hoy';
+                return { enTP, enPausa, conectado: enTP || enPausa, estadoTP: e?.estadoTP || '', motivo, fresco };
+            },
+            noListoHoy: (ses) => {
+                if (!ses) return 0;
+                const t = ses.tiemposAcumulados || {};
+                let s = (t.bath || 0) + (t.food || 0) + (t.quality || 0);
+                if (ses.estadoActivo && ses.estadoActivo !== 'null' && ses.tiempoInicioEstado) s += Math.max(0, Math.floor((Date.now() - ses.tiempoInicioEstado) / 1000));
+                return s;
+            },
             renderMonitor: () => {
-                const grid = document.getElementById('lista-activos');
+                const gridOn = document.getElementById('lista-activos');
+                const gridOff = document.getElementById('lista-desconectados');
                 const term = document.getElementById('search-monitor').value.toLowerCase();
 
                 let excedidos = 0, activos = 0, conectados = 0, extOk = 0, tardes = 0;
                 const total = Object.keys(App.state.operadores).length;
-                const tarjetas = [];
+                const on = [], off = [];
 
                 Object.values(App.state.operadores).forEach(ag => {
                     const ses = App.state.sesiones[ag.id];
-                    const isReceso = ses && ses.estadoActivo && ses.estadoActivo !== 'null';
-                    const isWorking = ses && (!ses.estadoActivo || ses.estadoActivo === 'null');
+                    const cx = App.UI.conexion(ag, ses);
 
                     const limB = ag.limites?.bano || App.config.limites.bano;
                     const limC = ag.limites?.comida || App.config.limites.comida;
                     const tB = ses?.tiemposAcumulados?.bath || 0, tC = ses?.tiemposAcumulados?.food || 0, tQ = ses?.tiemposAcumulados?.quality || 0;
                     const excB = tB >= limB * 60, excC = tC >= limC * 60;
+                    const nl = App.UI.noListoHoy(ses);
 
-                    // Los KPIs cuentan a todos, no solo a los filtrados
-                    if (isReceso) activos++;
-                    if (isWorking) conectados++;
+                    // KPIs: cuentan a todos, no solo a los filtrados
+                    if (cx.enPausa) activos++;
+                    if (cx.conectado) conectados++;
                     if (excB || excC) excedidos++;
                     const ext = Utils.estadoExtension(ag.id);
                     if (ext.nivel === 'ok') extOk++;
@@ -392,71 +445,98 @@
                     if (punt?.tarde) tardes++;
 
                     const nombre = Utils.nombre(ag);
-                    if (term && !(ag.nombre || '').toLowerCase().includes(term) && !nombre.toLowerCase().includes(term) && !ag.id.toLowerCase().includes(term) && !(ag.xoc && ag.xoc.toLowerCase().includes(term))) return;
-
-                    let statusHtml, centro, orden;
-                    if (isReceso) {
-                        const m = META[ses.estadoActivo] || { icon: 'ph-question', label: ses.estadoActivo, chip: 'chip-neutral', c: 'muted', bg: 'bg-ok' };
-                        orden = 0;
-                        const fuera = !!ses.desconectadoEn;
-                        statusHtml = fuera
-                            ? `<span class="chip chip-danger" title="Sigue contando hasta que vuelva a entrar a Touchpoint"><span class="dot dot-live"></span>${m.label} · fuera</span>`
-                            : `<span class="chip ${m.chip}"><span class="dot dot-live"></span>${m.label}</span>`;
-                        const etiqueta = fuera
-                            ? `<span class="text-[12.5px] font-medium c-danger leading-tight">${ses.motivoDesconexion === 'expulsion' ? 'Desconectado por exceder' : 'Salió de Touchpoint'} a las ${Utils.hora(ses.desconectadoEn)}<br><span class="muted font-normal">El tiempo sigue contando</span></span>`
-                            : `<span class="text-[13px] font-medium muted">En curso</span>`;
-                        centro = `
-                            <div class="rounded-xl ${fuera ? 'soft-danger' : 'surface-2'} border divider px-4 py-3 flex items-center justify-between gap-3" ${fuera ? 'style="border-color:var(--danger-border)"' : ''}>
-                                <div class="flex items-center gap-2.5 ${fuera ? 'c-danger' : m.c}"><i class="ph-fill ${fuera ? 'ph-sign-out' : m.icon} text-xl shrink-0"></i>${etiqueta}</div>
-                                <span id="t-${ag.id}" class="tnum text-[26px] font-bold tracking-tight ${m.c}">00:00</span>
-                            </div>
-                            <div class="progress !h-1.5 mt-2"><div id="p-${ag.id}" class="${m.bg}"></div></div>`;
-                    } else if (isWorking) {
-                        orden = 1;
-                        statusHtml = `<span class="chip chip-ok"><span class="dot"></span>Disponible</span>`;
-                        centro = `<div class="rounded-xl surface-2 border divider px-4 py-3 h-[62px] flex items-center gap-2.5 muted text-[13px]"><i class="ph-bold ph-headset text-lg c-ok"></i> Atendiendo llamadas</div><div class="h-1.5 mt-2"></div>`;
-                    } else {
-                        orden = 2;
-                        statusHtml = `<span class="chip chip-neutral"><i class="ph-fill ph-moon"></i>Sin conexión</span>`;
-                        centro = `<div class="rounded-xl surface-2 border divider px-4 py-3 h-[62px] flex items-center gap-2.5 subtle text-[13px]"><i class="ph-bold ph-plugs text-lg"></i> No se ha conectado hoy</div><div class="h-1.5 mt-2"></div>`;
-                    }
+                    if (term && !(ag.nombre || '').toLowerCase().includes(term) && !nombre.toLowerCase().includes(term) && !ag.id.toLowerCase().includes(term)) return;
 
                     const mini = (key, t, lim, exc) => `
                         <div class="rounded-lg px-2.5 py-2 ${exc ? 'soft-danger' : 'surface-2'}">
                             <p class="text-[11px] ${exc ? 'c-danger' : 'subtle'} flex items-center gap-1"><span class="dot ${META[key].bg} !w-1.5 !h-1.5"></span>${META[key].label}</p>
                             <p class="tnum text-[13px] font-semibold ${exc ? 'c-danger' : 'text-1'}"><span id="tot-${key}-${ag.id}">${Utils.formatSeg(t)}</span><span class="subtle font-normal"> ${lim}</span></p>
                         </div>`;
-
-                    tarjetas.push({ orden, nombre, html: `
-                    <div class="card agent-card relative p-4 flex flex-col gap-3 ${orden === 2 ? 'offline' : ''}">
-                        <button class="edit-btn btn btn-primary btn-icon btn-sm !rounded-full absolute -top-2.5 -right-2.5 z-10 !w-8 !h-8" title="Editar el día de este asesor" onclick="App.Editor.sesion('${ag.id}')"><i class="ph-bold ph-pencil-simple"></i></button>
+                    const cabecera = (chip) => `
                         <div class="flex items-center gap-3">
                             <div class="avatar">${Utils.esc(Utils.iniciales(nombre))}</div>
                             <div class="min-w-0 flex-1">
                                 <p class="font-semibold text-1 truncate leading-tight" title="${Utils.esc(ag.nombre)}">${Utils.esc(nombre)}</p>
-                                <p class="text-[12px] subtle tnum">ID ${Utils.esc(ag.id)}${ag.horarios?.turno ? ' · ' + Utils.esc(ag.horarios.turno) : ''}</p>
+                                <p class="text-[12px] subtle tnum truncate">ID ${Utils.esc(ag.id)}${ag.horarios?.turno ? ' · ' + Utils.esc(ag.horarios.turno) : ''}</p>
                             </div>
-                            ${statusHtml}
-                        </div>
-                        <div>${centro}</div>
-                        <div class="grid grid-cols-3 gap-2">
-                            ${mini('bath', tB, '/' + limB + 'm', excB)}
-                            ${mini('food', tC, '/' + limC + 'm', excC)}
-                            ${mini('quality', tQ, '', false)}
-                        </div>
+                            ${chip}
+                        </div>`;
+                    const lapiz = `<button class="edit-btn btn btn-primary btn-icon btn-sm !rounded-full absolute -top-2.5 -right-2.5 z-10 !w-8 !h-8" title="Editar el día de este asesor" onclick="App.Editor.sesion('${ag.id}')"><i class="ph-bold ph-pencil-simple"></i></button>`;
+                    const pie = `
                         <div class="flex items-center justify-between gap-2 pt-3 border-t divider flex-wrap">
-                            ${punt ? `<span class="chip ${punt.chip} tnum" title="${Utils.esc(punt.det)}"><i class="ph-bold ph-sign-in"></i>${punt.txt}</span>` : `<span class="text-[12px] subtle">Sin conexión registrada</span>`}
+                            ${punt ? `<span class="chip ${punt.chip} tnum" title="${Utils.esc(punt.det)}"><i class="ph-bold ph-sign-in"></i>${punt.txt}</span>` : `<span class="text-[12px] subtle">Sin entrada registrada</span>`}
                             <span class="chip ${ext.chip}" title="${Utils.esc(ext.det)}"><i class="ph-bold ${ext.icon}"></i>${ext.txt}</span>
-                        </div>
-                    </div>` });
+                        </div>`;
+
+                    if (cx.conectado) {
+                        let chip, centro;
+                        if (cx.enPausa) {
+                            const m = META[ses.estadoActivo] || { icon: 'ph-question', label: ses.estadoActivo, chip: 'chip-neutral', c: 'muted', bg: 'bg-ok' };
+                            const fuera = !!ses.desconectadoEn;
+                            chip = fuera
+                                ? `<span class="chip chip-danger" title="Sigue contando hasta que vuelva a entrar a Touchpoint"><span class="dot dot-live"></span>${m.label} · fuera</span>`
+                                : `<span class="chip ${m.chip}"><span class="dot dot-live"></span>No listo · ${m.label}</span>`;
+                            const etiqueta = fuera
+                                ? `<span class="text-[12.5px] font-medium c-danger leading-tight">${Utils.esc(cx.motivo)}<br><span class="muted font-normal">El tiempo sigue contando</span></span>`
+                                : `<span class="text-[13px] font-medium muted leading-tight">En pausa desde las ${Utils.hora(ses.tiempoInicioEstado)}</span>`;
+                            centro = `
+                                <div class="rounded-xl ${fuera ? 'soft-danger' : 'surface-2'} border divider px-4 py-3 flex items-center justify-between gap-3" ${fuera ? 'style="border-color:var(--danger-border)"' : ''}>
+                                    <div class="flex items-center gap-2.5 ${fuera ? 'c-danger' : m.c}"><i class="ph-fill ${fuera ? 'ph-sign-out' : m.icon} text-xl shrink-0"></i>${etiqueta}</div>
+                                    <span id="t-${ag.id}" class="tnum text-[26px] font-bold tracking-tight ${m.c}">00:00</span>
+                                </div>
+                                <div class="progress !h-1.5 mt-2"><div id="p-${ag.id}" class="${m.bg}"></div></div>`;
+                        } else {
+                            chip = `<span class="chip chip-ok"><span class="dot dot-live"></span>Conectado</span>`;
+                            centro = `
+                                <div class="rounded-xl surface-2 border divider px-4 py-3 h-[62px] flex items-center justify-between gap-3">
+                                    <div class="flex items-center gap-2.5 text-[13px]"><i class="ph-bold ph-headset text-lg c-ok"></i><span><span class="subtle">Touchpoint:</span> <span class="text-1 font-medium">${Utils.esc(cx.estadoTP || 'Conectado')}</span></span></div>
+                                </div>
+                                <div class="h-1.5 mt-2"></div>`;
+                        }
+                        on.push({ pausa: cx.enPausa ? 1 : 0, nl, nombre, html: (rank) => `
+                            <div class="card agent-card relative p-4 flex flex-col gap-3">
+                                ${lapiz}
+                                ${cabecera(chip)}
+                                <div>${centro}</div>
+                                <div class="flex items-center justify-between -mb-1">
+                                    <span class="text-[12px] subtle">No listo hoy</span>
+                                    <span class="tnum text-[13px] font-bold ${nl >= 45 * 60 ? 'c-danger' : 'text-1'}" id="nl-${ag.id}">${Utils.formatSeg(nl)}</span>
+                                </div>
+                                <div class="grid grid-cols-3 gap-2">
+                                    ${mini('bath', tB, '/' + limB + 'm', excB)}
+                                    ${mini('food', tC, '/' + limC + 'm', excC)}
+                                    ${mini('quality', tQ, '', false)}
+                                </div>
+                                ${pie}
+                            </div>` });
+                    } else {
+                        off.push({ nombre, nl, html: `
+                            <div class="card agent-card off-card relative p-3.5 flex flex-col gap-2.5">
+                                ${lapiz}
+                                ${cabecera(`<span class="chip chip-neutral"><i class="ph-bold ph-plugs"></i>Desconectado</span>`)}
+                                <div class="flex items-center gap-2 text-[12.5px] muted"><i class="ph-bold ph-info subtle"></i>${Utils.esc(cx.motivo)}</div>
+                                <div class="flex items-center justify-between text-[12px] pt-2 border-t divider">
+                                    <span class="subtle">No listo hoy <b class="tnum text-1 font-semibold">${Utils.formatSeg(nl)}</b></span>
+                                    ${punt ? `<span class="subtle tnum">${punt.txt}</span>` : ''}
+                                </div>
+                            </div>` });
+                    }
                 });
 
-                tarjetas.sort((a, b) => a.orden - b.orden || a.nombre.localeCompare(b.nombre));
+                // Arriba: primero quien está en no listo, y dentro de cada grupo quien lleva más no listo en el día
+                on.sort((a, b) => b.pausa - a.pausa || b.nl - a.nl || a.nombre.localeCompare(b.nombre));
+                off.sort((a, b) => a.nombre.localeCompare(b.nombre));
 
                 document.getElementById('kpi-total').innerText = total;
                 document.getElementById('kpi-activos').innerText = activos;
                 document.getElementById('kpi-conectados').innerText = conectados;
                 document.getElementById('kpi-excedidos').innerText = excedidos;
+                document.getElementById('cnt-conectados').innerText = on.length;
+                document.getElementById('cnt-desconectados').innerText = off.length;
+                const cnl = document.getElementById('cnt-nolisto');
+                const enPausa = on.filter(x => x.pausa).length;
+                cnl.innerHTML = `<i class="ph-bold ph-pause"></i> ${enPausa} en no listo`;
+                cnl.classList.toggle('hidden', !enPausa);
                 const rExt = document.getElementById('resumen-ext');
                 rExt.innerHTML = `<i class="ph-bold ph-plugs-connected"></i> Extensión ${extOk}/${total}`;
                 rExt.className = `chip ${extOk === total && total ? 'chip-ok' : (extOk ? 'chip-warn' : 'chip-neutral')}`;
@@ -464,7 +544,8 @@
                 rT.innerHTML = `<i class="ph-bold ph-clock-countdown"></i> ${tardes} llegaron tarde`;
                 rT.classList.toggle('hidden', tardes === 0);
 
-                grid.innerHTML = tarjetas.map(t => t.html).join('') || `<div class="col-span-full card empty"><i class="ph ph-magnifying-glass"></i>Nadie coincide con tu búsqueda.</div>`;
+                gridOn.innerHTML = on.map((t, i) => t.html(i + 1)).join('') || `<div class="col-span-full card empty !py-8"><i class="ph ph-plugs"></i>${term ? 'Nadie coincide con tu búsqueda.' : 'Nadie conectado en este momento.'}</div>`;
+                gridOff.innerHTML = off.map(t => t.html).join('') || `<div class="col-span-full text-[13px] subtle px-1">${term ? 'Nadie coincide con tu búsqueda.' : 'Todos están conectados.'}</div>`;
                 App.UI.tickRelojes();
             },
             tickRelojes: () => {
@@ -483,6 +564,8 @@
                     const txtDisp = document.getElementById(`t-${ag.id}`);
                     const barProg = document.getElementById(`p-${ag.id}`);
                     const txtTot = document.getElementById(`tot-${estado}-${ag.id}`);
+                    const txtNl = document.getElementById(`nl-${ag.id}`);
+                    if (txtNl) txtNl.innerText = Utils.formatSeg(App.UI.noListoHoy(ses));
 
                     if (txtDisp) {
                         txtDisp.innerText = Utils.formatSeg(segs);
@@ -586,6 +669,11 @@
                     App.UI.renderMonitor();
                 });
 
+                ['sec-conectados', 'sec-desconectados'].forEach(id => {
+                    const d = document.getElementById(id);
+                    try { if (localStorage.getItem('pliegue-' + id) === 'cerrado') d.open = false; } catch (e) {}
+                    d.addEventListener('toggle', () => { try { localStorage.setItem('pliegue-' + id, d.open ? 'abierto' : 'cerrado'); } catch (e) {} });
+                });
                 setInterval(App.UI.tickRelojes, 1000);
                 setInterval(App.UI.renderMonitor, 30000); // para que "desconectada" aparezca aunque no lleguen datos nuevos
                 document.getElementById('filtro-fecha-historial').value = App.state.fechaFiltro;
