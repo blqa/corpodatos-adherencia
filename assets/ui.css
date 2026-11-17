@@ -294,3 +294,34 @@ html.dark input[type="time"]::-webkit-calendar-picker-indicator { filter: invert
 .agent-card { transition: border-color .15s, box-shadow .15s, transform .15s; }
 .agent-card:hover { border-color: var(--border-strong); box-shadow: var(--shadow); }
 .offline { opacity: .62; }
+
+/* =====================================================================
+   Color de acento en los detalles (bordes, sombras, tablas, barras…)
+   --tint controla qué tanto se nota. El asesor puede elegir "marcado".
+   ===================================================================== */
+:root { --tint: 16%; --tint-shadow: 9%; }
+body.tint-strong { --tint: 34%; --tint-shadow: 20%; }
+
+body { background-image: radial-gradient(1100px 380px at 50% -140px, color-mix(in srgb, var(--brand) calc(var(--tint) * .55), transparent), transparent 70%); background-repeat: no-repeat; background-attachment: fixed; }
+body::before { content: ''; position: fixed; top: 0; left: 0; right: 0; height: 3px; z-index: 70; pointer-events: none;
+               background: linear-gradient(90deg, var(--brand), color-mix(in srgb, var(--brand) 40%, #ec4899)); opacity: .9; }
+
+.card { border-color: color-mix(in srgb, var(--brand) var(--tint), var(--border));
+        box-shadow: 0 1px 2px rgba(15, 23, 41, .04), 0 6px 18px -6px color-mix(in srgb, var(--brand) var(--tint-shadow), transparent); }
+.card-header, .divider, .table thead th, .table td { border-color: color-mix(in srgb, var(--brand) calc(var(--tint) * .7), var(--border)); }
+.table thead th { background: color-mix(in srgb, var(--brand) calc(var(--tint) * .25), var(--surface-2)); color: color-mix(in srgb, var(--brand-text) 45%, var(--text-3)); }
+.table tbody tr:hover td { background: color-mix(in srgb, var(--brand) calc(var(--tint) * .3), var(--surface)); }
+.topbar { border-bottom-color: color-mix(in srgb, var(--brand) var(--tint), var(--border)); }
+.sidebar { border-right-color: color-mix(in srgb, var(--brand) var(--tint), var(--border)); }
+.nav-item.active { box-shadow: inset 3px 0 0 var(--brand); }
+.progress { background: color-mix(in srgb, var(--brand) calc(var(--tint) * .5), var(--surface-3)); }
+.pring .ring-track { stroke: color-mix(in srgb, var(--brand) calc(var(--tint) * .6), var(--surface-3)); }
+.input { border-color: color-mix(in srgb, var(--brand) calc(var(--tint) * .9), var(--border-strong)); }
+.btn.btn-secondary { border-color: color-mix(in srgb, var(--brand) var(--tint), var(--border-strong)); }
+.btn.btn-secondary:hover:not(:disabled), .btn.btn-ghost:hover:not(:disabled) { color: var(--brand-text); }
+.btn.btn-primary { box-shadow: 0 4px 14px -4px color-mix(in srgb, var(--brand) 60%, transparent); }
+.avatar { box-shadow: 0 0 0 2px color-mix(in srgb, var(--brand) var(--tint), transparent); }
+.agent-card:hover, .state-card:hover { border-color: color-mix(in srgb, var(--brand) 45%, var(--border)); }
+.segmented { background: color-mix(in srgb, var(--brand) calc(var(--tint) * .5), var(--surface-3)); }
+.eyebrow { color: color-mix(in srgb, var(--brand-text) 50%, var(--text-3)); }
+::-webkit-scrollbar-thumb { background: color-mix(in srgb, var(--brand) 35%, var(--border-strong)); background-clip: padding-box; }

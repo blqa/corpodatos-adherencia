@@ -322,6 +322,13 @@
                     <div class="flex gap-3" id="swatches"></div>
                 </div>
                 <div class="pref-row">
+                    <p class="label">Intensidad del color</p>
+                    <div class="segmented w-full" data-pref="intensidad">
+                        <button data-v="sutil">Sutil</button><button data-v="marcada">Marcada</button>
+                    </div>
+                    <p class="hint">Bordes, sombras, tablas y barras toman tu color.</p>
+                </div>
+                <div class="pref-row">
                     <p class="label">Contador de tiempo</p>
                     <div class="segmented w-full" data-pref="contador">
                         <button data-v="anillo">Anillo</button><button data-v="barra">Barra</button>
@@ -816,7 +823,7 @@
             naranja: { c: '#ea580c', c6: '#c2410c', d: '#f97316', t: '#c2410c', td: '#fdba74', g: ['#f97316', '#f59e0b'] },
             grafito: { c: '#334155', c6: '#1e293b', d: '#64748b', t: '#334155', td: '#cbd5e1', g: ['#475569', '#1e293b'] }
         };
-        const PREFS_BASE = { tema: 'auto', acento: 'indigo', contador: 'anillo', densidad: 'comoda', texto: 'normal',
+        const PREFS_BASE = { tema: 'auto', acento: 'indigo', intensidad: 'sutil', contador: 'anillo', densidad: 'comoda', texto: 'normal',
                              mostrar: { hero: true, quality: true, historial: true }, orden: ['bath', 'food', 'quality'] };
         const NOMBRES_CARD = { bath: 'Sanitario', food: 'Comida', quality: 'Calidad' };
         const clonar = (o) => JSON.parse(JSON.stringify(o));
@@ -845,6 +852,7 @@
                 .logo{background:linear-gradient(135deg, ${a.g[0]}, ${a.g[1]});box-shadow:0 4px 12px color-mix(in srgb, ${a.g[0]} 35%, transparent)}`;
             // Clases de la página
             body.classList.toggle('mode-bar', prefs.contador === 'barra');
+            body.classList.toggle('tint-strong', prefs.intensidad === 'marcada');
             body.classList.toggle('dens-compact', prefs.densidad === 'compacta');
             body.classList.toggle('txt-lg', prefs.texto === 'grande');
             // Secciones visibles y orden
