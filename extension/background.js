@@ -135,7 +135,7 @@ function procesarEnOrden(agenteId, nuevoEstado, razon = "NORMAL") {
         .catch(e => console.error("Error en fila de guardado:", e));
 }
 
-chrome.runtime.onMessage.addListener((req, sender) => {
+chrome.runtime.onMessage.addListener((req, sender, sendResponse) => {
     if (req.action === 'CAMBIAR') {
         if (sender.tab) guardarTab(req.agenteId, sender.tab.id);
         procesarEnOrden(req.agenteId, req.estado, 'NORMAL');
@@ -143,6 +143,11 @@ chrome.runtime.onMessage.addListener((req, sender) => {
         chrome.alarms.clear(ALARMA + req.agenteId);
         procesarEnOrden(req.agenteId, null, 'LOGOUT_MANUAL');
         enviarPulso(req.agenteId, { touchpoint: false, botonSalida: false, estado: 'sin_sesion', estadoTP: 'Cerró sesión' }, true);
+    } else if (req.action === 'OCUPACION') {
+        ocupacion(req.agenteId).then(sendResponse).catch(() => sendResponse(null));
+        return true; // respuesta asíncrona
+    } else if (req.action === 'PAUSA_NO_PERMITIDA') {
+        registrarNoPermitida(req.agenteId, req.estado);
     } else if (req.action === 'PULSO') {
         if (sender.tab) guardarTab(req.agenteId, sender.tab.id);
         enviarPulso(req.agenteId, req.diag || {});
@@ -181,6 +186,75 @@ async function expulsarAgente(agenteId) {
 function botarFallback() {
     chrome.tabs.query({}, (tabs) => {
         tabs.forEach(tab => chrome.tabs.sendMessage(tab.id, { action: 'FORZAR_LOGOUT' }).catch(() => {}));
+    });
+}
+
+// =====================================================================
+// 4b. TURNOS DE COMIDA Y BAÑO
+// Quién está fuera ahora mismo (se consulta solo cuando alguien elige
+// comida o baño en Touchpoint, para no gastar lecturas).
+// =====================================================================
+const MAX_BANO = 2;                 // personas en el baño a la vez
+const MARGEN_COMIDA_MIN = 5;        // puedes salir si al que come le quedan 5 min o menos
+const BANO_VIGENTE_MIN = 30;        // un "baño" de más de 30 min se considera dato viejo
+
+async function listar(coleccion) {
+    const r = await api(`${BASE_URL}/${coleccion}?pageSize=200&key=${firebaseConfig.apiKey}`);
+    if (!r.ok || r.status === 404) throw new Error('sin datos');
+    const j = await r.res.json();
+    return (j.documents || []).map(d => ({ id: d.name.split('/').pop(), ...parseFirestore(d) }));
+}
+
+// Operadores y configuración cambian poco: se guardan 30 min para ahorrar lecturas
+async function catalogo() {
+    const { catTurnos } = await chrome.storage.session.get('catTurnos');
+    if (catTurnos && Date.now() - catTurnos.ts < 30 * 60000) return catTurnos;
+    const [ops, cfg] = await Promise.all([listar('operadores'), getDoc('config', 'global')]);
+    const nuevo = {
+        ts: Date.now(),
+        limites: (cfg.exists && cfg.data().limites) || {},
+        ops: Object.fromEntries(ops.map(o => [o.id, { nombre: o.nombre || o.id, limites: o.limites || {} }]))
+    };
+    await chrome.storage.session.set({ catTurnos: nuevo });
+    return nuevo;
+}
+
+const nombreCorto = (n) => {
+    const p = String(n || '').trim().split(/\s+/);
+    // "APELLIDO APELLIDO NOMBRE(S)" → "Nombre Apellido"
+    const cap = (x) => x ? x.charAt(0).toUpperCase() + x.slice(1).toLowerCase() : '';
+    return p.length >= 3 ? cap(p[2]) + ' ' + cap(p[0]) : p.map(cap).join(' ');
+};
+
+async function ocupacion(yo) {
+    const [sesiones, cat] = await Promise.all([listar('sesiones_activas'), catalogo()]);
+    const ahora = Date.now(), comida = [], bano = [];
+    sesiones.forEach(s => {
+        if (s.id === yo || !esDeHoy(s.fecha) || !s.estadoActivo || !s.tiempoInicioEstado) return;
+        const op = cat.ops[s.id] || { nombre: s.id, limites: {} };
+        const nombre = nombreCorto(op.nombre);
+        const transcurrido = Math.floor((ahora - s.tiempoInicioEstado) / 1000);
+        if (s.estadoActivo === 'food') {
+            const limiteMin = op.limites.comida || cat.limites.comida || 30;
+            const usado = ((s.tiemposAcumulados && s.tiemposAcumulados.food) || 0) + transcurrido;
+            comida.push({ id: s.id, nombre, inicio: s.tiempoInicioEstado, restanSeg: limiteMin * 60 - usado });
+        } else if (s.estadoActivo === 'bath' && transcurrido < BANO_VIGENTE_MIN * 60) {
+            bano.push({ id: s.id, nombre, inicio: s.tiempoInicioEstado });
+        }
+    });
+    bano.sort((a, b) => a.inicio - b.inicio);
+    return { comida, bano, maxBano: MAX_BANO, margenComidaSeg: MARGEN_COMIDA_MIN * 60 };
+}
+
+async function registrarNoPermitida(agenteId, estado) {
+    if (!agenteId) return;
+    let nombre = agenteId;
+    try { const cat = await catalogo(); nombre = (cat.ops[agenteId] || {}).nombre || agenteId; } catch (e) {}
+    await addDoc('registros_tiempos', {
+        asesor_id: agenteId, asesor_nombre: nombre,
+        tipo_evento: 'PAUSA_NO_PERMITIDA', estado,
+        duracion_segundos: 0, inicio: Date.now(), fin: Date.now(),
+        fecha: { _isTimestamp: true }
     });
 }
 

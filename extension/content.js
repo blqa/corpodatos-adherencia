@@ -88,7 +88,9 @@ function updateStatus(nuevoEstado) {
                     console.log("📡 Estado detectado:", nuevoEstado);
                     chrome.runtime.sendMessage({ action: 'CAMBIAR', agenteId: agenteIdentificador, estado: nuevoEstado });
                 }
+                const habiaEstado = lastSentState !== undefined;
                 lastSentState = nuevoEstado;
+                if (habiaEstado) revisarDespues(nuevoEstado);
                 setTimeout(enviarPulso, 500);
             } catch (e) {
                 console.error("Error enviando estado al background:", e);
@@ -183,3 +185,153 @@ function enviarPulso() {
 }
 setTimeout(enviarPulso, 2500);
 setInterval(enviarPulso, 30000);
+
+// =====================================================================
+// TURNOS DE COMIDA Y BAÑO
+// - Comida: solo 1 a la vez. Puedes salir si el que está comiendo ya
+//   regresó o le quedan 5 minutos o menos.
+// - Baño: máximo 2 a la vez. Si ya hay 1, se pregunta "¿aún así deseas ir?".
+// Se intercepta el clic en el motivo de "No listo" de Touchpoint antes de
+// que Touchpoint lo reciba; se consulta quién está fuera y, si se puede,
+// se deja pasar el clic.
+// =====================================================================
+const PALABRAS = {
+    food: ['COMIDA', 'LUNCH'],
+    bath: ['REPOSO', 'BAÑO', 'BANO', 'SANITARIO', 'PERSONAL']
+};
+let clicPermitido = null;     // el elemento al que ya se le dio permiso
+let ultimoPermiso = { cat: null, ts: 0 };
+
+function categoriaDeTexto(txt) {
+    const t = (txt || '').toUpperCase().replace(/\s+/g, ' ').trim();
+    if (!t || t.length > 40 || /\d:\d\d/.test(t)) return null; // texto largo o con cronómetro: no es una opción del menú
+    for (const cat of Object.keys(PALABRAS)) if (PALABRAS[cat].some(p => t.includes(p))) return cat;
+    return null;
+}
+
+function opcionClicada(target) {
+    let el = target;
+    for (let i = 0; el && i < 6; i++, el = el.parentElement) {
+        if (el.id === 'tracker-turnos') return null;
+        const cat = categoriaDeTexto(el.innerText || el.textContent);
+        if (cat) return { el, cat };
+        if (el.matches && el.matches('li, a, button, [ng-click], [role="menuitem"], [role="option"]')) break;
+    }
+    return null;
+}
+
+function horaCorta(ms) { return new Date(ms).toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit', hour12: false }); }
+function minutos(seg) { const m = Math.max(0, Math.ceil(seg / 60)); return m === 1 ? '1 minuto' : m + ' minutos'; }
+function lista(nombres) { return nombres.length <= 1 ? (nombres[0] || '') : nombres.slice(0, -1).join(', ') + ' y ' + nombres[nombres.length - 1]; }
+
+function pedirOcupacion() {
+    return new Promise((resolve) => {
+        chrome.storage.local.get(['agenteId'], (r) => {
+            try {
+                chrome.runtime.sendMessage({ action: 'OCUPACION', agenteId: r.agenteId || null }, (resp) => {
+                    if (chrome.runtime.lastError || !resp) resolve(null); else resolve(resp);
+                });
+            } catch (e) { resolve(null); }
+            setTimeout(() => resolve(null), 6000); // sin respuesta: no bloquear
+        });
+    });
+}
+
+// Decide qué hacer: { permitir } | { bloquear, titulo, texto } | { preguntar, titulo, texto }
+function evaluar(cat, oc) {
+    if (!oc) return { permitir: true };
+    if (cat === 'food') {
+        const fuera = (oc.comida || []).filter(p => p.restanSeg > oc.margenComidaSeg).sort((a, b) => b.restanSeg - a.restanSeg);
+        if (!fuera.length) return { permitir: true };
+        const p = fuera[0];
+        return {
+            bloquear: true, icono: '🍽️', titulo: 'Todavía no puedes salir a comer',
+            texto: `<b>${p.nombre}</b> salió a comer a las <b>${horaCorta(p.inicio)}</b> y le faltan <b>${minutos(p.restanSeg)}</b> para regresar.<br><br>Solo puedes irte a comer cuando ya haya regresado o le queden ${Math.round(oc.margenComidaSeg / 60)} minutos o menos de comida.`
+        };
+    }
+    if (cat === 'bath') {
+        const enBano = oc.bano || [];
+        if (enBano.length >= oc.maxBano) return {
+            bloquear: true, icono: '🚻', titulo: 'El baño está lleno',
+            texto: `Ya hay ${enBano.length} personas en el baño: <b>${lista(enBano.map(p => p.nombre))}</b>.<br><br>Solo se permiten ${oc.maxBano} a la vez. Espera a que regrese alguno.`
+        };
+        if (enBano.length >= 1) return {
+            preguntar: true, icono: '🚻', titulo: '¿Aún así deseas ir?',
+            texto: `Toma en cuenta que <b>${lista(enBano.map(p => p.nombre))}</b> ${enBano.length === 1 ? 'está' : 'están'} en el baño (desde las ${horaCorta(enBano[0].inicio)}).`
+        };
+    }
+    return { permitir: true };
+}
+
+function mostrarAviso({ icono, titulo, texto, preguntar }) {
+    return new Promise((resolve) => {
+        document.getElementById('tracker-turnos')?.remove();
+        const host = document.createElement('div');
+        host.id = 'tracker-turnos';
+        host.style.cssText = 'position:fixed;inset:0;z-index:2147483647';
+        const sh = host.attachShadow({ mode: 'open' });
+        sh.innerHTML = `
+            <style>
+                .fondo{position:fixed;inset:0;background:rgba(15,23,42,.55);backdrop-filter:blur(3px);display:grid;place-items:center;font-family:Inter,Segoe UI,Arial,sans-serif;animation:f .15s ease}
+                .caja{width:min(440px,calc(100vw - 32px));background:#fff;border-radius:18px;box-shadow:0 24px 60px rgba(0,0,0,.35);padding:26px 26px 20px;color:#0f172a;animation:s .18s ease}
+                .ico{font-size:34px;line-height:1;margin-bottom:12px}
+                h2{margin:0 0 10px;font-size:19px;font-weight:700}
+                p{margin:0;font-size:14.5px;line-height:1.55;color:#334155}
+                b{color:#0f172a}
+                .bot{display:flex;justify-content:flex-end;gap:10px;margin-top:22px}
+                button{font:inherit;font-size:14px;font-weight:600;border-radius:10px;padding:10px 18px;cursor:pointer;border:1px solid #cbd5e1;background:#fff;color:#0f172a}
+                button.pri{background:#4f46e5;border-color:#4f46e5;color:#fff}
+                button:hover{filter:brightness(.95)}
+                @keyframes f{from{opacity:0}} @keyframes s{from{transform:translateY(8px) scale(.98);opacity:0}}
+            </style>
+            <div class="fondo"><div class="caja" role="dialog" aria-modal="true">
+                <div class="ico">${icono || '⚠️'}</div><h2>${titulo}</h2><p>${texto}</p>
+                <div class="bot">${preguntar ? '<button data-r="no">Cancelar</button><button class="pri" data-r="si">Sí, ir al baño</button>' : '<button class="pri" data-r="no">Entendido</button>'}</div>
+            </div></div>`;
+        sh.querySelectorAll('button').forEach(b => b.addEventListener('click', () => { host.remove(); resolve(b.dataset.r === 'si'); }));
+        document.documentElement.appendChild(host);
+        sh.querySelector('button.pri').focus();
+    });
+}
+
+function interceptar(e) {
+    if (!chrome.runtime?.id || isLoggingOut) return;
+    const op = opcionClicada(e.target);
+    if (!op) return;
+    if (clicPermitido === op.el) { clicPermitido = null; return; } // es el clic que ya autorizamos
+    if (op.cat === lastSentState) return;                          // ya está en esa pausa
+    e.preventDefault(); e.stopPropagation(); e.stopImmediatePropagation();
+    if (e.type !== 'click') return;                                // solo el clic decide (mousedown/pointerdown solo se frenan)
+    console.log('🛑 Tracker: revisando si puede salir a', op.cat);
+    pedirOcupacion().then(async (oc) => {
+        const d = evaluar(op.cat, oc);
+        let seguir = !!d.permitir;
+        if (d.bloquear) await mostrarAviso(d);
+        if (d.preguntar) seguir = await mostrarAviso(d);
+        if (!seguir) return;
+        ultimoPermiso = { cat: op.cat, ts: Date.now() };
+        clicPermitido = op.el;
+        op.el.click();
+        setTimeout(() => { if (clicPermitido === op.el) clicPermitido = null; }, 1000);
+    });
+}
+['pointerdown', 'mousedown', 'click'].forEach(t => window.addEventListener(t, (e) => {
+    // El pointerdown/mousedown del clic ya autorizado debe pasar también
+    if (e.type !== 'click' && clicPermitido) return;
+    interceptar(e);
+}, true));
+
+// Red de seguridad: si Touchpoint cambió a comida/baño sin pasar por la revisión
+// (por ejemplo con otro botón), se revisa y se avisa, y queda registrado para el supervisor.
+function revisarDespues(cat) {
+    if (cat !== 'food' && cat !== 'bath') return;
+    if (ultimoPermiso.cat === cat && Date.now() - ultimoPermiso.ts < 15000) return;
+    pedirOcupacion().then((oc) => {
+        const d = evaluar(cat, oc);
+        if (!d.bloquear || lastSentState !== cat) return;
+        mostrarAviso({ ...d, titulo: d.titulo + ' — regresa a Disponible', texto: d.texto + '<br><br><b>Quedó registrado para tu supervisor.</b>' });
+        chrome.storage.local.get(['agenteId'], (r) => {
+            if (r.agenteId) try { chrome.runtime.sendMessage({ action: 'PAUSA_NO_PERMITIDA', agenteId: r.agenteId, estado: cat }); } catch (e) {}
+        });
+    });
+}
