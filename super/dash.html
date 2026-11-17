@@ -230,6 +230,9 @@
         window.db = getFirestore(app);
         App.db = window.db;
 
+        // Versión vigente de la extensión (la que está en la carpeta de red). Súbela cuando publiques una nueva.
+        const VERSION_EXTENSION = '1.3';
+
         const Utils = {
             formatSeg: (total) => {
                 if (isNaN(total) || total < 0) return "00:00";
@@ -252,6 +255,7 @@
             hora: (ms) => new Date(ms).toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit', hour12: false }),
             hace: (ms) => { const m = Math.round((Date.now() - ms) / 60000); return m < 1 ? 'hace menos de 1 min' : (m < 60 ? `hace ${m} min` : `hace ${Math.floor(m / 60)} h ${m % 60} min`); },
             // ¿La extensión de este asesor está viva? (pulso cada ~1 min; >3 min sin pulso = desconectada)
+            versionMenor: (a, b) => { const x = String(a || '0').split('.').map(Number), y = String(b).split('.').map(Number); for (let i = 0; i < Math.max(x.length, y.length); i++) { if ((x[i] || 0) !== (y[i] || 0)) return (x[i] || 0) < (y[i] || 0); } return false; },
             estadoExtension: (id) => {
                 const e = App.state.extension[id];
                 if (!e || !e.ultimoPulso) return { nivel: 'none', chip: 'chip-neutral', icon: 'ph-plugs', txt: 'Sin extensión', det: 'Esta extensión nunca se ha conectado con este ID.' };
@@ -259,6 +263,7 @@
                 if (edad > 180000) return { nivel: 'bad', chip: 'chip-danger', icon: 'ph-plugs', txt: 'Extensión desconectada', det: `Última señal ${Utils.hace(e.ultimoPulso)}. Chrome cerrado, Touchpoint cerrado o extensión desactivada.` };
                 if (!e.touchpoint) return { nivel: 'bad', chip: 'chip-danger', icon: 'ph-sign-out', txt: 'Touchpoint sin sesión', det: 'La extensión está activa pero no ve una sesión de Touchpoint.' };
                 if (!e.botonSalida) return { nivel: 'warn', chip: 'chip-warn', icon: 'ph-warning', txt: 'Revisar extensión', det: 'No encuentra el botón de cerrar sesión: no podrá desconectarlo por tiempo.' };
+                if (Utils.versionMenor(e.version, VERSION_EXTENSION)) return { nivel: 'warn', chip: 'chip-warn', icon: 'ph-arrow-circle-up', txt: `Actualizar ext. (v${e.version || '?'})`, det: `Tiene la v${e.version || '?'} y la actual es v${VERSION_EXTENSION}. Que cierre y abra Chrome para que tome la nueva de la carpeta de red.` };
                 return { nivel: 'ok', chip: 'chip-ok', icon: 'ph-plugs-connected', txt: 'Extensión OK', det: `Conectada · v${e.version || '?'} · Touchpoint: ${e.estadoTP || '—'}` };
             },
             // Hora de primera conexión comparada con su horario de hoy

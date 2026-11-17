@@ -1,0 +1,25 @@
+TRACKER AGENTES - INSTALACION Y ACTUALIZACION
+==============================================
+
+DONDE VIVE
+  \\10.202.79.7\Telcel_Corpo\SUPER\LUIS\tracker-agentes\
+     INSTALAR.bat          <- lo ejecuta cada asesor una sola vez
+     tracker-agentes\      <- la extension (aqui debe estar manifest.json)
+
+INSTALAR EN UNA PC (una sola vez)
+  1. Doble clic en INSTALAR.bat y seguir los pasos de la ventana.
+  2. Abrir Touchpoint, abrir la extension, poner el ID del asesor.
+
+ACTUALIZAR A UNA VERSION NUEVA
+  1. Reemplazar los archivos de la carpeta tracker-agentes\ en la red
+     por los nuevos (no cambiar el nombre ni la ruta de la carpeta).
+  2. Cada PC toma la version nueva cuando Chrome se cierra y se abre
+     de nuevo (o en chrome://extensions -> boton de recargar).
+  3. En el monitor del supervisor, al pasar el mouse por "Extension OK"
+     se ve la version de cada asesor; si esta vieja dice
+     "Extension desactualizada".
+
+IMPORTANTE
+  - No mover ni renombrar la carpeta: Chrome la lee desde esa ruta.
+  - Si la PC no ve la carpeta de red al abrir Chrome, la extension
+    no carga ese dia. Se arregla abriendo Chrome otra vez con red.
