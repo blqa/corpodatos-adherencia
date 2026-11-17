@@ -197,7 +197,8 @@ setInterval(enviarPulso, 30000);
 // =====================================================================
 const PALABRAS = {
     food: ['COMIDA', 'LUNCH'],
-    bath: ['REPOSO', 'BAÑO', 'BANO', 'SANITARIO', 'PERSONAL']
+    bath: ['REPOSO', 'BAÑO', 'BANO', 'SANITARIO', 'PERSONAL'],
+    quality: ['CALIDAD', 'QUALITY', 'FEEDBACK', 'COACHING']
 };
 let clicPermitido = null;     // el elemento al que ya se le dio permiso
 let ultimoPermiso = { cat: null, ts: 0 };
@@ -238,32 +239,29 @@ function pedirOcupacion() {
 }
 
 // Decide qué hacer: { permitir } | { bloquear, titulo, texto } | { preguntar, titulo, texto }
+const TXT = {
+    food: { icono: '🍽️', lugar: 'comiendo', ir: 'Sí, ir a comer', lleno: 'Todavía no puedes salir a comer' },
+    bath: { icono: '🚻', lugar: 'en el baño', ir: 'Sí, ir al baño', lleno: 'El baño está lleno' },
+    quality: { icono: '🎧', lugar: 'en calidad', ir: 'Sí, continuar', lleno: 'Calidad está llena' }
+};
 function evaluar(cat, oc) {
-    if (!oc) return { permitir: true };
-    if (cat === 'food') {
-        const fuera = (oc.comida || []).filter(p => p.restanSeg > oc.margenComidaSeg).sort((a, b) => b.restanSeg - a.restanSeg);
-        if (!fuera.length) return { permitir: true };
-        const p = fuera[0];
-        return {
-            bloquear: true, icono: '🍽️', titulo: 'Todavía no puedes salir a comer',
-            texto: `<b>${p.nombre}</b> salió a comer a las <b>${horaCorta(p.inicio)}</b> y le faltan <b>${minutos(p.restanSeg)}</b> para regresar.<br><br>Solo puedes irte a comer cuando ya haya regresado o le queden ${Math.round(oc.margenComidaSeg / 60)} minutos o menos de comida.`
-        };
+    if (!oc || !oc.max || !oc.fuera) return { permitir: true };
+    const max = oc.max[cat] || 0, fuera = oc.fuera[cat] || [], x = TXT[cat];
+    if (!max || !fuera.length) return { permitir: true };
+    const detalle = (p) => cat === 'food'
+        ? `<b>${p.nombre}</b> salió a comer a las <b>${horaCorta(p.inicio)}</b> y le faltan <b>${minutos(p.restanSeg)}</b> para regresar`
+        : `<b>${p.nombre}</b> está ${x.lugar} desde las ${horaCorta(p.inicio)}`;
+    if (fuera.length >= max) {
+        let texto = fuera.length === 1 ? detalle(fuera[0]) + '.' : `Ya hay ${fuera.length} personas ${x.lugar}:<br>• ` + fuera.map(detalle).join('<br>• ');
+        texto += `<br><br>Solo se permite${max === 1 ? '' : 'n'} ${max} a la vez. `;
+        texto += cat === 'food' ? `Puedes irte a comer cuando regrese ${max === 1 ? '' : 'alguno '}o le queden ${oc.margenComidaMin} minutos o menos de comida.` : 'Espera a que regrese alguno.';
+        return { bloquear: true, icono: x.icono, titulo: x.lleno, texto };
     }
-    if (cat === 'bath') {
-        const enBano = oc.bano || [];
-        if (enBano.length >= oc.maxBano) return {
-            bloquear: true, icono: '🚻', titulo: 'El baño está lleno',
-            texto: `Ya hay ${enBano.length} personas en el baño: <b>${lista(enBano.map(p => p.nombre))}</b>.<br><br>Solo se permiten ${oc.maxBano} a la vez. Espera a que regrese alguno.`
-        };
-        if (enBano.length >= 1) return {
-            preguntar: true, icono: '🚻', titulo: '¿Aún así deseas ir?',
-            texto: `Toma en cuenta que <b>${lista(enBano.map(p => p.nombre))}</b> ${enBano.length === 1 ? 'está' : 'están'} en el baño (desde las ${horaCorta(enBano[0].inicio)}).`
-        };
-    }
-    return { permitir: true };
+    return { preguntar: true, icono: x.icono, titulo: '¿Aún así deseas ir?', ir: x.ir,
+        texto: 'Toma en cuenta que ' + fuera.map(detalle).join(' y ') + '.' };
 }
 
-function mostrarAviso({ icono, titulo, texto, preguntar }) {
+function mostrarAviso({ icono, titulo, texto, preguntar, ir }) {
     return new Promise((resolve) => {
         document.getElementById('tracker-turnos')?.remove();
         const host = document.createElement('div');
@@ -286,7 +284,7 @@ function mostrarAviso({ icono, titulo, texto, preguntar }) {
             </style>
             <div class="fondo"><div class="caja" role="dialog" aria-modal="true">
                 <div class="ico">${icono || '⚠️'}</div><h2>${titulo}</h2><p>${texto}</p>
-                <div class="bot">${preguntar ? '<button data-r="no">Cancelar</button><button class="pri" data-r="si">Sí, ir al baño</button>' : '<button class="pri" data-r="no">Entendido</button>'}</div>
+                <div class="bot">${preguntar ? `<button data-r="no">Cancelar</button><button class="pri" data-r="si">${ir || 'Sí, continuar'}</button>` : '<button class="pri" data-r="no">Entendido</button>'}</div>
             </div></div>`;
         sh.querySelectorAll('button').forEach(b => b.addEventListener('click', () => { host.remove(); resolve(b.dataset.r === 'si'); }));
         document.documentElement.appendChild(host);

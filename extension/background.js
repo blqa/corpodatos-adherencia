@@ -194,9 +194,9 @@ function botarFallback() {
 // Quién está fuera ahora mismo (se consulta solo cuando alguien elige
 // comida o baño en Touchpoint, para no gastar lecturas).
 // =====================================================================
-const MAX_BANO = 2;                 // personas en el baño a la vez
-const MARGEN_COMIDA_MIN = 5;        // puedes salir si al que come le quedan 5 min o menos
-const BANO_VIGENTE_MIN = 30;        // un "baño" de más de 30 min se considera dato viejo
+// Valores por defecto; el supervisor los cambia en el panel (Ajustes → Personas fuera a la vez)
+const TURNOS_DEF = { bano: 2, comida: 1, calidad: 0, margenComida: 5 };
+const VIGENTE_MIN = { bath: 30, quality: 90 }; // una pausa más larga que esto se considera dato viejo
 
 async function listar(coleccion) {
     const r = await api(`${BASE_URL}/${coleccion}?pageSize=200&key=${firebaseConfig.apiKey}`);
@@ -205,16 +205,12 @@ async function listar(coleccion) {
     return (j.documents || []).map(d => ({ id: d.name.split('/').pop(), ...parseFirestore(d) }));
 }
 
-// Operadores y configuración cambian poco: se guardan 30 min para ahorrar lecturas
+// Los operadores cambian poco: se guardan 30 min para ahorrar lecturas
 async function catalogo() {
     const { catTurnos } = await chrome.storage.session.get('catTurnos');
     if (catTurnos && Date.now() - catTurnos.ts < 30 * 60000) return catTurnos;
-    const [ops, cfg] = await Promise.all([listar('operadores'), getDoc('config', 'global')]);
-    const nuevo = {
-        ts: Date.now(),
-        limites: (cfg.exists && cfg.data().limites) || {},
-        ops: Object.fromEntries(ops.map(o => [o.id, { nombre: o.nombre || o.id, limites: o.limites || {} }]))
-    };
+    const ops = await listar('operadores');
+    const nuevo = { ts: Date.now(), ops: Object.fromEntries(ops.map(o => [o.id, { nombre: o.nombre || o.id, limites: o.limites || {} }])) };
     await chrome.storage.session.set({ catTurnos: nuevo });
     return nuevo;
 }
@@ -227,23 +223,27 @@ const nombreCorto = (n) => {
 };
 
 async function ocupacion(yo) {
-    const [sesiones, cat] = await Promise.all([listar('sesiones_activas'), catalogo()]);
-    const ahora = Date.now(), comida = [], bano = [];
+    const [sesiones, cat, cfgSnap] = await Promise.all([listar('sesiones_activas'), catalogo(), getDoc('config', 'global')]);
+    const cfg = cfgSnap.exists ? cfgSnap.data() : {};
+    const limites = cfg.limites || {};
+    const t = { ...TURNOS_DEF, ...(cfg.turnos || {}) };
+    const ahora = Date.now(), fuera = { food: [], bath: [], quality: [] };
     sesiones.forEach(s => {
-        if (s.id === yo || !esDeHoy(s.fecha) || !s.estadoActivo || !s.tiempoInicioEstado) return;
+        if (s.id === yo || !esDeHoy(s.fecha) || !fuera[s.estadoActivo] || !s.tiempoInicioEstado) return;
         const op = cat.ops[s.id] || { nombre: s.id, limites: {} };
-        const nombre = nombreCorto(op.nombre);
         const transcurrido = Math.floor((ahora - s.tiempoInicioEstado) / 1000);
+        const p = { id: s.id, nombre: nombreCorto(op.nombre), inicio: s.tiempoInicioEstado };
         if (s.estadoActivo === 'food') {
-            const limiteMin = op.limites.comida || cat.limites.comida || 30;
+            const limiteMin = op.limites.comida || limites.comida || 30;
             const usado = ((s.tiemposAcumulados && s.tiemposAcumulados.food) || 0) + transcurrido;
-            comida.push({ id: s.id, nombre, inicio: s.tiempoInicioEstado, restanSeg: limiteMin * 60 - usado });
-        } else if (s.estadoActivo === 'bath' && transcurrido < BANO_VIGENTE_MIN * 60) {
-            bano.push({ id: s.id, nombre, inicio: s.tiempoInicioEstado });
+            p.restanSeg = limiteMin * 60 - usado;
+            if (p.restanSeg > t.margenComida * 60) fuera.food.push(p); // si le quedan pocos minutos ya no cuenta
+        } else if (transcurrido < VIGENTE_MIN[s.estadoActivo] * 60) {
+            fuera[s.estadoActivo].push(p);
         }
     });
-    bano.sort((a, b) => a.inicio - b.inicio);
-    return { comida, bano, maxBano: MAX_BANO, margenComidaSeg: MARGEN_COMIDA_MIN * 60 };
+    Object.values(fuera).forEach(l => l.sort((a, b) => a.inicio - b.inicio));
+    return { fuera, max: { food: t.comida, bath: t.bano, quality: t.calidad }, margenComidaMin: t.margenComida };
 }
 
 async function registrarNoPermitida(agenteId, estado) {

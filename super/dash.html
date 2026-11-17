@@ -79,6 +79,27 @@
                     <input type="checkbox" id="cfg-auto-expulsion" class="checkbox mt-0.5">
                     <span><span class="text-sm font-semibold text-1 block">Desconexión automática</span><span class="text-[12.5px] muted">La extensión saca de Touchpoint al asesor que se pasa de su tiempo.</span></span>
                 </label>
+                <h3 class="font-semibold text-1 pt-4 border-t divider">Personas fuera a la vez</h3>
+                <p class="muted text-[13px] mt-1 mb-4">Cuántos asesores pueden estar en cada pausa al mismo tiempo. Si ya hay alguien (sin llegar al máximo) se le pregunta "¿aún así deseas ir?". Al llegar al máximo, no lo deja. Pon 0 para no limitar.</p>
+                <div class="grid grid-cols-3 gap-3 mb-4">
+                    <div>
+                        <label class="label">Baño</label>
+                        <div class="field"><i class="ph ph-toilet"></i><input type="number" id="cfg-turno-bano" class="input tnum" min="0"></div>
+                    </div>
+                    <div>
+                        <label class="label">Comida</label>
+                        <div class="field"><i class="ph ph-fork-knife"></i><input type="number" id="cfg-turno-comida" class="input tnum" min="0"></div>
+                    </div>
+                    <div>
+                        <label class="label">Calidad</label>
+                        <div class="field"><i class="ph ph-headset"></i><input type="number" id="cfg-turno-calidad" class="input tnum" min="0"></div>
+                    </div>
+                </div>
+                <div class="mb-5">
+                    <label class="label">Margen de comida (min)</label>
+                    <div class="field"><i class="ph ph-hourglass-medium"></i><input type="number" id="cfg-turno-margen" class="input tnum" min="0"></div>
+                    <p class="hint">Si al que está comiendo le quedan estos minutos o menos, el siguiente ya puede salir.</p>
+                </div>
                 <button onclick="App.Handlers.guardarGlobales()" class="btn btn-primary w-full"><i class="ph-bold ph-check"></i> Aplicar</button>
             </div>
         </div>
@@ -249,6 +270,7 @@
             config: {
                 limites: { bano: 15, comida: 30 },
                 toleranciaEntrada: 5,
+                turnos: { bano: 2, comida: 1, calidad: 0, margenComida: 5 },
                 meta: META
             }
         };
@@ -345,6 +367,8 @@
                 document.getElementById('cfg-global-comida').value = App.config.limites.comida;
                 document.getElementById('cfg-global-tolerancia').value = App.config.toleranciaEntrada ?? 5;
                 document.getElementById('cfg-auto-expulsion').checked = App.config.autoExpulsion !== false;
+                ['bano', 'comida', 'calidad'].forEach(k => document.getElementById('cfg-turno-' + k).value = App.config.turnos[k] ?? 0);
+                document.getElementById('cfg-turno-margen').value = App.config.turnos.margenComida ?? 5;
                 o.classList.remove('hidden');
                 setTimeout(() => { o.classList.remove('opacity-0'); p.classList.remove('translate-x-full'); }, 10);
             },
@@ -377,9 +401,12 @@
                 const comida = parseInt(document.getElementById('cfg-global-comida').value) || 30;
                 const tol = parseInt(document.getElementById('cfg-global-tolerancia').value);
                 const toleranciaEntrada = isNaN(tol) ? 5 : Math.max(0, tol);
+                const num = (id, def) => { const n = parseInt(document.getElementById(id).value); return isNaN(n) ? def : Math.max(0, n); };
+                const turnos = { bano: num('cfg-turno-bano', 2), comida: num('cfg-turno-comida', 1), calidad: num('cfg-turno-calidad', 0), margenComida: num('cfg-turno-margen', 5) };
                 try {
                     const autoExpulsion = document.getElementById('cfg-auto-expulsion').checked;
-                    await setDoc(doc(App.db, "config", "global"), { limites: { bano, comida }, toleranciaEntrada, autoExpulsion }, { merge: true });
+                    await setDoc(doc(App.db, "config", "global"), { limites: { bano, comida }, toleranciaEntrada, autoExpulsion, turnos }, { merge: true });
+                    App.config.turnos = turnos;
                     App.config.autoExpulsion = autoExpulsion;
                     App.config.limites = { bano, comida };
                     App.config.toleranciaEntrada = toleranciaEntrada;
@@ -649,6 +676,7 @@
                     if (c.limites) App.config.limites = { ...App.config.limites, ...c.limites };
                     if (c.toleranciaEntrada !== undefined) App.config.toleranciaEntrada = c.toleranciaEntrada;
                     App.config.autoExpulsion = c.autoExpulsion !== false;
+                    if (c.turnos) App.config.turnos = { ...App.config.turnos, ...c.turnos };
                     App.UI.renderMonitor();
                 });
 
