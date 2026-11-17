@@ -59,6 +59,13 @@
         .script-txt { white-space: pre-wrap; line-height: 1.6; font-size: 14.5px; color: var(--text); }
         .app-card { transition: border-color .15s, box-shadow .15s, transform .15s; }
         .app-card:hover { border-color: color-mix(in srgb, var(--brand) 50%, var(--border)); transform: translateY(-1px); }
+        .ed-cel { min-width: 60px; outline: none; white-space: pre-wrap; border-radius: 6px; padding: 2px 4px; margin: -2px -4px; }
+        .ed-cel:hover { background: color-mix(in srgb, var(--brand) 6%, transparent); }
+        .ed-cel:focus { box-shadow: 0 0 0 2px var(--brand); background: var(--surface); }
+        .ed-area { height: auto !important; min-height: 110px; padding: 10px 12px !important; line-height: 1.55; resize: vertical; }
+        .ed-add { display: flex; align-items: center; justify-content: center; gap: 8px; min-height: 120px; border-style: dashed !important; color: var(--text-2); font-weight: 600; }
+        .ed-add:hover { color: var(--brand-text); border-color: var(--brand) !important; }
+        body.editando .solo-lectura { display: none !important; }
         mark { background: color-mix(in srgb, var(--warn) 35%, transparent); color: inherit; border-radius: 3px; padding: 0 1px; }
     </style>
 </head>
@@ -96,17 +103,18 @@
                     </div>
                 </div>
                 <div class="flex items-center gap-2">
+                    <button id="btn-editar" class="btn btn-primary btn-sm hidden"><i class="ph-bold ph-pencil-simple"></i><span class="hidden sm:inline">Editar</span></button>
                     <select id="menu-movil" class="input !h-9 !w-40 !text-[13px] md:hidden">
                         <option value="scripts">Scripts</option><option value="autenticacion">Autenticación</option><option value="aplicativos">Aplicativos</option>
                         <option value="directorio">Directorio</option><option value="rol">Rol</option><option value="adherencia">Adherencia</option><option value="productividad">Productividad</option>
                     </select>
-                    <div class="field hidden sm:block w-64"><i class="ph-bold ph-magnifying-glass"></i><input id="buscar" class="input !h-9 !text-[13px]" placeholder="Buscar en esta sección"></div>
+                    <div class="field hidden sm:block w-64 solo-lectura"><i class="ph-bold ph-magnifying-glass"></i><input id="buscar" class="input !h-9 !text-[13px]" placeholder="Buscar en esta sección"></div>
                 </div>
             </header>
 
             <div class="page">
-                <div class="page-inner">
-                    <div class="sm:hidden mb-3"><div class="field"><i class="ph-bold ph-magnifying-glass"></i><input id="buscar-m" class="input" placeholder="Buscar en esta sección"></div></div>
+                <div class="page-inner" style="padding-bottom: 110px">
+                    <div class="sm:hidden mb-3 solo-lectura"><div class="field"><i class="ph-bold ph-magnifying-glass"></i><input id="buscar-m" class="input" placeholder="Buscar en esta sección"></div></div>
 
                     <section class="seccion" id="sec-scripts"><div id="lista-scripts" class="grid grid-cols-1 xl:grid-cols-2 gap-4"></div></section>
 
@@ -134,13 +142,25 @@
         </main>
     </div>
 
-    <div id="toast" class="toast hidden"><i class="ph-fill ph-check-circle text-emerald-400"></i><span>Copiado</span></div>
+    <div id="barra-edicion" class="hidden fixed bottom-4 left-1/2 -translate-x-1/2 z-50 card px-4 py-3 flex items-center gap-3 shadow-lg" style="width: max-content; max-width: calc(100vw - 24px); box-shadow: var(--shadow-lg)">
+        <div class="icon-tile soft-brand c-brand !w-9 !h-9 hidden sm:grid"><i class="ph-bold ph-pencil-simple"></i></div>
+        <div class="leading-tight mr-2">
+            <p class="font-semibold text-1 text-[14px]">Modo edición</p>
+            <p class="text-[12px] subtle" id="estado-edicion">Sin cambios</p>
+        </div>
+        <button id="btn-restaurar" class="btn btn-ghost btn-sm" title="Volver al contenido original de esta sección"><i class="ph-bold ph-arrow-counter-clockwise"></i><span class="hidden md:inline">Original</span></button>
+        <button id="btn-cancelar" class="btn btn-secondary btn-sm">Cancelar</button>
+        <button id="btn-guardar" class="btn btn-primary btn-sm"><i class="ph-bold ph-floppy-disk"></i> Guardar</button>
+    </div>
+
+    <div id="toast" class="toast hidden"><i class="ph-fill ph-check-circle text-emerald-400"></i><span id="toast-txt">Copiado</span></div>
 
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import { getFirestore, doc, onSnapshot } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import { getFirestore, doc, onSnapshot, setDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
 
-        const D = {
+        const BASE = {
  "scripts": [
   [
    "SCRIPT BIENVENIDA",
@@ -606,9 +626,15 @@
   ]
  ]
 };
+        const copia = (x) => JSON.parse(JSON.stringify(x));
+        let D = copia(BASE);
+        const CLAVES = Object.keys(BASE);
+        const SECCION_CLAVES = { scripts: ['scripts'], autenticacion: ['autCab', 'aut', 'tipoCab', 'tipo'], aplicativos: ['apps'], directorio: ['dirCab', 'dir', 'regCab', 'reg', 'interCab', 'inter'] };
+        const SUPERVISOR_EMAIL = '17620@omt.godsplan.site';
 
         const app = initializeApp({ apiKey: "AIzaSyBKYconuZXn53Eb4EJFsHj4rYaO0eK6liQ", authDomain: "tratocom-d38e7.firebaseapp.com", projectId: "tratocom-d38e7" });
         const db = getFirestore(app);
+        const auth = getAuth(app);
         const $ = (id) => document.getElementById(id);
         const esc = (s) => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
         const norm = (s) => String(s || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toUpperCase().trim();
@@ -662,8 +688,13 @@
         }
         window.copiar = async (i) => {
             try { await navigator.clipboard.writeText(D.scripts[i][1].replace(/^"|"$/g, '')); } catch (e) {}
-            const t = $('toast'); t.classList.remove('hidden'); t.classList.add('fade-in'); setTimeout(() => t.classList.add('hidden'), 1500);
+            toast('Copiado');
         };
+        let tToast;
+        function toast(msg, ms = 1600) {
+            const t = $('toast'); $('toast-txt').textContent = msg; t.classList.remove('hidden'); t.classList.add('fade-in');
+            clearTimeout(tToast); tToast = setTimeout(() => t.classList.add('hidden'), ms);
+        }
         function pintarApps() {
             const term = q(), raw = ($('buscar').value || $('buscar-m').value).trim();
             const lista = D.apps.filter(a => !term || norm(a.join(' ')).includes(term));
@@ -728,6 +759,124 @@
             }, () => { datosDiarios[clave] = null; if (actual === clave) mostrar(clave); });
         });
 
+        // ---------- Contenido editable (lo que guarda el supervisor) ----------
+        let editadoEn = null;
+        onSnapshot(doc(db, 'config', 'documento'), (snap) => {
+            const d = snap.exists() ? snap.data() : {};
+            D = copia(BASE);
+            CLAVES.forEach(k => { if (typeof d[k] === 'string') { try { D[k] = JSON.parse(d[k]); } catch (e) {} } });
+            editadoEn = d.actualizado || null;
+            if (!editando && actual && SECCION_CLAVES[actual]) mostrar(actual);
+        }, () => {});
+
+        // ---------- Edición (solo supervisor) ----------
+        let esSup = false, editando = false, borrador = null, cambios = false;
+        onAuthStateChanged(auth, (u) => {
+            esSup = !!u && String(u.email || '').toLowerCase() === SUPERVISOR_EMAIL;
+            if (esSup) {
+                sessionStorage.setItem('docPanel', '1');
+                document.documentElement.classList.add('dark', 'super');
+                $('link-volver').href = 'super/dash.html'; $('volver-movil').href = 'super/dash.html'; $('txt-volver').textContent = 'Panel de supervisor';
+            }
+            botonEditar();
+        });
+        function botonEditar() { $('btn-editar').classList.toggle('hidden', !(esSup && !editando && SECCION_CLAVES[actual])); }
+        function marcar(v) { cambios = v; $('estado-edicion').textContent = v ? 'Cambios sin guardar' : 'Sin cambios'; $('estado-edicion').style.color = v ? 'var(--warn)' : ''; }
+        function empezar() {
+            if (!esSup || !SECCION_CLAVES[actual]) return;
+            editando = true; borrador = copia(D); marcar(false);
+            $('buscar').value = ''; $('buscar-m').value = '';
+            document.body.classList.add('editando'); $('barra-edicion').classList.remove('hidden');
+            mostrar(actual);
+        }
+        function terminar() {
+            editando = false; borrador = null; marcar(false);
+            document.body.classList.remove('editando'); $('barra-edicion').classList.add('hidden');
+            mostrar(actual);
+        }
+        const vacia = (f) => !f.some(v => String(v || '').trim());
+        async function guardar() {
+            const b = $('btn-guardar'); b.disabled = true;
+            const datos = { actualizado: Date.now() };
+            CLAVES.forEach(k => {
+                let v = borrador[k];
+                if (Array.isArray(v) && Array.isArray(v[0])) v = v.filter(f => !vacia(f)); // quita filas vacías
+                datos[k] = JSON.stringify(v);
+            });
+            try {
+                await setDoc(doc(db, 'config', 'documento'), datos);
+                CLAVES.forEach(k => D[k] = JSON.parse(datos[k]));
+                terminar(); toast('Cambios guardados. Los asesores ya los ven.', 2400);
+            } catch (e) { toast('No se pudo guardar: ' + (e.code || e.message), 3500); }
+            b.disabled = false;
+        }
+        $('btn-editar').addEventListener('click', empezar);
+        $('btn-cancelar').addEventListener('click', terminar);
+        $('btn-guardar').addEventListener('click', guardar);
+        $('btn-restaurar').addEventListener('click', () => {
+            if (!SECCION_CLAVES[actual]) return;
+            SECCION_CLAVES[actual].forEach(k => borrador[k] = copia(BASE[k]));
+            marcar(true); mostrar(actual); toast('Sección regresada al original. Guarda para aplicarlo.', 2600);
+        });
+        window.addEventListener('beforeunload', (e) => { if (editando && cambios) { e.preventDefault(); e.returnValue = ''; } });
+
+        const flechas = (k, i, n) => `<div class="flex items-center gap-0.5 shrink-0">
+            <button class="btn btn-ghost btn-icon btn-sm" data-act="up" data-k="${k}" data-i="${i}" ${i === 0 ? 'disabled' : ''} title="Subir"><i class="ph-bold ph-arrow-up"></i></button>
+            <button class="btn btn-ghost btn-icon btn-sm" data-act="down" data-k="${k}" data-i="${i}" ${i === n - 1 ? 'disabled' : ''} title="Bajar"><i class="ph-bold ph-arrow-down"></i></button>
+            <button class="btn btn-ghost btn-icon btn-sm" style="color: var(--danger)" data-act="del" data-k="${k}" data-i="${i}" title="Eliminar"><i class="ph-bold ph-trash"></i></button></div>`;
+        const campo = (k, i, j, v, ph, cls = '') => `<input class="input !h-9 ${cls}" data-k="${k}" data-i="${i}" data-j="${j}" value="${esc(v)}" placeholder="${ph}">`;
+        const area = (k, i, j, v, ph, filas = 5) => `<textarea class="input ed-area" rows="${filas}" data-k="${k}" data-i="${i}" data-j="${j}" placeholder="${ph}">${esc(v)}</textarea>`;
+
+        function scriptsEd() {
+            const L = borrador.scripts;
+            $('lista-scripts').innerHTML = L.map((s, i) => `
+                <div class="card p-4 flex flex-col gap-2.5">
+                    <div class="flex items-center gap-2">${campo('scripts', i, 0, s[0], 'Título del script', 'font-semibold')}${flechas('scripts', i, L.length)}</div>
+                    ${area('scripts', i, 1, s[1], 'Lo que dice el asesor', 6)}
+                    ${campo('scripts', i, 2, s[2] || '', 'Nota o advertencia (opcional)', '!text-[13px]')}
+                </div>`).join('') + `<button class="card ed-add" data-act="add" data-k="scripts" data-n="3"><i class="ph-bold ph-plus-circle text-xl"></i> Agregar script</button>`;
+        }
+        function appsEd() {
+            const L = borrador.apps;
+            $('lista-apps').innerHTML = L.map((a, i) => `
+                <div class="card p-4 flex flex-col gap-2.5">
+                    <div class="flex items-center gap-2">${campo('apps', i, 0, a[0], 'Nombre', 'font-semibold')}${flechas('apps', i, L.length)}</div>
+                    ${campo('apps', i, 1, a[1] || '', 'Link (https://…) · déjalo vacío si no tiene', '!text-[13px]')}
+                    ${area('apps', i, 2, a[2] || '', '¿Para qué sirve?', 3)}
+                    ${campo('apps', i, 3, a[3] || '', 'Nota (opcional)', '!text-[13px]')}
+                </div>`).join('') + `<button class="card ed-add" data-act="add" data-k="apps" data-n="4"><i class="ph-bold ph-plus-circle text-xl"></i> Agregar aplicativo</button>`;
+        }
+        function tablaEd(id, kc, kr) {
+            const cab = borrador[kc], filas = borrador[kr];
+            const cel = (k, i, j, v) => `<div class="ed-cel" contenteditable="plaintext-only" spellcheck="false" data-k="${k}" ${i === null ? '' : `data-i="${i}"`} data-j="${j}">${esc(v || '')}</div>`;
+            $(id).innerHTML = `<thead><tr>${cab.map((c, j) => `<th class="${j === 0 ? 'c0' : ''}">${cel(kc, null, j, c)}</th>`).join('')}<th style="width:1%"></th></tr></thead>
+                <tbody>${filas.map((f, i) => `<tr>${cab.map((_, j) => `<td class="${j === 0 ? 'c0' : ''}">${cel(kr, i, j, f[j])}</td>`).join('')}<td class="corta">${flechas(kr, i, filas.length)}</td></tr>`).join('')}</tbody>
+                <tfoot><tr><td colspan="${cab.length + 1}"><button class="btn btn-secondary btn-sm" data-act="add" data-k="${kr}" data-n="${cab.length}"><i class="ph-bold ph-plus"></i> Agregar fila</button></td></tr></tfoot>`;
+        }
+        document.addEventListener('input', (e) => {
+            const t = e.target.closest && e.target.closest('[data-k][data-j]');
+            if (!t || !editando) return;
+            const v = t.isContentEditable ? t.innerText.replace(/\n$/, '') : t.value;
+            const k = t.dataset.k, j = +t.dataset.j;
+            if (t.dataset.i === undefined) borrador[k][j] = v;
+            else { const f = borrador[k][+t.dataset.i]; while (f.length < j) f.push(''); f[j] = v; }
+            marcar(true);
+        });
+        document.addEventListener('click', (e) => {
+            const b = e.target.closest && e.target.closest('[data-act]');
+            if (!b || !editando) return;
+            const k = b.dataset.k, i = +b.dataset.i, L = borrador[k];
+            if (b.dataset.act === 'del') L.splice(i, 1);
+            else if (b.dataset.act === 'up' && i > 0) [L[i - 1], L[i]] = [L[i], L[i - 1]];
+            else if (b.dataset.act === 'down' && i < L.length - 1) [L[i + 1], L[i]] = [L[i], L[i + 1]];
+            else if (b.dataset.act === 'add') L.push(Array(+b.dataset.n).fill(''));
+            marcar(true); mostrar(actual);
+            if (b.dataset.act === 'add') {
+                const nuevos = document.querySelectorAll(`[data-k="${k}"][data-i="${L.length - 1}"][data-j="0"]`);
+                if (nuevos[0]) { nuevos[0].scrollIntoView({ block: 'center' }); nuevos[0].focus(); }
+            }
+        });
+
         // ---------- Navegación ----------
         const TITULOS = { scripts: 'Scripts', autenticacion: 'Autenticación', aplicativos: 'Aplicativos', directorio: 'Directorio', rol: 'Rol de turnos', adherencia: 'Adherencia del mes', productividad: 'Productividad del mes' };
         let actual = null;
@@ -738,7 +887,14 @@
             $('menu-movil').value = sec;
             $('titulo').textContent = TITULOS[sec];
             let n = 0, sub = '';
-            if (sec === 'scripts') { n = pintarScripts(); sub = `${n} scripts · toca "Copiar" para pegarlo`; }
+            if (editando && SECCION_CLAVES[sec]) {
+                if (sec === 'scripts') scriptsEd();
+                else if (sec === 'autenticacion') { tablaEd('t-aut', 'autCab', 'aut'); tablaEd('t-tipo', 'tipoCab', 'tipo'); }
+                else if (sec === 'aplicativos') appsEd();
+                else { tablaEd('t-dir', 'dirCab', 'dir'); tablaEd('t-reg', 'regCab', 'reg'); tablaEd('t-inter', 'interCab', 'inter'); }
+                sub = 'Toca cualquier texto para cambiarlo · los asesores lo verán al guardar';
+            }
+            else if (sec === 'scripts') { n = pintarScripts(); sub = `${n} scripts · toca "Copiar" para pegarlo`; }
             else if (sec === 'autenticacion') { n = tabla('t-aut', D.autCab, D.aut); tabla('t-tipo', D.tipoCab, D.tipo); sub = 'Qué validar antes de cada trámite'; }
             else if (sec === 'aplicativos') { n = pintarApps(); sub = `${n} herramientas`; }
             else if (sec === 'directorio') { n = tabla('t-dir', D.dirCab, D.dir); tabla('t-reg', D.regCab, D.reg); tabla('t-inter', D.interCab, D.inter); sub = 'Teléfonos y extensiones'; }
@@ -747,7 +903,9 @@
                 const d = datosDiarios[sec];
                 sub = d ? `Copiado de la hoja el ${new Date(d.actualizado).toLocaleDateString('es-MX', { weekday: 'long', day: 'numeric', month: 'long' })} a las ${new Date(d.actualizado).toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit', hour12: false })} · se actualiza diario a las 12:00` : 'Se actualiza diario a las 12:00';
             }
+            if (!editando && SECCION_CLAVES[sec] && esSup && editadoEn) sub += ` · editado el ${new Date(editadoEn).toLocaleDateString('es-MX', { day: 'numeric', month: 'short' })}`;
             $('subtitulo').textContent = sub;
+            botonEditar();
             history.replaceState(null, '', '#' + sec);
         }
         document.querySelectorAll('.sec-link').forEach(b => b.addEventListener('click', () => mostrar(b.dataset.sec)));
