@@ -204,8 +204,7 @@
                     </div>
                     <div class="progress bar-alt"><div id="lbar-bath" class="bg-bath"></div></div>
                     <p class="rem mt-2 mb-4" id="rem-bath">Quedan --</p>
-                    <button onclick="toggleTimer('bath')" id="btn-toggle-bath" class="hidden md:inline-flex btn btn-bath w-full"><i class="ph-bold ph-play"></i> Iniciar</button>
-                    <span class="md:hidden chip chip-neutral"><i class="ph-fill ph-lock-key"></i> Solo lectura</span>
+                    <span id="live-bath" class="chip chip-bath hidden"><span class="dot dot-live"></span> En curso</span>
                 </div>
 
                 <!-- Comida -->
@@ -231,8 +230,7 @@
                     </div>
                     <div class="progress bar-alt"><div id="lbar-food" class="bg-food"></div></div>
                     <p class="rem mt-2 mb-4" id="rem-food">Quedan --</p>
-                    <button onclick="toggleTimer('food')" id="btn-toggle-food" class="hidden md:inline-flex btn btn-food w-full"><i class="ph-bold ph-play"></i> Iniciar</button>
-                    <span class="md:hidden chip chip-neutral"><i class="ph-fill ph-lock-key"></i> Solo lectura</span>
+                    <span id="live-food" class="chip chip-food hidden"><span class="dot dot-live"></span> En curso</span>
                 </div>
 
                 <!-- Calidad -->
@@ -258,8 +256,7 @@
                     </div>
                     <div class="progress bar-alt"><div id="lbar-quality" class="bg-quality"></div></div>
                     <p class="rem mt-2 mb-4" id="rem-quality">Autorizado por supervisor</p>
-                    <button onclick="toggleTimer('quality')" id="btn-toggle-quality" class="hidden md:inline-flex btn btn-quality w-full"><i class="ph-bold ph-play"></i> Iniciar</button>
-                    <span class="md:hidden chip chip-neutral"><i class="ph-fill ph-lock-key"></i> Solo lectura</span>
+                    <span id="live-quality" class="chip chip-quality hidden"><span class="dot dot-live"></span> En curso</span>
                 </div>
             </section>
 
@@ -302,7 +299,7 @@
                 </div>
             </section>
 
-            <p class="text-center text-[12px] subtle pb-2">Tus tiempos se actualizan en vivo.</p>
+            <p class="text-center text-[12px] subtle pb-2">Tus pausas se registran solas desde Touchpoint y se actualizan en vivo.</p>
         </main>
     </div>
 
@@ -369,11 +366,6 @@
         </div>
     </div>
 
-    <!-- Aviso móvil -->
-    <div id="mobile-toast" class="toast hidden">
-        <i class="ph-fill ph-lock-key text-amber-400"></i>
-        Desde el celular solo puedes consultar tus tiempos.
-    </div>
 
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
@@ -536,68 +528,6 @@
             document.getElementById('limit-food').innerText = `${limC} min`;
         }
 
-        function mostrarToastMovil() {
-            const toast = document.getElementById('mobile-toast');
-            toast.classList.remove('hidden');
-            toast.classList.add('fade-in');
-            setTimeout(() => { toast.classList.add('hidden'); toast.classList.remove('fade-in'); }, 3000);
-        }
-
-        window.toggleTimer = async function(estadoSeleccionado) {
-            // SEGURIDAD: bloquear en pantallas móviles (<768px)
-            if (window.innerWidth < 768) { mostrarToastMovil(); return; }
-
-            if (!asesorDatos) return;
-            if (sesionFirebase.desconectadoEn) {
-                const t = document.getElementById('mobile-toast');
-                t.innerHTML = '<i class="ph-fill ph-sign-out text-rose-400"></i> Vuelve a entrar a Touchpoint para terminar tu pausa.';
-                t.classList.remove('hidden'); setTimeout(() => t.classList.add('hidden'), 3500);
-                return;
-            }
-            const ahora = Date.now();
-            let updateData = { ...sesionFirebase };
-            if (!updateData.tiemposAcumulados) updateData.tiemposAcumulados = { bath: 0, food: 0, quality: 0 };
-
-            if (updateData.estadoActivo === estadoSeleccionado) {
-                // Pausar
-                const transcurrido = Math.floor((ahora - updateData.tiempoInicioEstado) / 1000);
-                updateData.tiemposAcumulados[estadoSeleccionado] += transcurrido;
-                guardarHistorial(estadoSeleccionado, transcurrido);
-                updateData.estadoActivo = null;
-                updateData.tiempoInicioEstado = null;
-            } else {
-                // Iniciar nuevo (pausa el anterior si existía)
-                if (updateData.estadoActivo) {
-                    const transcurrido = Math.floor((ahora - updateData.tiempoInicioEstado) / 1000);
-                    updateData.tiemposAcumulados[updateData.estadoActivo] += transcurrido;
-                    guardarHistorial(updateData.estadoActivo, transcurrido);
-                }
-                updateData.estadoActivo = estadoSeleccionado;
-                updateData.tiempoInicioEstado = ahora;
-                updateData.fecha = getFechaISO();
-            }
-
-            sesionFirebase = updateData; // Optimista
-            actualizarBannerHero();
-            actualizarCronometrosVIVO();
-
-            try { await setDoc(doc(db, "sesiones_activas", asesorDatos.id), updateData); }
-            catch (e) { console.error("Error", e); }
-        };
-
-        async function guardarHistorial(estadoKey, duracionSegundos) {
-            if (duracionSegundos < 5) return;
-            const registro = {
-                asesor_id: asesorDatos.id,
-                asesor_nombre: asesorDatos.nombre || '',
-                estado: metaEstado[estadoKey].key,
-                duracion_segundos: duracionSegundos,
-                fecha: new Date()
-            };
-            try { await addDoc(collection(db, "registros_tiempos"), registro); }
-            catch (e) { console.error(e); }
-        }
-
         function escucharSesionActivaHOY() {
             onSnapshot(doc(db, "sesiones_activas", asesorDatos.id), (docSnap) => {
                 const data = docSnap.exists() ? docSnap.data() : null;
@@ -676,7 +606,6 @@
                 const ring = document.getElementById(`ring-${estado}`);
                 const caja = document.getElementById(`card-${estado}`);
                 const textoRestante = document.getElementById(`rem-${estado}`);
-                const btn = document.getElementById(`btn-toggle-${estado}`);
                 const activo = sesionFirebase.estadoActivo === estado;
 
                 if (estado === 'quality') {
@@ -707,15 +636,9 @@
                     }
                 }
 
-                // Botón y resaltado de la tarjeta activa
+                // Resaltado de la tarjeta activa (el cronómetro lo maneja la extensión desde Touchpoint)
                 caja.classList.toggle(`is-active-${estado}`, activo);
-                if (activo) {
-                    btn.innerHTML = `<i class="ph-bold ph-pause"></i> Terminar pausa`;
-                    btn.className = 'hidden md:inline-flex btn btn-dark w-full';
-                } else {
-                    btn.innerHTML = `<i class="ph-bold ph-play"></i> Iniciar`;
-                    btn.className = `hidden md:inline-flex btn btn-${estado} w-full`;
-                }
+                document.getElementById(`live-${estado}`).classList.toggle('hidden', !activo);
             });
         }
 
