@@ -1,0 +1,26 @@
+{
+  "manifest_version": 3,
+  "name": "Tracker Agentes",
+  "version": "1.2",
+  "description": "Sincroniza tiempos de TouchPoint con Firebase",
+  "permissions": [
+    "alarms",
+    "storage"
+  ],
+  "action": {
+    "default_popup": "popup.html"
+  },
+  "background": {
+    "service_worker": "background.js"
+  },
+  "content_scripts": [
+    {
+      "matches": [
+        "*://10.202.69.61/*",
+        "*://tp.ccspr9.com/*",
+        "*://touchpoint.eccspr9.com/*"
+      ],
+      "js": ["content.js"]
+    }
+  ]
+}

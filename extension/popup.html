@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <style>
+        :root {
+            --bg: #f5f6f8; --surface: #ffffff; --surface-3: #f1f3f6; --border: #e5e8ec; --border-strong: #d4d9e0;
+            --text: #0f1729; --text-2: #4b5567; --text-3: #8a94a6;
+            --brand: #4f46e5; --brand-600: #4338ca; --brand-soft: #eef0ff;
+            --ok: #059669; --ok-soft: #ecfdf5; --warn: #d97706; --danger: #e11d48; --danger-soft: #fff1f2;
+            --bath: #7c3aed; --bath-soft: #f5f3ff; --food: #ea580c; --food-soft: #fff7ed; --quality: #0284c7; --quality-soft: #f0f9ff;
+        }
+        @media (prefers-color-scheme: dark) {
+            :root {
+                --bg: #0a0d14; --surface: #111622; --surface-3: #1b2232; --border: #222a3a; --border-strong: #2d3649;
+                --text: #e8ecf4; --text-2: #a4aec0; --text-3: #6c778b;
+                --brand: #6366f1; --brand-600: #5457e6; --brand-soft: rgba(99,102,241,.15);
+                --ok: #34d399; --ok-soft: rgba(16,185,129,.12); --warn: #fbbf24; --danger: #fb7185; --danger-soft: rgba(244,63,94,.13);
+                --bath: #a78bfa; --bath-soft: rgba(139,92,246,.14); --food: #fb923c; --food-soft: rgba(249,115,22,.13); --quality: #38bdf8; --quality-soft: rgba(14,165,233,.13);
+            }
+        }
+        * { box-sizing: border-box; }
+        body { width: 320px; margin: 0; background: var(--bg); color: var(--text);
+               font-family: 'Inter', 'Segoe UI', system-ui, -apple-system, sans-serif; font-size: 13px; -webkit-font-smoothing: antialiased; }
+        .tnum { font-variant-numeric: tabular-nums; }
+        .hidden { display: none !important; }
+
+        header { display: flex; align-items: center; gap: 10px; padding: 14px 16px; background: var(--surface); border-bottom: 1px solid var(--border); }
+        .logo { width: 30px; height: 30px; border-radius: 9px; display: grid; place-items: center; color: #fff;
+                background: linear-gradient(135deg, #6366f1, #8b5cf6); flex-shrink: 0; }
+        .logo svg { width: 17px; height: 17px; }
+        .title { font-weight: 600; font-size: 14px; line-height: 1.2; }
+        .subtitle { color: var(--text-3); font-size: 11.5px; line-height: 1.2; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .grow { flex: 1; min-width: 0; }
+
+        main { padding: 14px 16px 16px; }
+        .label { display: block; font-size: 12px; font-weight: 600; color: var(--text-2); margin-bottom: 6px; }
+        .input { width: 100%; height: 40px; padding: 0 12px; border-radius: 10px; border: 1px solid var(--border-strong); background: var(--surface);
+                 color: var(--text); font-size: 16px; font-weight: 600; letter-spacing: .04em; outline: none; }
+        .input:focus { border-color: var(--brand); box-shadow: 0 0 0 3px var(--brand-soft); }
+        .btn { width: 100%; height: 38px; border: 0; border-radius: 10px; font-size: 13.5px; font-weight: 600; cursor: pointer; font-family: inherit; }
+        .btn-primary { background: var(--brand); color: #fff; margin-top: 10px; }
+        .btn-primary:hover { background: var(--brand-600); }
+        .btn-link { background: transparent; color: var(--text-3); height: 30px; font-weight: 500; font-size: 12px; margin-top: 6px; }
+        .btn-link:hover { color: var(--text); }
+        .help { color: var(--text-3); font-size: 12px; margin: 10px 0 0; line-height: 1.45; }
+        .error { color: var(--danger); font-size: 12px; margin-top: 8px; font-weight: 500; }
+
+        /* Estado */
+        .status { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 12px 14px; border-radius: 12px;
+                  background: var(--ok-soft); color: var(--ok); margin-bottom: 12px; }
+        .status .s-label { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: .06em; opacity: .9; }
+        .status .s-title { font-size: 15px; font-weight: 700; color: var(--text); margin-top: 1px; }
+        .status .s-timer { font-size: 22px; font-weight: 700; letter-spacing: -.01em; }
+        .status[data-state="bath"] { background: var(--bath-soft); color: var(--bath); }
+        .status[data-state="food"] { background: var(--food-soft); color: var(--food); }
+        .status[data-state="quality"] { background: var(--quality-soft); color: var(--quality); }
+        .dot { width: 8px; height: 8px; border-radius: 99px; background: currentColor; display: inline-block; margin-right: 6px; vertical-align: 1px; }
+
+        /* Filas de pausa */
+        .rows { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; overflow: hidden; }
+        .row { padding: 11px 14px; border-bottom: 1px solid var(--border); }
+        .row:last-child { border-bottom: 0; }
+        .row-top { display: flex; align-items: center; justify-content: space-between; margin-bottom: 7px; }
+        .row-name { display: flex; align-items: center; gap: 8px; font-weight: 600; }
+        .chipdot { width: 22px; height: 22px; border-radius: 7px; display: grid; place-items: center; font-size: 12px; }
+        .row-time { font-weight: 700; font-size: 14px; }
+        .row-time small { color: var(--text-3); font-weight: 500; font-size: 11.5px; margin-left: 2px; }
+        .bar { height: 6px; border-radius: 99px; background: var(--surface-3); overflow: hidden; }
+        .bar > div { height: 100%; width: 0; border-radius: inherit; transition: width .6s linear; }
+        .row-foot { margin-top: 6px; font-size: 11.5px; color: var(--text-3); }
+        .row.active { background: var(--surface-3); }
+        .row.over .row-time, .row.over .row-foot { color: var(--danger); }
+        .row.over .bar > div { background: var(--danger) !important; }
+        .row.warn .row-foot { color: var(--warn); }
+        .row.warn .bar > div { background: var(--warn) !important; }
+
+        footer { display: flex; align-items: center; justify-content: space-between; padding: 0 16px 14px; }
+        .sync { font-size: 11.5px; color: var(--text-3); display: flex; align-items: center; gap: 6px; }
+        .sync .dot { width: 6px; height: 6px; margin: 0; background: var(--ok); }
+        .sync.off .dot { background: var(--danger); }
+        .linkbtn { background: none; border: 0; color: var(--text-3); font-size: 11.5px; cursor: pointer; padding: 4px 6px; border-radius: 6px; font-family: inherit; }
+        .linkbtn:hover { color: var(--text); background: var(--surface-3); }
+        /* Diagnóstico */
+        .conn { display: inline-flex; align-items: center; gap: 5px; height: 22px; padding: 0 8px; border-radius: 99px; font-size: 11px; font-weight: 600; white-space: nowrap; }
+        .conn .dot { width: 6px; height: 6px; margin: 0; }
+        .conn.ok { background: var(--ok-soft); color: var(--ok); }
+        .conn.warn { background: rgba(245,158,11,.14); color: var(--warn); }
+        .conn.bad { background: var(--danger-soft); color: var(--danger); }
+        .diag { margin-top: 12px; background: var(--surface); border: 1px solid var(--border); border-radius: 12px; overflow: hidden; }
+        .diag summary { list-style: none; cursor: pointer; display: flex; align-items: center; justify-content: space-between; padding: 10px 14px; font-weight: 600; }
+        .diag summary::-webkit-details-marker { display: none; }
+        .diag summary .chev { color: var(--text-3); transition: transform .15s; }
+        .diag[open] summary .chev { transform: rotate(90deg); }
+        .check { display: flex; gap: 10px; padding: 8px 14px; border-top: 1px solid var(--border); align-items: flex-start; }
+        .check .ic { width: 18px; height: 18px; border-radius: 99px; display: grid; place-items: center; font-size: 11px; font-weight: 700; flex-shrink: 0; margin-top: 1px; }
+        .check.ok .ic { background: var(--ok-soft); color: var(--ok); }
+        .check.bad .ic { background: var(--danger-soft); color: var(--danger); }
+        .check.wait .ic { background: var(--surface-3); color: var(--text-3); }
+        .check .t { font-weight: 500; line-height: 1.3; }
+        .check .s { color: var(--text-3); font-size: 11.5px; line-height: 1.35; margin-top: 1px; }
+    </style>
+</head>
+<body>
+    <header>
+        <div class="logo">
+            <svg viewBox="0 0 256 256" fill="currentColor"><path d="M128 40a96 96 0 1 0 96 96 96.11 96.11 0 0 0-96-96Zm0 176a80 80 0 1 1 80-80 80.09 80.09 0 0 1-80 80Zm45.66-125.66a8 8 0 0 1 0 11.32l-40 40a8 8 0 0 1-11.32-11.32l40-40a8 8 0 0 1 11.32 0ZM96 16a8 8 0 0 1 8-8h48a8 8 0 0 1 0 16h-48a8 8 0 0 1-8-8Z"/></svg>
+        </div>
+        <div class="grow">
+            <div class="title" id="welcome-text">Tracker de pausas</div>
+            <div class="subtitle" id="welcome-sub">Touchpoint · Adherencia</div>
+        </div>
+        <span class="conn warn hidden" id="conn-chip"><span class="dot"></span><span id="conn-text">Revisando</span></span>
+    </header>
+
+    <!-- VISTA 1: Pedir el ID -->
+    <main id="login-view">
+        <label class="label" for="agenteId">Tu ID de asesor</label>
+        <input type="text" id="agenteId" class="input tnum" placeholder="Ej. 17884" autocomplete="off">
+        <div id="login-error" class="error hidden"></div>
+        <button id="btnGuardar" class="btn btn-primary">Guardar y empezar</button>
+        <p class="help">La extensión registra tus pausas de Touchpoint automáticamente. Solo necesitas configurarlo una vez.</p>
+    </main>
+
+    <!-- VISTA 2: Dashboard -->
+    <div id="dashboard-view" class="hidden">
+        <main>
+            <div class="status" id="status" data-state="work">
+                <div>
+                    <div class="s-label"><span class="dot"></span><span id="status-label">Estado</span></div>
+                    <div class="s-title" id="status-title">Trabajando</div>
+                </div>
+                <div class="s-timer tnum hidden" id="status-timer">00:00</div>
+            </div>
+
+            <div class="rows">
+                <div class="row" id="box-bath">
+                    <div class="row-top">
+                        <div class="row-name"><span class="chipdot" style="background:var(--bath-soft);color:var(--bath)">●</span> Sanitario</div>
+                        <div class="row-time tnum"><span id="time-bath">00:00</span><small id="lim-bath">/ 15m</small></div>
+                    </div>
+                    <div class="bar"><div id="bar-bath" style="background:var(--bath)"></div></div>
+                    <div class="row-foot tnum" id="foot-bath">Quedan --</div>
+                </div>
+                <div class="row" id="box-food">
+                    <div class="row-top">
+                        <div class="row-name"><span class="chipdot" style="background:var(--food-soft);color:var(--food)">●</span> Comida</div>
+                        <div class="row-time tnum"><span id="time-food">00:00</span><small id="lim-food">/ 30m</small></div>
+                    </div>
+                    <div class="bar"><div id="bar-food" style="background:var(--food)"></div></div>
+                    <div class="row-foot tnum" id="foot-food">Quedan --</div>
+                </div>
+                <div class="row" id="box-quality">
+                    <div class="row-top">
+                        <div class="row-name"><span class="chipdot" style="background:var(--quality-soft);color:var(--quality)">●</span> Calidad</div>
+                        <div class="row-time tnum"><span id="time-quality">00:00</span><small>sin límite</small></div>
+                    </div>
+                </div>
+            </div>
+
+            <details class="diag" id="diag-box">
+                <summary><span>Estado de la extensión</span><span class="chev">›</span></summary>
+                <div id="diag-list"></div>
+            </details>
+        </main>
+        <footer>
+            <span class="sync" id="sync"><span class="dot"></span><span id="sync-text">Conectando…</span></span>
+            <button id="btnLogout" class="linkbtn">Cambiar ID</button>
+        </footer>
+    </div>
+
+    <script src="firebase-app-compat.js"></script>
+    <script src="firebase-firestore-compat.js"></script>
+    <script src="popup.js"></script>
+</body>
+</html>

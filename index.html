@@ -46,6 +46,36 @@
         .rem { font-size: 13px; font-weight: 600; color: var(--text-2); }
         .rem.rem-warn { color: var(--warn); }
         .rem.rem-over { color: var(--danger); }
+        /* ===== Personalización ===== */
+        .cards-grid { display: grid; gap: 16px; grid-template-columns: 1fr; }
+        @media (min-width: 640px) { .cards-grid { grid-template-columns: repeat(var(--cols, 3), minmax(0, 1fr)); } }
+        .bar-alt { display: none; }
+        body.mode-bar .ring-box svg { display: none; }
+        body.mode-bar .ring-box { width: 100% !important; height: auto !important; margin: 6px 0 0 !important; }
+        body.mode-bar .ring-box > .absolute { position: static; display: flex !important; align-items: baseline; gap: 8px; justify-items: start; place-items: start; }
+        body.mode-bar .ring-box > .absolute > div { display: flex; align-items: baseline; gap: 8px; text-align: left; }
+        body.mode-bar .ring-box > .absolute > div > div:last-child { margin-top: 0 !important; }
+        body.mode-bar .ring-box .tnum { font-size: 34px !important; }
+        body.mode-bar .state-card { align-items: stretch !important; text-align: left !important; }
+        body.mode-bar .bar-alt { display: block; width: 100%; margin-top: 10px; }
+        body.mode-bar .state-card .rem { text-align: left; }
+        body.dens-compact main { gap: 12px !important; padding-top: 14px !important; }
+        body.dens-compact .hero { padding: 12px 18px !important; }
+        body.dens-compact .hero .hero-icon { width: 44px; height: 44px; }
+        body.dens-compact .state-card { padding: 14px !important; }
+        body.dens-compact .ring-box { width: 104px !important; height: 104px !important; }
+        body.dens-compact .ring-box .tnum { font-size: 21px !important; }
+        body.dens-compact .table td { padding-top: 8px; padding-bottom: 8px; }
+        body.mode-bar.dens-compact .ring-box { width: 100% !important; height: auto !important; }
+        body.mode-bar.dens-compact .ring-box .tnum { font-size: 28px !important; }
+        body.mode-bar .ring-box > .absolute > div > div:last-child { white-space: nowrap; }
+        body.txt-lg #dashboard-view > main { zoom: 1.14; }
+        .swatch { width: 30px; height: 30px; border-radius: 99px; border: 2px solid var(--surface); box-shadow: 0 0 0 1px var(--border-strong); cursor: pointer; }
+        .swatch.active { box-shadow: 0 0 0 2px var(--surface), 0 0 0 4px var(--text); }
+        .pref-row { padding: 14px 0; border-top: 1px solid var(--border); }
+        .pref-row:first-child { border-top: 0; padding-top: 0; }
+        .segmented.w-full { display: flex; } .segmented.w-full button { flex: 1; }
+
         /* Tarjetas compactas en celular */
         @media (max-width: 639px) {
             .state-card { display: grid !important; grid-template-columns: 100px 1fr; column-gap: 16px; row-gap: 6px; text-align: left !important; align-items: center; padding: 16px !important; }
@@ -54,6 +84,9 @@
             .state-card > :nth-child(2) .tnum { font-size: 20px !important; }
             .state-card > .rem { grid-column: 2; margin: 0 !important; align-self: end; }
             .state-card > span.chip { grid-column: 2; justify-self: start; align-self: start; }
+            .state-card > .bar-alt { grid-column: 2; }
+            body.mode-bar .state-card { grid-template-columns: 1fr; }
+            body.mode-bar .state-card > * { grid-column: 1 !important; grid-row: auto !important; }
         }
     </style>
 </head>
@@ -97,12 +130,30 @@
                         <p class="text-[12px] subtle tnum" id="topbar-user-id">ID: --</p>
                     </div>
                 </div>
+                <span id="ext-chip" class="chip chip-neutral hidden sm:inline-flex mr-1" title="Estado de la extensión de Chrome"><i class="ph-bold ph-plugs"></i><span>Extensión</span></span>
+                <button onclick="abrirPersonalizar()" class="btn btn-ghost btn-icon" title="Personalizar mi pantalla"><i class="ph-bold ph-sliders-horizontal"></i></button>
                 <button onclick="toggleTheme()" class="btn btn-ghost btn-icon" title="Cambiar tema"><i data-theme-icon class="ph-bold ph-moon"></i></button>
                 <button onclick="cerrarSesion()" class="btn btn-ghost btn-icon" title="Cerrar sesión"><i class="ph-bold ph-sign-out"></i></button>
             </div>
         </header>
 
         <main class="flex-1 w-full max-w-6xl mx-auto px-4 md:px-8 py-5 md:py-7 flex flex-col gap-5">
+
+            <!-- Aviso: extensión desconectada -->
+            <section id="ext-alert" class="hidden card p-4 md:p-5" style="border-color: var(--danger-border); background: var(--danger-soft)">
+                <div class="flex items-start gap-3.5">
+                    <div class="icon-tile bg-danger text-white shrink-0" id="ext-alert-icon"><i class="ph-bold ph-plugs"></i></div>
+                    <div class="min-w-0 flex-1">
+                        <p class="font-semibold text-1" id="ext-alert-title">La extensión no está conectada</p>
+                        <p class="text-[13.5px] muted mt-0.5" id="ext-alert-det"></p>
+                        <ol class="text-[13px] muted mt-2.5 list-decimal pl-4 space-y-0.5">
+                            <li>Abre Touchpoint en Chrome e inicia sesión.</li>
+                            <li>Revisa que la extensión <strong class="text-1">Tracker Agentes</strong> esté activada en <span class="kbd">chrome://extensions</span>.</li>
+                            <li>Da clic al ícono de la extensión: en "Estado de la extensión" verás qué falta.</li>
+                        </ol>
+                    </div>
+                </div>
+            </section>
 
             <!-- Estado actual -->
             <section id="hero-banner" data-state="work" class="hero rounded-[18px] p-5 md:p-6 flex items-center justify-between gap-4 transition-colors duration-300">
@@ -114,6 +165,7 @@
                     <div class="min-w-0">
                         <p class="hero-label text-[12px] font-semibold uppercase tracking-[.08em]">Estado actual</p>
                         <h2 id="hero-title" class="hero-title text-[20px] sm:text-[22px] md:text-[26px] font-bold tracking-tight leading-tight">Trabajando</h2>
+                        <p id="hero-sub" class="hidden text-[13px] muted mt-0.5 tnum"></p>
                     </div>
                 </div>
                 <div id="hero-timer-container" class="hidden text-right shrink-0">
@@ -123,10 +175,10 @@
             </section>
 
             <!-- Pausas -->
-            <section class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <section class="cards-grid" id="cards-grid">
 
                 <!-- Baño -->
-                <div id="card-bath" class="card state-card p-5 flex flex-col items-center text-center">
+                <div id="card-bath" data-card="bath" class="card state-card p-5 flex flex-col items-center text-center">
                     <div class="w-full flex items-center justify-between mb-3">
                         <div class="flex items-center gap-2.5">
                             <div class="icon-tile soft-bath c-bath"><i class="ph-fill ph-toilet"></i></div>
@@ -134,7 +186,7 @@
                         </div>
                         <span class="chip chip-neutral tnum" id="limit-bath">15 min</span>
                     </div>
-                    <div class="relative w-[132px] h-[132px] my-1">
+                    <div class="ring-box relative w-[132px] h-[132px] my-1">
                         <svg class="pring w-full h-full" viewBox="0 0 120 120">
                             <circle class="ring-track" cx="60" cy="60" r="52" stroke-width="9"></circle>
                             <circle id="ring-bath" class="ring-value ring-bath" cx="60" cy="60" r="52" stroke-width="9" stroke-dasharray="326.73" stroke-dashoffset="326.73"></circle>
@@ -146,13 +198,14 @@
                             </div>
                         </div>
                     </div>
+                    <div class="progress bar-alt"><div id="lbar-bath" class="bg-bath"></div></div>
                     <p class="rem mt-2 mb-4" id="rem-bath">Quedan --</p>
                     <button onclick="toggleTimer('bath')" id="btn-toggle-bath" class="hidden md:inline-flex btn btn-bath w-full"><i class="ph-bold ph-play"></i> Iniciar</button>
                     <span class="md:hidden chip chip-neutral"><i class="ph-fill ph-lock-key"></i> Solo lectura</span>
                 </div>
 
                 <!-- Comida -->
-                <div id="card-food" class="card state-card p-5 flex flex-col items-center text-center">
+                <div id="card-food" data-card="food" class="card state-card p-5 flex flex-col items-center text-center">
                     <div class="w-full flex items-center justify-between mb-3">
                         <div class="flex items-center gap-2.5">
                             <div class="icon-tile soft-food c-food"><i class="ph-fill ph-fork-knife"></i></div>
@@ -160,7 +213,7 @@
                         </div>
                         <span class="chip chip-neutral tnum" id="limit-food">30 min</span>
                     </div>
-                    <div class="relative w-[132px] h-[132px] my-1">
+                    <div class="ring-box relative w-[132px] h-[132px] my-1">
                         <svg class="pring w-full h-full" viewBox="0 0 120 120">
                             <circle class="ring-track" cx="60" cy="60" r="52" stroke-width="9"></circle>
                             <circle id="ring-food" class="ring-value ring-food" cx="60" cy="60" r="52" stroke-width="9" stroke-dasharray="326.73" stroke-dashoffset="326.73"></circle>
@@ -172,13 +225,14 @@
                             </div>
                         </div>
                     </div>
+                    <div class="progress bar-alt"><div id="lbar-food" class="bg-food"></div></div>
                     <p class="rem mt-2 mb-4" id="rem-food">Quedan --</p>
                     <button onclick="toggleTimer('food')" id="btn-toggle-food" class="hidden md:inline-flex btn btn-food w-full"><i class="ph-bold ph-play"></i> Iniciar</button>
                     <span class="md:hidden chip chip-neutral"><i class="ph-fill ph-lock-key"></i> Solo lectura</span>
                 </div>
 
                 <!-- Calidad -->
-                <div id="card-quality" class="card state-card p-5 flex flex-col items-center text-center">
+                <div id="card-quality" data-card="quality" class="card state-card p-5 flex flex-col items-center text-center">
                     <div class="w-full flex items-center justify-between mb-3">
                         <div class="flex items-center gap-2.5">
                             <div class="icon-tile soft-quality c-quality"><i class="ph-fill ph-headset"></i></div>
@@ -186,7 +240,7 @@
                         </div>
                         <span class="chip chip-neutral">Sin límite</span>
                     </div>
-                    <div class="relative w-[132px] h-[132px] my-1">
+                    <div class="ring-box relative w-[132px] h-[132px] my-1">
                         <svg class="pring w-full h-full" viewBox="0 0 120 120">
                             <circle class="ring-track" cx="60" cy="60" r="52" stroke-width="9"></circle>
                             <circle id="ring-quality" class="ring-value ring-quality" cx="60" cy="60" r="52" stroke-width="9" stroke-dasharray="326.73" stroke-dashoffset="326.73"></circle>
@@ -198,6 +252,7 @@
                             </div>
                         </div>
                     </div>
+                    <div class="progress bar-alt"><div id="lbar-quality" class="bg-quality"></div></div>
                     <p class="rem mt-2 mb-4" id="rem-quality">Autorizado por supervisor</p>
                     <button onclick="toggleTimer('quality')" id="btn-toggle-quality" class="hidden md:inline-flex btn btn-quality w-full"><i class="ph-bold ph-play"></i> Iniciar</button>
                     <span class="md:hidden chip chip-neutral"><i class="ph-fill ph-lock-key"></i> Solo lectura</span>
@@ -205,7 +260,7 @@
             </section>
 
             <!-- Historial -->
-            <section class="card overflow-hidden flex flex-col">
+            <section id="sec-historial" class="card overflow-hidden flex flex-col">
                 <div class="card-header flex-wrap">
                     <div class="flex items-center gap-2.5">
                         <div class="icon-tile soft-brand c-brand !w-8 !h-8 !text-base"><i class="ph-bold ph-list-bullets"></i></div>
@@ -246,6 +301,62 @@
 
             <p class="text-center text-[12px] subtle pb-2">Tus tiempos se actualizan en vivo.</p>
         </main>
+    </div>
+
+    <!-- Panel: personalizar -->
+    <div id="pers-overlay" class="backdrop hidden opacity-0" onclick="cerrarPersonalizar()">
+        <div id="pers-panel" class="drawer translate-x-full" onclick="event.stopPropagation()">
+            <div class="card-header !py-4">
+                <div class="flex items-center gap-2.5"><i class="ph-bold ph-sliders-horizontal text-lg c-brand"></i><h2 class="h-card">Personalizar mi pantalla</h2></div>
+                <button onclick="cerrarPersonalizar()" class="btn btn-ghost btn-icon btn-sm"><i class="ph-bold ph-x"></i></button>
+            </div>
+            <div class="flex-1 overflow-y-auto p-5">
+                <div class="pref-row">
+                    <p class="label">Tema</p>
+                    <div class="segmented w-full" data-pref="tema">
+                        <button data-v="auto">Automático</button><button data-v="claro">Claro</button><button data-v="oscuro">Oscuro</button>
+                    </div>
+                </div>
+                <div class="pref-row">
+                    <p class="label">Color</p>
+                    <div class="flex gap-3" id="swatches"></div>
+                </div>
+                <div class="pref-row">
+                    <p class="label">Contador de tiempo</p>
+                    <div class="segmented w-full" data-pref="contador">
+                        <button data-v="anillo">Anillo</button><button data-v="barra">Barra</button>
+                    </div>
+                </div>
+                <div class="pref-row">
+                    <p class="label">Espaciado</p>
+                    <div class="segmented w-full" data-pref="densidad">
+                        <button data-v="comoda">Cómodo</button><button data-v="compacta">Compacto</button>
+                    </div>
+                </div>
+                <div class="pref-row">
+                    <p class="label">Tamaño de letra</p>
+                    <div class="segmented w-full" data-pref="texto">
+                        <button data-v="normal">Normal</button><button data-v="grande">Grande</button>
+                    </div>
+                </div>
+                <div class="pref-row">
+                    <p class="label">Mostrar</p>
+                    <div class="flex flex-col gap-2.5 mt-1">
+                        <label class="flex items-center gap-2.5 text-sm text-1 cursor-pointer"><input type="checkbox" class="checkbox" data-mostrar="hero"> Estado actual (banner de arriba)</label>
+                        <label class="flex items-center gap-2.5 text-sm text-1 cursor-pointer"><input type="checkbox" class="checkbox" data-mostrar="quality"> Tarjeta de calidad</label>
+                        <label class="flex items-center gap-2.5 text-sm text-1 cursor-pointer"><input type="checkbox" class="checkbox" data-mostrar="historial"> Mi historial</label>
+                    </div>
+                </div>
+                <div class="pref-row">
+                    <p class="label">Orden de las tarjetas</p>
+                    <div class="flex flex-col gap-2 mt-1" id="orden-lista"></div>
+                </div>
+                <div class="pref-row flex items-center justify-between gap-3">
+                    <p class="text-[12.5px] subtle" id="pers-guardado">Se guarda en tu perfil: la verás igual en cualquier computadora.</p>
+                    <button onclick="restablecerPrefs()" class="btn btn-secondary btn-sm shrink-0"><i class="ph-bold ph-arrow-counter-clockwise"></i> Restablecer</button>
+                </div>
+            </div>
+        </div>
     </div>
 
     <!-- Aviso móvil -->
@@ -387,6 +498,8 @@
 
             escucharSesionActivaHOY();
             escucharHistorialTiempos();
+            escucharExtension();
+            if (asesorDatos.preferencias) aplicarPrefsRemotas(asesorDatos.preferencias);
 
             if (timerRelojes) clearInterval(timerRelojes);
             timerRelojes = setInterval(actualizarCronometrosVIVO, 1000);
@@ -477,6 +590,11 @@
             const timerCont = document.getElementById('hero-timer-container');
             const estado = sesionFirebase.estadoActivo;
             const meta = metaEstado[estado];
+            const sub = document.getElementById('hero-sub');
+            if (sesionFirebase.primeraConexion) {
+                sub.textContent = 'Conectado desde las ' + new Date(sesionFirebase.primeraConexion).toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit', hour12: false });
+                sub.classList.remove('hidden');
+            } else sub.classList.add('hidden');
 
             if (!meta) {
                 banner.dataset.state = 'work';
@@ -524,8 +642,13 @@
                     ring.style.strokeDashoffset = segundosUsados > 0 ? 0 : CIRC;
                     ring.style.opacity = activo ? '1' : '.45';
                     ring.style.visibility = segundosUsados > 0 ? 'visible' : 'hidden';
+                    const lb = document.getElementById('lbar-quality');
+                    lb.style.width = segundosUsados > 0 ? '100%' : '0%'; lb.style.opacity = activo ? '1' : '.45';
                 } else {
                     ring.style.visibility = segundosUsados > 0 ? 'visible' : 'hidden';
+                    const lb = document.getElementById(`lbar-${estado}`);
+                    lb.style.width = porcentaje + '%';
+                    lb.className = segundosUsados >= limiteSegundos ? 'bg-danger' : (porcentaje > 85 ? 'bg-warn' : `bg-${estado}`);
                     ring.style.strokeDashoffset = CIRC * (1 - porcentaje / 100);
                     ring.classList.remove('ring-warn', 'ring-over');
                     textoRestante.classList.remove('rem-warn', 'rem-over');
@@ -645,6 +768,152 @@
             }
         };
 
+        // =====================================================================
+        // ESTADO DE LA EXTENSIÓN (extension_estado/{id}, lo escribe la extensión cada ~1 min)
+        // =====================================================================
+        let extData = null;
+        function escucharExtension() {
+            onSnapshot(doc(db, "extension_estado", asesorDatos.id), (d) => { extData = d.exists() ? d.data() : null; pintarExtension(); },
+                (err) => console.error('extension_estado (¿falta en las reglas?)', err));
+            setInterval(pintarExtension, 15000);
+        }
+        function evaluarExtension(e) {
+            if (!e || !e.ultimoPulso) return { nivel: 'none', txt: 'Sin extensión', titulo: 'La extensión no se ha conectado con tu ID', det: 'No hemos recibido ninguna señal de la extensión con tu ID.' };
+            const min = Math.round((Date.now() - e.ultimoPulso) / 60000);
+            if (Date.now() - e.ultimoPulso > 180000) return { nivel: 'bad', txt: 'Extensión desconectada', titulo: 'La extensión no está conectada', det: `Última señal hace ${min < 60 ? min + ' min' : Math.floor(min / 60) + ' h'}. Tus pausas no se están registrando automáticamente.` };
+            if (!e.touchpoint) return { nivel: 'bad', txt: 'Touchpoint sin sesión', titulo: 'No vemos tu sesión de Touchpoint', det: 'La extensión está activa, pero Touchpoint no tiene sesión iniciada.' };
+            if (!e.botonSalida) return { nivel: 'warn', txt: 'Revisar extensión', titulo: 'La extensión necesita revisión', det: 'No encuentra el botón de cerrar sesión de Touchpoint. Avísale a tu supervisor.' };
+            return { nivel: 'ok', txt: 'Extensión conectada', titulo: '', det: '' };
+        }
+        function pintarExtension() {
+            const r = evaluarExtension(extData);
+            const chip = document.getElementById('ext-chip');
+            const cls = { ok: 'chip-ok', warn: 'chip-warn', bad: 'chip-danger', none: 'chip-neutral' }[r.nivel];
+            chip.className = `chip ${cls} hidden sm:inline-flex mr-1`;
+            chip.innerHTML = `<span class="dot ${r.nivel === 'ok' ? 'dot-live' : ''}"></span><span>${r.txt}</span>`;
+            const alerta = document.getElementById('ext-alert');
+            // El aviso grande solo en computadora (en el celular no aplica la extensión)
+            const mostrar = r.nivel !== 'ok' && window.innerWidth >= 768;
+            alerta.classList.toggle('hidden', !mostrar);
+            if (mostrar) {
+                document.getElementById('ext-alert-title').textContent = r.titulo;
+                document.getElementById('ext-alert-det').textContent = r.det;
+                const warn = r.nivel === 'warn';
+                alerta.style.borderColor = warn ? 'var(--warn-border)' : 'var(--danger-border)';
+                alerta.style.background = warn ? 'var(--warn-soft)' : 'var(--danger-soft)';
+                document.getElementById('ext-alert-icon').className = `icon-tile ${warn ? 'bg-warn' : 'bg-danger'} text-white shrink-0`;
+            }
+        }
+
+        // =====================================================================
+        // PERSONALIZACIÓN (se guarda en localStorage y en operadores/{id}.preferencias)
+        // =====================================================================
+        const ACENTOS = {
+            indigo:  { c: '#4f46e5', c6: '#4338ca', d: '#6366f1', t: '#4338ca', td: '#a5b4fc', g: ['#6366f1', '#8b5cf6'] },
+            azul:    { c: '#2563eb', c6: '#1d4ed8', d: '#3b82f6', t: '#1d4ed8', td: '#93c5fd', g: ['#3b82f6', '#06b6d4'] },
+            verde:   { c: '#059669', c6: '#047857', d: '#10b981', t: '#047857', td: '#6ee7b7', g: ['#10b981', '#14b8a6'] },
+            rosa:    { c: '#db2777', c6: '#be185d', d: '#ec4899', t: '#be185d', td: '#f9a8d4', g: ['#ec4899', '#f43f5e'] },
+            naranja: { c: '#ea580c', c6: '#c2410c', d: '#f97316', t: '#c2410c', td: '#fdba74', g: ['#f97316', '#f59e0b'] },
+            grafito: { c: '#334155', c6: '#1e293b', d: '#64748b', t: '#334155', td: '#cbd5e1', g: ['#475569', '#1e293b'] }
+        };
+        const PREFS_BASE = { tema: 'auto', acento: 'indigo', contador: 'anillo', densidad: 'comoda', texto: 'normal',
+                             mostrar: { hero: true, quality: true, historial: true }, orden: ['bath', 'food', 'quality'] };
+        const NOMBRES_CARD = { bath: 'Sanitario', food: 'Comida', quality: 'Calidad' };
+        const clonar = (o) => JSON.parse(JSON.stringify(o));
+        const normalizar = (p) => {
+            const r = { ...clonar(PREFS_BASE), ...(p || {}) };
+            r.mostrar = { ...PREFS_BASE.mostrar, ...((p || {}).mostrar || {}) };
+            if (!Array.isArray(r.orden) || r.orden.length !== 3) r.orden = [...PREFS_BASE.orden];
+            if (!ACENTOS[r.acento]) r.acento = 'indigo';
+            return r;
+        };
+        let prefs = normalizar((() => { try { return JSON.parse(localStorage.getItem('prefsAsesor')); } catch (e) { return null; } })());
+        let prefsEditadas = false;
+
+        function aplicarPrefs() {
+            const root = document.documentElement, body = document.body;
+            // Tema
+            if (prefs.tema === 'auto') { localStorage.removeItem('theme'); root.classList.toggle('dark', matchMedia('(prefers-color-scheme: dark)').matches); }
+            else { localStorage.setItem('theme', prefs.tema === 'oscuro' ? 'dark' : 'light'); root.classList.toggle('dark', prefs.tema === 'oscuro'); }
+            document.querySelectorAll('[data-theme-icon]').forEach(i => i.className = root.classList.contains('dark') ? 'ph-bold ph-sun' : 'ph-bold ph-moon');
+            // Color
+            const a = ACENTOS[prefs.acento];
+            let st = document.getElementById('acento-style');
+            if (!st) { st = document.createElement('style'); st.id = 'acento-style'; document.head.appendChild(st); }
+            st.textContent = `:root{--brand:${a.c};--brand-600:${a.c6};--brand-text:${a.t};--brand-soft:color-mix(in srgb, ${a.c} 11%, white)}
+                html.dark{--brand:${a.d};--brand-600:${a.c};--brand-text:${a.td};--brand-soft:color-mix(in srgb, ${a.d} 18%, transparent)}
+                .logo{background:linear-gradient(135deg, ${a.g[0]}, ${a.g[1]});box-shadow:0 4px 12px color-mix(in srgb, ${a.g[0]} 35%, transparent)}`;
+            // Clases de la página
+            body.classList.toggle('mode-bar', prefs.contador === 'barra');
+            body.classList.toggle('dens-compact', prefs.densidad === 'compacta');
+            body.classList.toggle('txt-lg', prefs.texto === 'grande');
+            // Secciones visibles y orden
+            document.getElementById('hero-banner').style.display = prefs.mostrar.hero ? '' : 'none';
+            document.getElementById('sec-historial').style.display = prefs.mostrar.historial ? '' : 'none';
+            const visibles = prefs.orden.filter(k => k !== 'quality' || prefs.mostrar.quality);
+            prefs.orden.forEach((k, i) => {
+                const c = document.getElementById(`card-${k}`);
+                c.style.order = i;
+                c.style.display = visibles.includes(k) ? '' : 'none';
+            });
+            document.getElementById('cards-grid').style.setProperty('--cols', visibles.length);
+            pintarPanelPrefs();
+        }
+
+        function pintarPanelPrefs() {
+            document.querySelectorAll('[data-pref]').forEach(g => g.querySelectorAll('button').forEach(b => b.classList.toggle('active', b.dataset.v === prefs[g.dataset.pref])));
+            document.getElementById('swatches').innerHTML = Object.entries(ACENTOS).map(([k, a]) =>
+                `<button class="swatch ${prefs.acento === k ? 'active' : ''}" title="${k}" style="background:linear-gradient(135deg, ${a.g[0]}, ${a.g[1]})" onclick="cambiarPref('acento','${k}')"></button>`).join('');
+            document.querySelectorAll('[data-mostrar]').forEach(c => c.checked = !!prefs.mostrar[c.dataset.mostrar]);
+            document.getElementById('orden-lista').innerHTML = prefs.orden.map((k, i) => `
+                <div class="flex items-center gap-2 surface-2 border divider rounded-xl px-3 h-11">
+                    <span class="dot bg-${k}"></span><span class="text-sm font-medium text-1 flex-1">${NOMBRES_CARD[k]}</span>
+                    <button class="btn btn-ghost btn-icon btn-sm" ${i === 0 ? 'disabled' : ''} onclick="moverCard(${i},-1)" title="Subir"><i class="ph-bold ph-arrow-up"></i></button>
+                    <button class="btn btn-ghost btn-icon btn-sm" ${i === 2 ? 'disabled' : ''} onclick="moverCard(${i},1)" title="Bajar"><i class="ph-bold ph-arrow-down"></i></button>
+                </div>`).join('');
+        }
+
+        let guardarTimer = null;
+        function guardarPrefs() {
+            prefsEditadas = true;
+            localStorage.setItem('prefsAsesor', JSON.stringify(prefs));
+            aplicarPrefs();
+            clearTimeout(guardarTimer);
+            guardarTimer = setTimeout(async () => {
+                if (!asesorDatos?.id) return;
+                const t = document.getElementById('pers-guardado');
+                try { await updateDoc(doc(db, "operadores", asesorDatos.id), { preferencias: prefs }); t.textContent = 'Guardado en tu perfil.'; }
+                catch (e) { t.textContent = 'Guardado solo en esta computadora (sin conexión).'; }
+            }, 700);
+        }
+        function aplicarPrefsRemotas(p) {
+            if (prefsEditadas) return; // no pisar lo que el asesor está cambiando ahora
+            prefs = normalizar(p);
+            localStorage.setItem('prefsAsesor', JSON.stringify(prefs));
+            aplicarPrefs();
+        }
+
+        window.cambiarPref = (k, v) => { prefs[k] = v; guardarPrefs(); };
+        window.moverCard = (i, dir) => { const o = prefs.orden; [o[i], o[i + dir]] = [o[i + dir], o[i]]; guardarPrefs(); };
+        window.restablecerPrefs = () => { prefs = normalizar(null); guardarPrefs(); };
+        window.toggleTheme = () => { prefs.tema = document.documentElement.classList.contains('dark') ? 'claro' : 'oscuro'; guardarPrefs(); };
+        document.querySelectorAll('[data-pref]').forEach(g => g.addEventListener('click', (e) => { const b = e.target.closest('button'); if (b) cambiarPref(g.dataset.pref, b.dataset.v); }));
+        document.querySelectorAll('[data-mostrar]').forEach(c => c.addEventListener('change', () => { prefs.mostrar[c.dataset.mostrar] = c.checked; guardarPrefs(); }));
+        matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => { if (prefs.tema === 'auto') aplicarPrefs(); });
+
+        window.abrirPersonalizar = () => {
+            const o = document.getElementById('pers-overlay'), p = document.getElementById('pers-panel');
+            document.getElementById('pers-guardado').textContent = 'Se guarda en tu perfil: la verás igual en cualquier computadora.';
+            o.classList.remove('hidden');
+            setTimeout(() => { o.classList.remove('opacity-0'); p.classList.remove('translate-x-full'); }, 10);
+        };
+        window.cerrarPersonalizar = () => {
+            const o = document.getElementById('pers-overlay'), p = document.getElementById('pers-panel');
+            o.classList.add('opacity-0'); p.classList.add('translate-x-full');
+            setTimeout(() => o.classList.add('hidden'), 250);
+        };
+        aplicarPrefs();
+
         // Auto-login silencioso
         if (asesorDatos && asesorDatos.id) {
             getDoc(doc(db, "operadores", asesorDatos.id)).then(docSnap => {
@@ -654,6 +923,7 @@
                         if (snap.exists()) {
                             asesorDatos = { id: asesorDatos.id, ...snap.data() };
                             actualizarTextosLimitesUI();
+                            if (asesorDatos.preferencias) aplicarPrefsRemotas(asesorDatos.preferencias);
                         }
                     });
                     cargarInterfazDashboard();

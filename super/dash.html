@@ -29,7 +29,7 @@
         <div id="modal-confirm-reset" class="modal w-full max-w-sm p-6 scale-95 hidden m-auto">
             <div class="icon-tile icon-tile-lg soft-warn c-warn mb-4"><i class="ph-bold ph-arrow-counter-clockwise"></i></div>
             <h3 class="text-lg font-bold text-1">¿Reiniciar los tiempos de hoy?</h3>
-            <p class="muted text-sm mt-1.5 mb-6">Todos los asesores quedarán en 00:00 para hoy. El historial de pausas no se borra.</p>
+            <p class="muted text-sm mt-1.5 mb-6">Todos los asesores quedarán en 00:00 para hoy. El historial de pausas y la hora de entrada no se borran.</p>
             <div class="flex gap-2.5">
                 <button onclick="App.Modals.cerrarTodos()" class="btn btn-secondary flex-1">Cancelar</button>
                 <button onclick="App.Handlers.resetearDia()" class="btn btn-primary flex-1" style="background:var(--warn)">Reiniciar</button>
@@ -77,7 +77,12 @@
                         <div class="field"><i class="ph ph-fork-knife"></i><input type="number" id="cfg-global-comida" class="input tnum"></div>
                     </div>
                 </div>
-                <button onclick="App.Handlers.guardarGlobales()" class="btn btn-primary w-full"><i class="ph-bold ph-check"></i> Aplicar límites</button>
+                <div class="mb-4">
+                    <label class="label">Tolerancia de entrada (min)</label>
+                    <div class="field"><i class="ph ph-clock-user"></i><input type="number" id="cfg-global-tolerancia" class="input tnum" min="0"></div>
+                    <p class="hint">Después de estos minutos sobre su hora de entrada, el monitor lo marca como "tarde".</p>
+                </div>
+                <button onclick="App.Handlers.guardarGlobales()" class="btn btn-primary w-full"><i class="ph-bold ph-check"></i> Aplicar</button>
             </div>
         </div>
     </div>
@@ -157,7 +162,11 @@
                     <!-- Monitor -->
                     <section>
                         <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-3">
-                            <h2 class="h-card flex items-center gap-2.5"><span class="dot dot-live c-ok"></span> En tiempo real</h2>
+                            <div class="flex items-center gap-2.5 flex-wrap">
+                                <h2 class="h-card flex items-center gap-2.5"><span class="dot dot-live c-ok"></span> En tiempo real</h2>
+                                <span id="resumen-ext" class="chip chip-neutral" title="Extensiones enviando señal en los últimos 3 minutos"></span>
+                                <span id="resumen-tarde" class="chip chip-danger hidden"></span>
+                            </div>
                             <div class="field w-full sm:w-72">
                                 <i class="ph-bold ph-magnifying-glass"></i>
                                 <input type="text" id="search-monitor" onkeyup="App.UI.renderMonitor()" placeholder="Buscar por nombre, ID o XOC" class="input">
@@ -260,10 +269,12 @@
                 sesiones: {},
                 registrosHistorial: [],
                 solicitudes: [],
+                extension: {},
                 fechaFiltro: new Date().toLocaleDateString('en-CA')
             },
             config: {
                 limites: { bano: 15, comida: 30 },
+                toleranciaEntrada: 5,
                 meta: META
             }
         };
@@ -300,6 +311,31 @@
             esHoy: (f) => f === Utils.fechaHoyNormal() || f === Utils.fechaHoyISO(),
             nombre: (ag) => ag?.nombreCorto || ag?.nombre || 'Sin nombre',
             iniciales: (txt) => (txt || '').trim().split(/\s+/).slice(0, 2).map(p => p[0] || '').join('').toUpperCase() || '?',
+            hora: (ms) => new Date(ms).toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit', hour12: false }),
+            hace: (ms) => { const m = Math.round((Date.now() - ms) / 60000); return m < 1 ? 'hace menos de 1 min' : (m < 60 ? `hace ${m} min` : `hace ${Math.floor(m / 60)} h ${m % 60} min`); },
+            // ¿La extensión de este asesor está viva? (pulso cada ~1 min; >3 min sin pulso = desconectada)
+            estadoExtension: (id) => {
+                const e = App.state.extension[id];
+                if (!e || !e.ultimoPulso) return { nivel: 'none', chip: 'chip-neutral', icon: 'ph-plugs', txt: 'Sin extensión', det: 'Esta extensión nunca se ha conectado con este ID.' };
+                const edad = Date.now() - e.ultimoPulso;
+                if (edad > 180000) return { nivel: 'bad', chip: 'chip-danger', icon: 'ph-plugs', txt: 'Extensión desconectada', det: `Última señal ${Utils.hace(e.ultimoPulso)}. Chrome cerrado, Touchpoint cerrado o extensión desactivada.` };
+                if (!e.touchpoint) return { nivel: 'bad', chip: 'chip-danger', icon: 'ph-sign-out', txt: 'Touchpoint sin sesión', det: 'La extensión está activa pero no ve una sesión de Touchpoint.' };
+                if (!e.botonSalida) return { nivel: 'warn', chip: 'chip-warn', icon: 'ph-warning', txt: 'Revisar extensión', det: 'No encuentra el botón de cerrar sesión: no podrá desconectarlo por tiempo.' };
+                return { nivel: 'ok', chip: 'chip-ok', icon: 'ph-plugs-connected', txt: 'Extensión OK', det: `Conectada · v${e.version || '?'} · Touchpoint: ${e.estadoTP || '—'}` };
+            },
+            // Hora de primera conexión comparada con su horario de hoy
+            puntualidad: (ag, ses) => {
+                if (!ses?.primeraConexion) return null;
+                const dias = ['domingo', 'lunes', 'martes', 'miercoles', 'jueves', 'viernes', 'sabado'];
+                const h = ag.horarios?.[dias[new Date().getDay()]];
+                const hora = Utils.hora(ses.primeraConexion);
+                if (!h?.activo || !h.entrada) return { tarde: false, chip: 'chip-neutral', txt: `Entró ${hora}`, det: 'Hoy no tiene horario de entrada' };
+                const [hh, mm] = h.entrada.split(':');
+                const ent = new Date(ses.primeraConexion); ent.setHours(+hh, +mm, 0, 0);
+                const diff = Math.round((ses.primeraConexion - ent) / 60000);
+                if (diff > (App.config.toleranciaEntrada ?? 5)) return { tarde: true, chip: 'chip-danger', txt: `Entró ${hora} · ${diff} min tarde`, det: `Su entrada es a las ${h.entrada}` };
+                return { tarde: false, chip: 'chip-ok', txt: `Entró ${hora}`, det: `A tiempo (entrada ${h.entrada})` };
+            },
             esc: (s) => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]))
         };
 
@@ -340,6 +376,7 @@
                 const o = document.getElementById('panel-config-overlay'); const p = document.getElementById('panel-config');
                 document.getElementById('cfg-global-bano').value = App.config.limites.bano;
                 document.getElementById('cfg-global-comida').value = App.config.limites.comida;
+                document.getElementById('cfg-global-tolerancia').value = App.config.toleranciaEntrada ?? 5;
                 o.classList.remove('hidden');
                 setTimeout(() => { o.classList.remove('opacity-0'); p.classList.remove('translate-x-full'); }, 10);
             },
@@ -432,17 +469,20 @@
             guardarGlobales: async () => {
                 const bano = parseInt(document.getElementById('cfg-global-bano').value) || 15;
                 const comida = parseInt(document.getElementById('cfg-global-comida').value) || 30;
+                const tol = parseInt(document.getElementById('cfg-global-tolerancia').value);
+                const toleranciaEntrada = isNaN(tol) ? 5 : Math.max(0, tol);
                 try {
-                    await setDoc(doc(App.db, "config", "global"), { limites: { bano, comida } }, { merge: true });
+                    await setDoc(doc(App.db, "config", "global"), { limites: { bano, comida }, toleranciaEntrada }, { merge: true });
                     App.config.limites = { bano, comida };
-                    App.Modals.cerrarConfig(); Utils.toast("Límites globales aplicados.");
+                    App.config.toleranciaEntrada = toleranciaEntrada;
+                    App.Modals.cerrarConfig(); Utils.toast("Ajustes aplicados.");
                 } catch (err) { Utils.toast("Error al guardar.", "error"); }
             },
             resetearDia: async () => {
                 App.Modals.cerrarTodos();
                 try {
                     await Promise.all(Object.keys(App.state.operadores).map(id =>
-                        setDoc(doc(App.db, "sesiones_activas", id), { estadoActivo: null, tiempoInicioEstado: null, fecha: Utils.fechaHoyNormal(), tiemposAcumulados: { bath: 0, food: 0, quality: 0 } })));
+                        setDoc(doc(App.db, "sesiones_activas", id), { estadoActivo: null, tiempoInicioEstado: null, fecha: Utils.fechaHoyNormal(), tiemposAcumulados: { bath: 0, food: 0, quality: 0 } }, { merge: true })));
                     Utils.toast("Tiempos reiniciados a cero.");
                 } catch (err) { Utils.toast("Error al reiniciar.", "error"); }
             },
@@ -478,7 +518,7 @@
                 const grid = document.getElementById('lista-activos');
                 const term = document.getElementById('search-monitor').value.toLowerCase();
 
-                let excedidos = 0, activos = 0, conectados = 0;
+                let excedidos = 0, activos = 0, conectados = 0, extOk = 0, tardes = 0;
                 const total = Object.keys(App.state.operadores).length;
                 const tarjetas = [];
 
@@ -496,6 +536,10 @@
                     if (isReceso) activos++;
                     if (isWorking) conectados++;
                     if (excB || excC) excedidos++;
+                    const ext = Utils.estadoExtension(ag.id);
+                    if (ext.nivel === 'ok') extOk++;
+                    const punt = Utils.puntualidad(ag, ses);
+                    if (punt?.tarde) tardes++;
 
                     const nombre = Utils.nombre(ag);
                     if (term && !(ag.nombre || '').toLowerCase().includes(term) && !nombre.toLowerCase().includes(term) && !ag.id.toLowerCase().includes(term) && !(ag.xoc && ag.xoc.toLowerCase().includes(term))) return;
@@ -543,6 +587,10 @@
                             ${mini('food', tC, '/' + limC + 'm', excC)}
                             ${mini('quality', tQ, '', false)}
                         </div>
+                        <div class="flex items-center justify-between gap-2 pt-3 border-t divider flex-wrap">
+                            ${punt ? `<span class="chip ${punt.chip} tnum" title="${Utils.esc(punt.det)}"><i class="ph-bold ph-sign-in"></i>${punt.txt}</span>` : `<span class="text-[12px] subtle">Sin conexión registrada</span>`}
+                            <span class="chip ${ext.chip}" title="${Utils.esc(ext.det)}"><i class="ph-bold ${ext.icon}"></i>${ext.txt}</span>
+                        </div>
                     </div>` });
                 });
 
@@ -552,6 +600,12 @@
                 document.getElementById('kpi-activos').innerText = activos;
                 document.getElementById('kpi-conectados').innerText = conectados;
                 document.getElementById('kpi-excedidos').innerText = excedidos;
+                const rExt = document.getElementById('resumen-ext');
+                rExt.innerHTML = `<i class="ph-bold ph-plugs-connected"></i> Extensión ${extOk}/${total}`;
+                rExt.className = `chip ${extOk === total && total ? 'chip-ok' : (extOk ? 'chip-warn' : 'chip-neutral')}`;
+                const rT = document.getElementById('resumen-tarde');
+                rT.innerHTML = `<i class="ph-bold ph-clock-countdown"></i> ${tardes} llegaron tarde`;
+                rT.classList.toggle('hidden', tardes === 0);
 
                 grid.innerHTML = tarjetas.map(t => t.html).join('') || `<div class="col-span-full card empty"><i class="ph ph-magnifying-glass"></i>Nadie coincide con tu búsqueda.</div>`;
                 App.UI.tickRelojes();
@@ -678,7 +732,19 @@
                 }, (error) => console.error("Error escuchando solicitudes", error));
             },
             init: async () => {
-                onSnapshot(doc(window.db, "config", "global"), (d) => { if (d.exists() && d.data().limites) { App.config.limites = { ...App.config.limites, ...d.data().limites }; App.UI.renderMonitor(); } });
+                onSnapshot(doc(window.db, "config", "global"), (d) => {
+                    if (!d.exists()) return;
+                    const c = d.data();
+                    if (c.limites) App.config.limites = { ...App.config.limites, ...c.limites };
+                    if (c.toleranciaEntrada !== undefined) App.config.toleranciaEntrada = c.toleranciaEntrada;
+                    App.UI.renderMonitor();
+                });
+
+                onSnapshot(collection(window.db, "extension_estado"), (snap) => {
+                    App.state.extension = {};
+                    snap.forEach(d => App.state.extension[d.id] = d.data());
+                    App.UI.renderMonitor();
+                }, (err) => console.error("extension_estado (¿falta en las reglas?)", err));
 
                 onSnapshot(collection(window.db, "operadores"), (snap) => {
                     App.state.operadores = {};
@@ -695,6 +761,7 @@
                 });
 
                 setInterval(App.UI.tickRelojes, 1000);
+                setInterval(App.UI.renderMonitor, 30000); // para que "desconectada" aparezca aunque no lleguen datos nuevos
                 document.getElementById('filtro-fecha-historial').value = App.state.fechaFiltro;
                 App.Firebase.listenReportes();
                 App.Firebase.listenSolicitudes();
