@@ -103,6 +103,10 @@
                 <label for="input-id" class="label !mb-0">Tu ID de asesor</label>
                 <input type="text" id="input-id" required autocomplete="off" inputmode="numeric" placeholder="Ej. 17884"
                        class="input tnum !h-12 !text-lg font-semibold tracking-wider uppercase placeholder:normal-case placeholder:tracking-normal placeholder:font-normal">
+                <div id="super-pass-box" class="hidden flex-col gap-2 mt-1">
+                    <label for="input-pass" class="label !mb-0 flex items-center gap-1.5"><i class="ph-bold ph-shield-check c-brand"></i> Contraseña de supervisor</label>
+                    <input type="password" id="input-pass" autocomplete="current-password" class="input !h-12" placeholder="Tu contraseña">
+                </div>
                 <button type="submit" id="btn-login" class="btn btn-primary btn-lg w-full mt-1">
                     Entrar <i class="ph-bold ph-arrow-right"></i>
                 </button>
@@ -291,7 +295,6 @@
                                 <th>Hora</th>
                                 <th>Pausa</th>
                                 <th class="!text-right">Duración</th>
-                                <th class="!text-center w-16 hidden md:table-cell"></th>
                             </tr>
                         </thead>
                         <tbody id="tabla-historial"></tbody>
@@ -372,35 +375,10 @@
         Desde el celular solo puedes consultar tus tiempos.
     </div>
 
-    <!-- Modal de edición -->
-    <div id="modal-edicion" class="hidden backdrop flex items-center justify-center p-4">
-        <div id="modal-content" class="modal w-full max-w-sm p-6 scale-95">
-            <div class="icon-tile icon-tile-lg soft-brand c-brand mb-4"><i class="ph-bold ph-pencil-simple"></i></div>
-            <h3 class="text-lg font-bold text-1">Editar tiempo</h3>
-            <p class="muted text-sm mt-1 mb-5" id="modal-desc">Ajusta la duración exacta de este registro.</p>
-
-            <div class="flex items-end gap-3 mb-6">
-                <div class="flex-1">
-                    <label class="label text-center">Minutos</label>
-                    <input type="number" id="edit-min" min="0" class="input tnum !h-14 text-center !text-2xl font-bold">
-                </div>
-                <div class="text-2xl font-bold subtle pb-3">:</div>
-                <div class="flex-1">
-                    <label class="label text-center">Segundos</label>
-                    <input type="number" id="edit-sec" min="0" max="59" class="input tnum !h-14 text-center !text-2xl font-bold">
-                </div>
-            </div>
-
-            <div class="flex gap-2.5">
-                <button onclick="cerrarModal()" class="btn btn-secondary flex-1">Cancelar</button>
-                <button onclick="guardarEdicion()" class="btn btn-primary flex-1">Guardar</button>
-            </div>
-        </div>
-    </div>
-
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         import { getFirestore, collection, onSnapshot, doc, getDoc, updateDoc, setDoc, addDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import { getAuth, signInWithEmailAndPassword, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
 
         const firebaseConfig = {
             apiKey: "AIzaSyBKYconuZXn53Eb4EJFsHj4rYaO0eK6liQ",
@@ -413,6 +391,45 @@
 
         const app = initializeApp(firebaseConfig);
         const db = getFirestore(app);
+        const auth = getAuth(app);
+
+        // ===== Supervisor: el ID 17620 entra al panel (con su contraseña de Firebase) =====
+        const SUPERVISOR_ID = '17620';
+        const SUPERVISOR_EMAIL = '17620@omt.godsplan.site';
+        const passBox = document.getElementById('super-pass-box');
+        const esSuper = () => document.getElementById('input-id').value.trim() === SUPERVISOR_ID;
+        document.getElementById('input-id').addEventListener('input', () => {
+            passBox.classList.toggle('hidden', !esSuper());
+            passBox.classList.toggle('flex', esSuper());
+            document.getElementById('btn-login').innerHTML = esSuper() ? 'Entrar al panel <i class="ph-bold ph-arrow-right"></i>' : 'Entrar <i class="ph-bold ph-arrow-right"></i>';
+            document.getElementById('login-error').classList.add('hidden');
+        });
+        // Si el supervisor ya tiene sesión, directo al panel
+        onAuthStateChanged(auth, (u) => { if (u && u.email === SUPERVISOR_EMAIL && !localStorage.getItem('asesorDashboard')) location.replace('super/dash.html'); });
+
+        async function entrarSupervisor() {
+            const btn = document.getElementById('btn-login');
+            const errorMsg = document.getElementById('login-error');
+            const pass = document.getElementById('input-pass').value;
+            if (!pass) { document.getElementById('input-pass').focus(); return; }
+            btn.innerHTML = '<span class="spinner"></span>'; btn.disabled = true; errorMsg.classList.add('hidden');
+            try {
+                await signInWithEmailAndPassword(auth, SUPERVISOR_EMAIL, pass);
+                location.replace('super/dash.html');
+            } catch (e) {
+                const msgs = {
+                    'auth/invalid-credential': 'Contraseña incorrecta.',
+                    'auth/wrong-password': 'Contraseña incorrecta.',
+                    'auth/user-not-found': 'El usuario de supervisor no existe en Firebase.',
+                    'auth/too-many-requests': 'Demasiados intentos. Espera unos minutos.',
+                    'auth/operation-not-allowed': 'Activa "Correo electrónico/contraseña" en Firebase Authentication.',
+                    'auth/network-request-failed': 'Sin conexión a internet.'
+                };
+                errorMsg.innerHTML = '<i class="ph-bold ph-warning-circle"></i> ' + (msgs[e.code] || 'No se pudo entrar (' + (e.code || 'error') + ').');
+                errorMsg.classList.remove('hidden');
+                btn.innerHTML = 'Entrar al panel <i class="ph-bold ph-arrow-right"></i>'; btn.disabled = false;
+            }
+        }
 
         // -- VARIABLES GLOBALES --
         let asesorDatos = JSON.parse(localStorage.getItem('asesorDashboard')) || null;
@@ -420,7 +437,6 @@
         let sesionFirebase = { tiemposAcumulados: { bath: 0, food: 0, quality: 0 }, estadoActivo: null, tiempoInicioEstado: null };
         let timerRelojes = null;
         let misRegistrosTotales = [];
-        let logEnEdicion = null;
         const CIRC = 2 * Math.PI * 52;
 
         const getFechaISO = (dateObj = new Date()) => {
@@ -451,6 +467,7 @@
             const btn = document.getElementById('btn-login');
             const errorMsg = document.getElementById('login-error');
             if (!inputId) return;
+            if (inputId === SUPERVISOR_ID) return entrarSupervisor();
 
             btn.innerHTML = `<span class="spinner"></span>`;
             btn.disabled = true; errorMsg.classList.add('hidden');
@@ -729,50 +746,13 @@
                         <td class="tnum muted">${horaStr}</td>
                         <td><span class="chip ${meta.chip}"><i class="ph-fill ${meta.icon}"></i> ${meta.label}</span></td>
                         <td class="!text-right tnum font-semibold">${formatTiempo(log.duracion_segundos)}</td>
-                        <td class="!text-center hidden md:table-cell">
-                            <button onclick="abrirModal('${log.id}', ${log.duracion_segundos})" class="btn btn-ghost btn-icon btn-sm opacity-0 group-hover:opacity-100 focus:opacity-100" title="Editar">
-                                <i class="ph-bold ph-pencil-simple"></i>
-                            </button>
-                        </td>
                     </tr>`;
             });
 
-            tbody.innerHTML = html || `<tr><td colspan="4" class="empty"><i class="ph ph-coffee"></i>No hay pausas registradas en esta fecha.</td></tr>`;
+            tbody.innerHTML = html || `<tr><td colspan="3" class="empty"><i class="ph ph-coffee"></i>No hay pausas registradas en esta fecha.</td></tr>`;
             document.getElementById('hist-tot-bath').innerText = formatTiempo(totalB);
             document.getElementById('hist-tot-food').innerText = formatTiempo(totalC);
             document.getElementById('hist-tot-quality').innerText = formatTiempo(totalQ);
-        };
-
-        // --- MODAL DE EDICIÓN ---
-        window.abrirModal = function(id, segTotales) {
-            if (window.innerWidth < 768) { mostrarToastMovil(); return; }
-            logEnEdicion = id;
-            document.getElementById('edit-min').value = Math.floor(segTotales / 60);
-            document.getElementById('edit-sec').value = segTotales % 60;
-
-            const modal = document.getElementById('modal-edicion');
-            const content = document.getElementById('modal-content');
-            modal.classList.remove('hidden');
-            setTimeout(() => { content.classList.remove('scale-95'); content.classList.add('scale-100'); }, 10);
-        };
-
-        window.cerrarModal = function() {
-            const modal = document.getElementById('modal-edicion');
-            const content = document.getElementById('modal-content');
-            content.classList.remove('scale-100'); content.classList.add('scale-95');
-            setTimeout(() => { modal.classList.add('hidden'); logEnEdicion = null; }, 200);
-        };
-
-        window.guardarEdicion = async function() {
-            if (!logEnEdicion) return;
-            const min = parseInt(document.getElementById('edit-min').value) || 0;
-            const sec = parseInt(document.getElementById('edit-sec').value) || 0;
-            try {
-                await updateDoc(doc(db, "registros_tiempos", logEnEdicion), { duracion_segundos: (min * 60) + sec });
-                cerrarModal();
-            } catch (error) {
-                console.error("Error al editar:", error);
-            }
         };
 
         // =====================================================================

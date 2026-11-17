@@ -4,10 +4,6 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Auditoría · Adherencia</title>
-    <script>
-        // Solo supervisores con sesión del día (se entra desde dash.html)
-        if (localStorage.getItem('wfm_admin_auth') !== new Date().toLocaleDateString()) location.replace('dash.html');
-    </script>
 
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -16,8 +12,9 @@
     <script src="../assets/theme.js"></script>
     <script src="https://unpkg.com/@phosphor-icons/web"></script>
     <link rel="stylesheet" href="../assets/ui.css">
+    <style>.auth-pending .app-shell, .auth-pending .mobile-nav { visibility: hidden; }</style>
 </head>
-<body>
+<body class="auth-pending">
     <div class="app-shell">
         <!-- SIDEBAR -->
         <aside class="sidebar">
@@ -28,14 +25,13 @@
             <nav class="nav-section flex-1 flex flex-col gap-1">
                 <p class="eyebrow px-3 mb-1.5">Operación</p>
                 <a href="dash.html" class="nav-item"><i class="ph-bold ph-broadcast"></i> Monitor en vivo</a>
-                <a href="dash.html#permisos" class="nav-item"><i class="ph-bold ph-calendar-check"></i> Permisos</a>
                 <p class="eyebrow px-3 mt-4 mb-1.5">Administración</p>
                 <a href="agentes.html" class="nav-item"><i class="ph-bold ph-users"></i> Personal</a>
                 <a href="logs.html" class="nav-item active"><i class="ph-bold ph-scroll"></i> Auditoría</a>
             </nav>
             <div class="p-3 border-t divider flex flex-col gap-1">
                 <button onclick="toggleTheme()" class="nav-item"><i data-theme-icon class="ph-bold ph-moon"></i> Cambiar tema</button>
-                <button onclick="localStorage.removeItem('wfm_admin_auth'); location.href='dash.html'" class="nav-item"><i class="ph-bold ph-sign-out"></i> Cerrar sesión</button>
+                <button onclick="cerrarSesionSuper()" class="nav-item"><i class="ph-bold ph-sign-out"></i> Cerrar sesión</button>
             </div>
         </aside>
 
@@ -91,7 +87,6 @@
 
     <nav class="mobile-nav">
         <a href="dash.html"><i class="ph-bold ph-broadcast"></i>Monitor</a>
-        <a href="dash.html#permisos"><i class="ph-bold ph-calendar-check"></i>Permisos</a>
         <a href="agentes.html"><i class="ph-bold ph-users"></i>Personal</a>
         <a href="logs.html" class="active"><i class="ph-bold ph-scroll"></i>Auditoría</a>
     </nav>
@@ -99,9 +94,21 @@
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         import { getFirestore, collection, getDocs, query, where, orderBy } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import { getAuth, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
 
         const app = initializeApp({ apiKey: "AIzaSyBKYconuZXn53Eb4EJFsHj4rYaO0eK6liQ", projectId: "tratocom-d38e7" });
         const db = getFirestore(app);
+
+        // Solo el supervisor (sesión de Firebase) puede ver esta página
+        const SUPERVISOR_EMAIL = '17620@omt.godsplan.site';
+        const auth = getAuth(app);
+        let __iniciado = false;
+        onAuthStateChanged(auth, (u) => {
+            if (!u || u.email !== SUPERVISOR_EMAIL) { location.replace('../index.html'); return; }
+            document.body.classList.remove('auth-pending');
+            if (!__iniciado) { __iniciado = true; __arrancar(); }
+        });
+        window.cerrarSesionSuper = async () => { await signOut(auth); location.replace('../index.html'); };
 
         const getFechaISO = (date) => new Date(date.getTime() - (date.getTimezoneOffset() * 60000)).toISOString().split('T')[0];
         document.getElementById('fecha-inicio').value = getFechaISO(new Date());
@@ -222,8 +229,8 @@
             document.body.appendChild(link); link.click(); link.remove();
         };
 
-        // Consulta automática del día al abrir
-        buscarLogs();
+        // Consulta automática del día al abrir (cuando ya hay sesión)
+        function __arrancar() { buscarLogs(); }
     </script>
 </body>
 </html>

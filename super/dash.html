@@ -12,8 +12,9 @@
     <script src="../assets/theme.js"></script>
     <script src="https://unpkg.com/@phosphor-icons/web"></script>
     <link rel="stylesheet" href="../assets/ui.css">
+    <style>.auth-pending .app-shell, .auth-pending .mobile-nav { visibility: hidden; }</style>
 </head>
-<body>
+<body class="auth-pending">
 
     <!-- Notificaciones -->
     <div id="notificacion" class="toast hidden">
@@ -36,25 +37,6 @@
             </div>
         </div>
 
-        <!-- Importar conexiones -->
-        <div id="modal-importar" class="modal w-full max-w-2xl p-6 scale-95 hidden m-auto">
-            <div class="flex items-start justify-between gap-4 mb-1">
-                <div class="flex items-center gap-3">
-                    <div class="icon-tile soft-brand c-brand"><i class="ph-bold ph-upload-simple"></i></div>
-                    <div>
-                        <h3 class="text-lg font-bold text-1 leading-tight">Importar reporte de conexiones</h3>
-                        <p class="muted text-sm">Pega las filas tal cual vienen del Excel.</p>
-                    </div>
-                </div>
-                <button onclick="App.Modals.cerrarTodos()" class="btn btn-ghost btn-icon btn-sm"><i class="ph-bold ph-x"></i></button>
-            </div>
-            <p class="subtle text-[13px] mt-4 mb-2">El sistema reconoce el XOC de cada fila y lo une con el ID del asesor automáticamente.</p>
-            <textarea id="import-textarea" class="input mono !text-xs h-52 mb-4" placeholder="Pega los datos aquí. Ejemplo:&#10;30/03/2026	X90G05Q	TORRES AVILA…"></textarea>
-            <div class="flex justify-end gap-2.5">
-                <button onclick="App.Modals.cerrarTodos()" class="btn btn-secondary">Cancelar</button>
-                <button id="btn-importar" onclick="App.Handlers.procesarImportacion()" class="btn btn-primary"><i class="ph-bold ph-check"></i> Procesar y guardar</button>
-            </div>
-        </div>
     </div>
 
     <!-- Panel lateral: ajustes -->
@@ -82,26 +64,18 @@
                     <div class="field"><i class="ph ph-clock-user"></i><input type="number" id="cfg-global-tolerancia" class="input tnum" min="0"></div>
                     <p class="hint">Después de estos minutos sobre su hora de entrada, el monitor lo marca como "tarde".</p>
                 </div>
+                <label class="flex items-start gap-3 mb-5 cursor-pointer surface-2 border divider rounded-xl p-3">
+                    <input type="checkbox" id="cfg-auto-expulsion" class="checkbox mt-0.5">
+                    <span><span class="text-sm font-semibold text-1 block">Desconexión automática</span><span class="text-[12.5px] muted">La extensión saca de Touchpoint al asesor que se pasa de su tiempo.</span></span>
+                </label>
                 <button onclick="App.Handlers.guardarGlobales()" class="btn btn-primary w-full"><i class="ph-bold ph-check"></i> Aplicar</button>
             </div>
         </div>
     </div>
 
-    <!-- LOGIN -->
-    <div id="vista-login-admin" class="auth-wrap fixed inset-0 z-50">
-        <div class="card auth-card fade-in" style="box-shadow: var(--shadow-lg)">
-            <div class="logo logo-lg mb-5"><i class="ph-bold ph-shield-check"></i></div>
-            <h1 class="text-[24px] font-bold tracking-tight text-1">Panel de supervisor</h1>
-            <p class="muted mt-1 mb-7">Ingresa tu palabra clave para continuar.</p>
-            <label class="label" for="pin-admin">Palabra clave</label>
-            <input type="password" id="pin-admin" autocomplete="off" placeholder="••••••" class="input !h-12 !text-lg tracking-[.3em] mb-4" onkeypress="if(event.key === 'Enter') App.Auth.login()">
-            <button onclick="App.Auth.login()" class="btn btn-primary btn-lg w-full">Entrar <i class="ph-bold ph-arrow-right"></i></button>
-        </div>
-    </div>
-
     <div class="app-shell">
         <!-- SIDEBAR -->
-        <aside class="sidebar hidden md:flex" id="sidebar-admin">
+        <aside class="sidebar" id="sidebar-admin">
             <div class="sidebar-brand">
                 <div class="logo"><i class="ph-bold ph-timer text-lg"></i></div>
                 <div class="leading-tight"><p class="font-semibold text-1 text-[15px]">Adherencia</p><p class="text-[12px] subtle">Panel de supervisor</p></div>
@@ -109,19 +83,18 @@
             <nav class="nav-section flex-1 flex flex-col gap-1">
                 <p class="eyebrow px-3 mb-1.5">Operación</p>
                 <button onclick="App.UI.cambiarSeccion('seccion-monitor', this)" data-sec="seccion-monitor" class="nav-item nav-sec active"><i class="ph-bold ph-broadcast"></i> Monitor en vivo</button>
-                <button onclick="App.UI.cambiarSeccion('seccion-vacaciones', this)" data-sec="seccion-vacaciones" class="nav-item nav-sec"><i class="ph-bold ph-calendar-check"></i> Permisos <span id="badge-pendientes" class="chip chip-brand !h-5 !px-1.5 ml-auto hidden">0</span></button>
                 <p class="eyebrow px-3 mt-4 mb-1.5">Administración</p>
                 <a href="agentes.html" class="nav-item"><i class="ph-bold ph-users"></i> Personal</a>
                 <a href="logs.html" class="nav-item"><i class="ph-bold ph-scroll"></i> Auditoría</a>
             </nav>
             <div class="p-3 border-t divider flex flex-col gap-1">
                 <button onclick="toggleTheme()" class="nav-item"><i data-theme-icon class="ph-bold ph-moon"></i> Cambiar tema</button>
-                <button onclick="App.Auth.logout()" class="nav-item"><i class="ph-bold ph-sign-out"></i> Cerrar sesión</button>
+                <button onclick="cerrarSesionSuper()" class="nav-item"><i class="ph-bold ph-sign-out"></i> Cerrar sesión</button>
             </div>
         </aside>
 
         <!-- MAIN -->
-        <main class="flex-1 flex flex-col min-w-0 hidden" id="vista-admin">
+        <main class="flex-1 flex flex-col min-w-0" id="vista-admin">
             <header class="topbar">
                 <div class="min-w-0">
                     <h1 class="text-[17px] font-semibold text-1 leading-tight truncate" id="header-title">Monitor en vivo</h1>
@@ -129,7 +102,6 @@
                 </div>
                 <div class="flex items-center gap-2">
                     <button onclick="App.Modals.abrirReset()" class="btn btn-secondary btn-sm hidden sm:inline-flex"><i class="ph-bold ph-arrow-counter-clockwise"></i> Reiniciar día</button>
-                    <button onclick="App.Modals.abrirImportar()" class="btn btn-primary btn-sm"><i class="ph-bold ph-upload-simple"></i> <span class="hidden sm:inline">Importar reporte</span></button>
                     <button onclick="App.Modals.abrirConfig()" class="btn btn-ghost btn-icon btn-sm" title="Límites globales"><i class="ph-bold ph-sliders-horizontal"></i></button>
                     <button onclick="toggleTheme()" class="btn btn-ghost btn-icon btn-sm md:hidden"><i data-theme-icon class="ph-bold ph-moon"></i></button>
                 </div>
@@ -169,7 +141,7 @@
                             </div>
                             <div class="field w-full sm:w-72">
                                 <i class="ph-bold ph-magnifying-glass"></i>
-                                <input type="text" id="search-monitor" onkeyup="App.UI.renderMonitor()" placeholder="Buscar por nombre, ID o XOC" class="input">
+                                <input type="text" id="search-monitor" onkeyup="App.UI.renderMonitor()" placeholder="Buscar por nombre o ID" class="input">
                             </div>
                         </div>
                         <div id="lista-activos" class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-4">
@@ -207,53 +179,20 @@
                 </div>
             </div>
 
-            <!-- SECCIÓN 2: PERMISOS -->
-            <div id="seccion-vacaciones" class="admin-section page hidden fade-in">
-                <div class="page-inner flex flex-col gap-5">
-                    <section class="card overflow-hidden">
-                        <div class="card-header">
-                            <div class="flex items-center gap-2.5">
-                                <div class="icon-tile soft-warn c-warn !w-8 !h-8 !text-base"><i class="ph-bold ph-bell-ringing"></i></div>
-                                <h2 class="h-card">Solicitudes pendientes</h2>
-                            </div>
-                        </div>
-                        <div class="overflow-x-auto">
-                            <table class="table min-w-[760px]">
-                                <thead><tr><th>Solicitud</th><th>Asesor</th><th>Motivo</th><th>Fechas</th><th class="!text-center">Días</th><th class="!text-right">Acciones</th></tr></thead>
-                                <tbody id="tabla-solicitudes-pendientes"></tbody>
-                            </table>
-                        </div>
-                    </section>
-                    <section class="card overflow-hidden">
-                        <div class="card-header">
-                            <div class="flex items-center gap-2.5">
-                                <div class="icon-tile soft-ok c-ok !w-8 !h-8 !text-base"><i class="ph-bold ph-calendar-check"></i></div>
-                                <h2 class="h-card">Historial de permisos</h2>
-                            </div>
-                        </div>
-                        <div class="overflow-x-auto">
-                            <table class="table min-w-[760px]">
-                                <thead><tr><th>Solicitud</th><th>Asesor</th><th>Motivo</th><th>Fechas</th><th class="!text-center">Días</th><th class="!text-right">Estado</th></tr></thead>
-                                <tbody id="tabla-solicitudes-historial"></tbody>
-                            </table>
-                        </div>
-                    </section>
-                </div>
-            </div>
         </main>
     </div>
 
     <!-- Navegación móvil -->
-    <nav class="mobile-nav hidden" id="mobile-nav">
+    <nav class="mobile-nav" id="mobile-nav">
         <button onclick="App.UI.cambiarSeccion('seccion-monitor', this)" data-sec="seccion-monitor" class="nav-sec active"><i class="ph-bold ph-broadcast"></i>Monitor</button>
-        <button onclick="App.UI.cambiarSeccion('seccion-vacaciones', this)" data-sec="seccion-vacaciones" class="nav-sec"><i class="ph-bold ph-calendar-check"></i>Permisos</button>
         <a href="agentes.html"><i class="ph-bold ph-users"></i>Personal</a>
         <a href="logs.html"><i class="ph-bold ph-scroll"></i>Auditoría</a>
     </nav>
 
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import { getFirestore, collection, onSnapshot, doc, getDocs, setDoc, updateDoc, query, orderBy, limit } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import { getFirestore, collection, onSnapshot, doc, setDoc, query, orderBy, limit } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import { getAuth, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
 
         const META = {
             bath:    { icon: 'ph-toilet',     label: 'Sanitario', chip: 'chip-bath',    c: 'c-bath',    bg: 'bg-bath' },
@@ -268,7 +207,6 @@
                 operadores: {},
                 sesiones: {},
                 registrosHistorial: [],
-                solicitudes: [],
                 extension: {},
                 fechaFiltro: new Date().toLocaleDateString('en-CA')
             },
@@ -339,37 +277,16 @@
             esc: (s) => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]))
         };
 
-        App.Auth = {
-            login: (silencioso = false) => {
-                const pinInput = document.getElementById('pin-admin');
-                const pin = pinInput ? pinInput.value.trim().toLowerCase() : '';
-                const hoy = Utils.fechaHoyNormal();
-
-                // Valida si el pin es correcto o si ya se había entrado hoy
-                if (pin === 'blqa' || (silencioso && localStorage.getItem('wfm_admin_auth') === hoy)) {
-                    if (pin === 'blqa') localStorage.setItem('wfm_admin_auth', hoy);
-
-                    document.getElementById('vista-login-admin').classList.add('hidden');
-                    document.getElementById('vista-admin').classList.remove('hidden');
-                    document.getElementById('sidebar-admin').classList.remove('hidden');
-                    document.getElementById('mobile-nav').classList.remove('hidden');
-                    document.getElementById('fecha-admin-display').innerText = new Date().toLocaleDateString('es-MX', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
-                    if (location.hash === '#permisos') App.UI.cambiarSeccion('seccion-vacaciones');
-                    App.Firebase.init();
-                } else if (!silencioso) {
-                    Utils.toast('Palabra clave incorrecta', 'error');
-                }
-            },
-            logout: () => {
-                localStorage.removeItem('wfm_admin_auth');
-                document.getElementById('vista-admin').classList.add('hidden');
-                document.getElementById('sidebar-admin').classList.add('hidden');
-                document.getElementById('mobile-nav').classList.add('hidden');
-                document.getElementById('vista-login-admin').classList.remove('hidden');
-                const pinInput = document.getElementById('pin-admin');
-                if (pinInput) pinInput.value = '';
-            }
-        };
+        // Solo el supervisor (sesión de Firebase) puede ver esta página
+        const SUPERVISOR_EMAIL = '17620@omt.godsplan.site';
+        const auth = getAuth(app);
+        onAuthStateChanged(auth, (u) => {
+            if (!u || u.email !== SUPERVISOR_EMAIL) { location.replace('../index.html'); return; }
+            document.body.classList.remove('auth-pending');
+            document.getElementById('fecha-admin-display').innerText = new Date().toLocaleDateString('es-MX', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+            if (!App.iniciado) { App.iniciado = true; App.Firebase.init(); }
+        });
+        window.cerrarSesionSuper = async () => { await signOut(auth); location.replace('../index.html'); };
 
         App.Modals = {
             abrirConfig: () => {
@@ -377,6 +294,7 @@
                 document.getElementById('cfg-global-bano').value = App.config.limites.bano;
                 document.getElementById('cfg-global-comida').value = App.config.limites.comida;
                 document.getElementById('cfg-global-tolerancia').value = App.config.toleranciaEntrada ?? 5;
+                document.getElementById('cfg-auto-expulsion').checked = App.config.autoExpulsion !== false;
                 o.classList.remove('hidden');
                 setTimeout(() => { o.classList.remove('opacity-0'); p.classList.remove('translate-x-full'); }, 10);
             },
@@ -392,87 +310,27 @@
                 setTimeout(() => { overlay.classList.remove('opacity-0'); m.classList.remove('scale-95'); }, 10);
             },
             abrirReset: () => App.Modals.abrir('modal-confirm-reset'),
-            abrirImportar: () => { document.getElementById('import-textarea').value = ''; App.Modals.abrir('modal-importar'); },
             cerrarTodos: () => {
                 const o = document.getElementById('modal-overlay');
                 o.classList.add('opacity-0');
-                ['modal-confirm-reset', 'modal-importar'].forEach(id => document.getElementById(id).classList.add('scale-95'));
+                ['modal-confirm-reset'].forEach(id => document.getElementById(id).classList.add('scale-95'));
                 setTimeout(() => {
                     o.classList.add('hidden');
-                    ['modal-confirm-reset', 'modal-importar'].forEach(id => document.getElementById(id).classList.add('hidden'));
+                    ['modal-confirm-reset'].forEach(id => document.getElementById(id).classList.add('hidden'));
                 }, 200);
             }
         };
 
         App.Handlers = {
-            procesarImportacion: async () => {
-                const text = document.getElementById('import-textarea').value.trim();
-                if (!text) { Utils.toast('Primero pega los datos.', 'error'); return; }
-
-                const btn = document.getElementById('btn-importar');
-                btn.disabled = true;
-
-                const batch = [];
-                let procesados = 0;
-
-                text.split('\n').forEach((row) => {
-                    const cols = row.split('\t');
-                    if (cols.length < 14 || cols[0].toLowerCase().includes('fecha')) return;
-
-                    const dateParts = cols[0].trim().split('/');
-                    const isoDate = dateParts.length === 3 ? `${dateParts[2]}-${dateParts[1]}-${dateParts[0]}` : cols[0].trim();
-                    const xocImportado = cols[1].trim().toUpperCase();
-                    if (!xocImportado) return;
-
-                    let asesorId = xocImportado;
-                    const operador = Object.values(App.state.operadores).find(o => (o.xoc && o.xoc.toUpperCase() === xocImportado) || o.id === xocImportado);
-                    if (operador) asesorId = operador.id;
-
-                    const dataToSave = {
-                        fecha_reporte: cols[0].trim(),
-                        fecha_iso: isoDate,
-                        asesor_id: asesorId,
-                        asesor_nombre: cols[2].trim(),
-                        hora_inicio: cols[3].trim(),
-                        hora_fin: cols[4].trim(),
-                        duracion_dia_laboral: cols[5].trim(),
-                        duracion_firmado: cols[6].trim(),
-                        llamadas_contestadas: parseInt(cols[7]) || 0,
-                        llamadas_salientes: parseInt(cols[8]) || 0,
-                        dato_extra: cols[9].trim(),
-                        desconexiones: cols[10].trim(),
-                        comida_total: cols[11].trim(),
-                        bano_total: cols[12].trim(),
-                        calidad_total: cols[13].trim(),
-                        timestamp_subida: Date.now()
-                    };
-                    batch.push(setDoc(doc(App.db, "conexiones_diarias", `${asesorId}_${isoDate}`), dataToSave, { merge: true }));
-                    procesados++;
-                });
-
-                if (procesados === 0) {
-                    Utils.toast("No se encontraron filas válidas para importar.", 'error');
-                    btn.disabled = false;
-                    return;
-                }
-
-                try {
-                    await Promise.all(batch);
-                    App.Modals.cerrarTodos();
-                    Utils.toast(`${procesados} registros importados.`);
-                } catch (error) {
-                    Utils.toast("Error al guardar los datos.", 'error');
-                } finally {
-                    btn.disabled = false;
-                }
-            },
             guardarGlobales: async () => {
                 const bano = parseInt(document.getElementById('cfg-global-bano').value) || 15;
                 const comida = parseInt(document.getElementById('cfg-global-comida').value) || 30;
                 const tol = parseInt(document.getElementById('cfg-global-tolerancia').value);
                 const toleranciaEntrada = isNaN(tol) ? 5 : Math.max(0, tol);
                 try {
-                    await setDoc(doc(App.db, "config", "global"), { limites: { bano, comida }, toleranciaEntrada }, { merge: true });
+                    const autoExpulsion = document.getElementById('cfg-auto-expulsion').checked;
+                    await setDoc(doc(App.db, "config", "global"), { limites: { bano, comida }, toleranciaEntrada, autoExpulsion }, { merge: true });
+                    App.config.autoExpulsion = autoExpulsion;
                     App.config.limites = { bano, comida };
                     App.config.toleranciaEntrada = toleranciaEntrada;
                     App.Modals.cerrarConfig(); Utils.toast("Ajustes aplicados.");
@@ -485,35 +343,11 @@
                         setDoc(doc(App.db, "sesiones_activas", id), { estadoActivo: null, tiempoInicioEstado: null, fecha: Utils.fechaHoyNormal(), tiemposAcumulados: { bath: 0, food: 0, quality: 0 } }, { merge: true })));
                     Utils.toast("Tiempos reiniciados a cero.");
                 } catch (err) { Utils.toast("Error al reiniciar.", "error"); }
-            },
-            responderSolicitud: async (id, estado, asesorId, dias, motivo) => {
-                if (!confirm(`¿Marcar esta solicitud como ${estado.toUpperCase()}?`)) return;
-                try {
-                    await updateDoc(doc(window.db, "solicitudes", id), { estado });
-                    // Si se aprueban vacaciones, se descuentan los días
-                    if (estado === 'aprobada' && motivo.includes('Vacaciones') && asesorId && App.state.operadores[asesorId]) {
-                        const vac = App.state.operadores[asesorId].vacaciones || { diasDisponibles: 0 };
-                        const nuevosDias = Math.max(0, (parseInt(vac.diasDisponibles) || 0) - dias);
-                        await updateDoc(doc(window.db, "operadores", asesorId), { "vacaciones.diasDisponibles": nuevosDias });
-                        Utils.toast(`Solicitud aprobada. Se descontaron ${dias} días de vacaciones.`);
-                    } else {
-                        Utils.toast(`Solicitud ${estado}.`);
-                    }
-                } catch (e) {
-                    Utils.toast("Error al procesar la solicitud.", "error");
-                }
             }
         };
 
         App.UI = {
-            cambiarSeccion: (seccionId) => {
-                document.querySelectorAll('.nav-sec').forEach(el => el.classList.toggle('active', el.dataset.sec === seccionId));
-                document.querySelectorAll('.admin-section').forEach(el => el.classList.add('hidden'));
-                document.getElementById(seccionId).classList.remove('hidden');
-                const titles = { 'seccion-monitor': 'Monitor en vivo', 'seccion-vacaciones': 'Permisos y vacaciones' };
-                document.getElementById('header-title').innerText = titles[seccionId] || 'Monitor en vivo';
-                history.replaceState(null, '', seccionId === 'seccion-vacaciones' ? '#permisos' : location.pathname);
-            },
+            cambiarSeccion: () => {},
             renderMonitor: () => {
                 const grid = document.getElementById('lista-activos');
                 const term = document.getElementById('search-monitor').value.toLowerCase();
@@ -678,39 +512,6 @@
                 document.getElementById('super-hist-tot-food').innerText = Utils.formatSeg(totC);
                 document.getElementById('super-hist-tot-quality').innerText = Utils.formatSeg(totQ);
                 tbody.innerHTML = rCount ? html : `<tr><td colspan="4" class="empty"><i class="ph ph-clock"></i>No hay pausas para este filtro.</td></tr>`;
-            },
-            renderSolicitudes: () => {
-                const tbPendientes = document.getElementById('tabla-solicitudes-pendientes');
-                const tbHistorial = document.getElementById('tabla-solicitudes-historial');
-                let htmlP = '', htmlH = '', pendientes = 0;
-
-                App.state.solicitudes.forEach(sol => {
-                    const op = App.state.operadores[sol.asesor_id];
-                    const nombre = op ? Utils.nombre(op) : (sol.asesor_nombre || 'Asesor');
-                    const motivoSafe = Utils.esc(sol.motivo).replace(/'/g, '&#39;');
-                    const acciones = sol.estado === 'pendiente'
-                        ? `<div class="flex justify-end gap-2">
-                               <button onclick="App.Handlers.responderSolicitud('${sol.id}', 'aprobada', '${sol.asesor_id}', ${sol.dias_solicitados}, '${motivoSafe}')" class="btn btn-success btn-sm"><i class="ph-bold ph-check"></i> Aprobar</button>
-                               <button onclick="App.Handlers.responderSolicitud('${sol.id}', 'rechazada', '${sol.asesor_id}', 0, '')" class="btn btn-danger btn-sm"><i class="ph-bold ph-x"></i> Rechazar</button>
-                           </div>`
-                        : `<span class="chip ${sol.estado === 'aprobada' ? 'chip-ok' : 'chip-danger'} capitalize">${Utils.esc(sol.estado)}</span>`;
-                    const row = `
-                        <tr>
-                            <td class="muted tnum">${new Date(sol.timestamp).toLocaleDateString('es-MX')}</td>
-                            <td><p class="font-medium leading-tight">${Utils.esc(nombre)}</p><p class="text-[12px] subtle tnum">ID ${Utils.esc(sol.asesor_id)}</p></td>
-                            <td><span class="chip chip-brand">${Utils.esc(sol.motivo)}</span></td>
-                            <td class="muted tnum">${Utils.esc(sol.fecha_inicio)} <span class="subtle">→</span> ${Utils.esc(sol.fecha_fin)}</td>
-                            <td class="!text-center tnum font-semibold">${sol.dias_solicitados}</td>
-                            <td class="!text-right">${acciones}</td>
-                        </tr>`;
-                    if (sol.estado === 'pendiente') { htmlP += row; pendientes++; } else htmlH += row;
-                });
-
-                tbPendientes.innerHTML = htmlP || `<tr><td colspan="6" class="empty"><i class="ph ph-check-circle"></i>No hay solicitudes pendientes.</td></tr>`;
-                tbHistorial.innerHTML = htmlH || `<tr><td colspan="6" class="empty"><i class="ph ph-tray"></i>Aún no hay historial de solicitudes.</td></tr>`;
-                const badge = document.getElementById('badge-pendientes');
-                badge.innerText = pendientes;
-                badge.classList.toggle('hidden', pendientes === 0);
             }
         };
 
@@ -723,20 +524,13 @@
                     App.UI.renderHistorialLocal();
                 }, (error) => console.error("Error escuchando reportes", error));
             },
-            listenSolicitudes: () => {
-                const q = query(collection(window.db, "solicitudes"), orderBy("timestamp", "desc"));
-                onSnapshot(q, (snap) => {
-                    App.state.solicitudes = [];
-                    snap.forEach(d => App.state.solicitudes.push({ id: d.id, ...d.data() }));
-                    App.UI.renderSolicitudes();
-                }, (error) => console.error("Error escuchando solicitudes", error));
-            },
             init: async () => {
                 onSnapshot(doc(window.db, "config", "global"), (d) => {
                     if (!d.exists()) return;
                     const c = d.data();
                     if (c.limites) App.config.limites = { ...App.config.limites, ...c.limites };
                     if (c.toleranciaEntrada !== undefined) App.config.toleranciaEntrada = c.toleranciaEntrada;
+                    App.config.autoExpulsion = c.autoExpulsion !== false;
                     App.UI.renderMonitor();
                 });
 
@@ -764,12 +558,10 @@
                 setInterval(App.UI.renderMonitor, 30000); // para que "desconectada" aparezca aunque no lleguen datos nuevos
                 document.getElementById('filtro-fecha-historial').value = App.state.fechaFiltro;
                 App.Firebase.listenReportes();
-                App.Firebase.listenSolicitudes();
             }
         };
 
         window.App = App;
-        App.Auth.login(true);
     </script>
 </body>
 </html>

@@ -4,10 +4,6 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Personal · Adherencia</title>
-    <script>
-        // Solo supervisores con sesión del día (se entra desde dash.html)
-        if (localStorage.getItem('wfm_admin_auth') !== new Date().toLocaleDateString()) location.replace('dash.html');
-    </script>
 
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -16,8 +12,9 @@
     <script src="../assets/theme.js"></script>
     <script src="https://unpkg.com/@phosphor-icons/web"></script>
     <link rel="stylesheet" href="../assets/ui.css">
+    <style>.auth-pending .app-shell, .auth-pending .mobile-nav { visibility: hidden; }</style>
 </head>
-<body>
+<body class="auth-pending">
 
     <!-- Notificaciones -->
     <div id="toast" class="toast hidden">
@@ -35,14 +32,13 @@
             <nav class="nav-section flex-1 flex flex-col gap-1">
                 <p class="eyebrow px-3 mb-1.5">Operación</p>
                 <a href="dash.html" class="nav-item"><i class="ph-bold ph-broadcast"></i> Monitor en vivo</a>
-                <a href="dash.html#permisos" class="nav-item"><i class="ph-bold ph-calendar-check"></i> Permisos</a>
                 <p class="eyebrow px-3 mt-4 mb-1.5">Administración</p>
                 <a href="agentes.html" class="nav-item active"><i class="ph-bold ph-users"></i> Personal</a>
                 <a href="logs.html" class="nav-item"><i class="ph-bold ph-scroll"></i> Auditoría</a>
             </nav>
             <div class="p-3 border-t divider flex flex-col gap-1">
                 <button onclick="toggleTheme()" class="nav-item"><i data-theme-icon class="ph-bold ph-moon"></i> Cambiar tema</button>
-                <button onclick="localStorage.removeItem('wfm_admin_auth'); location.href='dash.html'" class="nav-item"><i class="ph-bold ph-sign-out"></i> Cerrar sesión</button>
+                <button onclick="cerrarSesionSuper()" class="nav-item"><i class="ph-bold ph-sign-out"></i> Cerrar sesión</button>
             </div>
         </aside>
 
@@ -53,7 +49,7 @@
                 <header class="topbar">
                     <div class="min-w-0">
                         <h1 class="text-[17px] font-semibold text-1 leading-tight">Personal</h1>
-                        <p class="text-[12.5px] subtle">Perfiles, horarios y límites de tus asesores</p>
+                        <p class="text-[12.5px] subtle">Horarios y límites de tus asesores</p>
                     </div>
                     <div class="flex items-center gap-2">
                         <button onclick="App.UI.mostrarFormularioNuevo()" class="btn btn-primary btn-sm"><i class="ph-bold ph-plus"></i> Nuevo asesor</button>
@@ -66,7 +62,7 @@
                         <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
                             <div class="field w-full sm:max-w-sm">
                                 <i class="ph-bold ph-magnifying-glass"></i>
-                                <input type="text" id="search-input" onkeyup="App.Logic.filtrarTabla()" placeholder="Buscar por nombre, ID o XOC" class="input">
+                                <input type="text" id="search-input" onkeyup="App.Logic.filtrarTabla()" placeholder="Buscar por nombre o ID" class="input">
                             </div>
                             <p class="text-[13px] muted"><span id="count-total" class="font-semibold text-1 tnum">0</span> asesores</p>
                         </div>
@@ -75,10 +71,10 @@
                             <div class="overflow-x-auto">
                                 <table class="table min-w-[760px]">
                                     <thead>
-                                        <tr><th>Asesor</th><th>ID</th><th>XOC</th><th>Turno</th><th>Descanso</th><th class="!text-right"></th></tr>
+                                        <tr><th>Asesor</th><th>ID</th><th>Turno</th><th>Descanso</th><th class="!text-right"></th></tr>
                                     </thead>
                                     <tbody id="tabla-asesores">
-                                        <tr><td colspan="6" class="empty"><span class="spinner spinner-lg"></span></td></tr>
+                                        <tr><td colspan="5" class="empty"><span class="spinner spinner-lg"></span></td></tr>
                                     </tbody>
                                 </table>
                             </div>
@@ -115,20 +111,12 @@
                                     <label class="label">ID (con el que entra)</label>
                                     <input type="text" id="f-id" class="input tnum font-semibold" placeholder="Ej. 17884">
                                 </div>
-                                <div>
-                                    <label class="label">Código XOC (reportes)</label>
-                                    <input type="text" id="f-xoc" class="input tnum font-semibold uppercase" placeholder="Ej. X90G05Q">
-                                </div>
-                                <div>
-                                    <label class="label">Meta diaria (horas)</label>
-                                    <div class="field"><i class="ph-bold ph-target"></i><input type="number" id="f-meta" class="input tnum" placeholder="8"></div>
-                                </div>
                                 <div class="md:col-span-2">
                                     <label class="label">Nombre completo (como sale en telefonía)</label>
                                     <input type="text" id="f-nombre" class="input uppercase" placeholder="Ej. TORRES AVILA ALEJANDRA">
                                 </div>
-                                <div>
-                                    <label class="label">Nombre corto</label>
+                                <div class="md:col-span-3">
+                                    <label class="label">Nombre corto (el que se muestra en pantalla)</label>
                                     <input type="text" id="f-nombre-corto" class="input" placeholder="Ej. Alejandra Torres">
                                 </div>
                             </div>
@@ -167,16 +155,6 @@
                             </div>
                         </section>
 
-                        <!-- Vacaciones -->
-                        <section class="card">
-                            <div class="card-header"><div class="flex items-center gap-2.5"><div class="icon-tile soft-quality c-quality !w-8 !h-8 !text-base"><i class="ph-bold ph-airplane-tilt"></i></div><h3 class="h-card">Vacaciones y guardias</h3></div></div>
-                            <div class="card-pad grid grid-cols-1 md:grid-cols-3 gap-4">
-                                <div><label class="label">Días disponibles</label><input type="number" id="f-vacaciones" class="input tnum" placeholder="Ej. 6"></div>
-                                <div><label class="label">Próxima guardia</label><input type="date" id="f-g-fecha" class="input"></div>
-                                <div><label class="label">Horario de guardia</label><input type="text" id="f-g-hora" class="input" placeholder="Ej. 10:00 a 14:00"></div>
-                            </div>
-                        </section>
-
                         <!-- Eliminar -->
                         <div id="danger-zone" class="card p-5 flex flex-col md:flex-row justify-between md:items-center gap-4" style="border-color: var(--danger-border)">
                             <div>
@@ -195,7 +173,6 @@
     <!-- Navegación móvil -->
     <nav class="mobile-nav">
         <a href="dash.html"><i class="ph-bold ph-broadcast"></i>Monitor</a>
-        <a href="dash.html#permisos"><i class="ph-bold ph-calendar-check"></i>Permisos</a>
         <a href="agentes.html" class="active"><i class="ph-bold ph-users"></i>Personal</a>
         <a href="logs.html"><i class="ph-bold ph-scroll"></i>Auditoría</a>
     </nav>
@@ -203,6 +180,7 @@
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         import { getFirestore, collection, onSnapshot, doc, getDoc, setDoc, deleteDoc, updateDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import { getAuth, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
 
         const firebaseConfig = {
             apiKey: "AIzaSyBKYconuZXn53Eb4EJFsHj4rYaO0eK6liQ",
@@ -214,6 +192,17 @@
         };
         const app = initializeApp(firebaseConfig);
         const db = getFirestore(app);
+
+        // Solo el supervisor (sesión de Firebase) puede ver esta página
+        const SUPERVISOR_EMAIL = '17620@omt.godsplan.site';
+        const auth = getAuth(app);
+        let __iniciado = false;
+        onAuthStateChanged(auth, (u) => {
+            if (!u || u.email !== SUPERVISOR_EMAIL) { location.replace('../index.html'); return; }
+            document.body.classList.remove('auth-pending');
+            if (!__iniciado) { __iniciado = true; __arrancar(); }
+        });
+        window.cerrarSesionSuper = async () => { await signOut(auth); location.replace('../index.html'); };
 
         window.App = {
             state: { operadores: {}, sesiones: {}, editandoId: null },
@@ -277,7 +266,6 @@
                 });
                 document.getElementById('f-is-new').value = "true";
 
-                document.getElementById('f-meta').value = 8;
                 document.getElementById('f-turno').value = "09:00 a 17:00";
                 App.config.diasSemana.forEach(d => {
                     document.getElementById(`f-dia-${d}-activo`).checked = d !== 'domingo';
@@ -304,10 +292,8 @@
                 idInput.value = ag.id;
                 idInput.readOnly = true; // El ID no se cambia una vez creado
 
-                document.getElementById('f-xoc').value = ag.xoc || '';
                 document.getElementById('f-nombre').value = ag.nombre || '';
                 document.getElementById('f-nombre-corto').value = ag.nombreCorto || '';
-                document.getElementById('f-meta').value = ag.conexiones?.metaHoras || 8;
 
                 document.getElementById('f-c-bano').value = Utils.formatSeg(ses.tiemposAcumulados?.bath || 0);
                 document.getElementById('f-c-comida').value = Utils.formatSeg(ses.tiemposAcumulados?.food || 0);
@@ -317,9 +303,6 @@
                 document.getElementById('f-l-comida').value = ag.limites?.comida || '';
                 document.getElementById('f-l-calidad').value = ag.limites?.calidad || '';
 
-                document.getElementById('f-vacaciones').value = ag.vacaciones?.diasDisponibles || 0;
-                document.getElementById('f-g-fecha').value = ag.vacaciones?.proximaGuardia || '';
-                document.getElementById('f-g-hora').value = ag.vacaciones?.horarioGuardia || '';
 
                 document.getElementById('f-turno').value = ag.horarios?.turno || '';
                 App.config.diasSemana.forEach(d => {
@@ -340,7 +323,7 @@
                 const tbody = document.getElementById('tabla-asesores');
                 const search = document.getElementById('search-input').value.toLowerCase();
                 const lista = Object.values(App.state.operadores)
-                    .filter(ag => !search || (ag.nombre || '').toLowerCase().includes(search) || (ag.nombreCorto || '').toLowerCase().includes(search) || ag.id.toLowerCase().includes(search) || (ag.xoc && ag.xoc.toLowerCase().includes(search)))
+                    .filter(ag => !search || (ag.nombre || '').toLowerCase().includes(search) || (ag.nombreCorto || '').toLowerCase().includes(search) || ag.id.toLowerCase().includes(search))
                     .sort((a, b) => (a.nombreCorto || a.nombre || '').localeCompare(b.nombreCorto || b.nombre || ''));
 
                 tbody.innerHTML = lista.map(ag => {
@@ -355,12 +338,11 @@
                                 </div>
                             </td>
                             <td class="tnum font-medium">${Utils.esc(ag.id)}</td>
-                            <td class="tnum muted">${ag.xoc ? Utils.esc(ag.xoc) : '<span class="subtle">—</span>'}</td>
                             <td>${ag.horarios?.turno ? `<span class="chip chip-neutral tnum">${Utils.esc(ag.horarios.turno)}</span>` : '<span class="subtle">Sin turno</span>'}</td>
                             <td class="muted">${descanso || '<span class="subtle">—</span>'}</td>
                             <td class="!text-right"><span class="btn btn-ghost btn-sm"><i class="ph-bold ph-pencil-simple"></i> Editar</span></td>
                         </tr>`;
-                }).join('') || `<tr><td colspan="6" class="empty"><i class="ph ph-magnifying-glass"></i>No se encontraron asesores.</td></tr>`;
+                }).join('') || `<tr><td colspan="5" class="empty"><i class="ph ph-magnifying-glass"></i>No se encontraron asesores.</td></tr>`;
                 document.getElementById('count-total').innerText = lista.length;
             }
         };
@@ -379,8 +361,6 @@
 
                 const nombre = document.getElementById('f-nombre').value.trim().toUpperCase();
                 const nombreCorto = document.getElementById('f-nombre-corto').value.trim();
-                const xoc = document.getElementById('f-xoc').value.trim().toUpperCase();
-                const metaHoras = parseInt(document.getElementById('f-meta').value) || 8;
 
                 const lB = parseInt(document.getElementById('f-l-bano').value);
                 const lC = parseInt(document.getElementById('f-l-comida').value);
@@ -392,11 +372,6 @@
                     quality: Utils.parseTime(document.getElementById('f-c-calidad').value)
                 };
 
-                const vacaciones = {
-                    diasDisponibles: parseInt(document.getElementById('f-vacaciones').value) || 0,
-                    proximaGuardia: document.getElementById('f-g-fecha').value || '',
-                    horarioGuardia: document.getElementById('f-g-hora').value || ''
-                };
 
                 const horarios = { turno: document.getElementById('f-turno').value || '' };
                 App.config.diasSemana.forEach(d => {
@@ -408,10 +383,9 @@
                 });
 
                 const docData = {
-                    id, xoc, nombre, nombreCorto,
+                    id, nombre, nombreCorto,
                     limites: { bano: isNaN(lB) ? null : lB, comida: isNaN(lC) ? null : lC, calidad: isNaN(lCal) ? null : lCal },
-                    conexiones: { metaHoras },
-                    vacaciones, horarios
+                    horarios
                 };
 
                 try {
@@ -463,7 +437,7 @@
             });
         }
 
-        init();
+        function __arrancar() { init(); }
     </script>
 </body>
 </html>
