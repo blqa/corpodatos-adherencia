@@ -6,8 +6,10 @@
  *  (scripts, autenticación, aplicativos, directorio) ya vive en la página.
  *
  *  Cómo se usa (una sola vez):
- *    1. Pega este código en Extensiones → Apps Script y guarda.
- *    2. Recarga la hoja: aparece el menú "🌐 Página OMT".
+ *    1. En Extensiones → Apps Script crea un archivo nuevo (+ → Secuencia
+ *       de comandos) llamado Pagina, pega este código y guarda.
+ *    2. En el onOpen() del otro archivo agrega la línea  menuPagina_();
+ *       y recarga la hoja: aparecen los menús "OMT" y "🌐 Página OMT".
  *    3. 🌐 Página OMT → "1. Configurar contraseña" (la del usuario
  *       hoja@omt.godsplan.site que creaste en Firebase).
  *    4. 🌐 Página OMT → "2. Activar actualización diaria".
@@ -29,7 +31,9 @@ const CONFIG = {
 // ---------------------------------------------------------------------
 // Menú
 // ---------------------------------------------------------------------
-function onOpen() {
+// OJO: este archivo NO tiene onOpen propio, porque en la hoja ya existe
+// otro script con su menú "OMT". Ese onOpen llama a menuPagina_().
+function menuPagina_() {
   SpreadsheetApp.getUi().createMenu('🌐 Página OMT')
     .addItem('1. Configurar contraseña', 'configurarContrasena')
     .addItem('2. Activar actualización diaria (12:00)', 'activarDiario')
