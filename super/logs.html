@@ -3,272 +3,227 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Auditoría Maestra - Control de Tiempos</title>
-    
+    <title>Auditoría · Adherencia</title>
+    <script>
+        // Solo supervisores con sesión del día (se entra desde dash.html)
+        if (localStorage.getItem('wfm_admin_auth') !== new Date().toLocaleDateString()) location.replace('dash.html');
+    </script>
+
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <script src="https://cdn.tailwindcss.com"></script>
+    <script src="../assets/theme.js"></script>
     <script src="https://unpkg.com/@phosphor-icons/web"></script>
-    
-    <script>
-        tailwind.config = {
-            theme: { extend: { fontFamily: { sans: ['Inter', 'sans-serif'] } } }
-        }
-    </script>
-    <style>
-        .custom-scrollbar::-webkit-scrollbar { width: 6px; height: 6px; }
-        .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
-        .custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
-        .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
-        .glass-panel { background: rgba(255, 255, 255, 0.90); backdrop-filter: blur(12px); }
-    </style>
+    <link rel="stylesheet" href="../assets/ui.css">
 </head>
-<body class="bg-slate-50 min-h-screen text-slate-800 antialiased flex flex-col">
-
-    <!-- Navbar Superior -->
-    <nav class="glass-panel sticky top-0 z-40 px-6 h-16 flex items-center justify-between border-b border-slate-200 shadow-sm">
-        <div class="flex items-center gap-4">
-            <a href="supervisor.html" class="p-2 bg-slate-100 hover:bg-slate-200 rounded-lg text-slate-500 transition-colors" title="Volver al Dashboard">
-                <i class="ph-bold ph-arrow-left text-lg"></i>
-            </a>
-            <div>
-                <h1 class="text-lg font-black text-slate-900 leading-tight">Auditoría<span class="text-blue-600">Maestra</span></h1>
-                <p class="text-[10px] text-slate-500 font-bold tracking-widest uppercase">Logs Avanzados</p>
+<body>
+    <div class="app-shell">
+        <!-- SIDEBAR -->
+        <aside class="sidebar">
+            <div class="sidebar-brand">
+                <div class="logo"><i class="ph-bold ph-timer text-lg"></i></div>
+                <div class="leading-tight"><p class="font-semibold text-1 text-[15px]">Adherencia</p><p class="text-[12px] subtle">Panel de supervisor</p></div>
             </div>
-        </div>
-        <button onclick="exportarCSV()" class="bg-emerald-600 hover:bg-emerald-500 text-white px-4 py-2 rounded-xl text-sm font-bold shadow-md shadow-emerald-200 transition-colors flex items-center gap-2">
-            <i class="ph-bold ph-download-simple"></i> Exportar a CSV
-        </button>
+            <nav class="nav-section flex-1 flex flex-col gap-1">
+                <p class="eyebrow px-3 mb-1.5">Operación</p>
+                <a href="dash.html" class="nav-item"><i class="ph-bold ph-broadcast"></i> Monitor en vivo</a>
+                <a href="dash.html#permisos" class="nav-item"><i class="ph-bold ph-calendar-check"></i> Permisos</a>
+                <p class="eyebrow px-3 mt-4 mb-1.5">Administración</p>
+                <a href="agentes.html" class="nav-item"><i class="ph-bold ph-users"></i> Personal</a>
+                <a href="logs.html" class="nav-item active"><i class="ph-bold ph-scroll"></i> Auditoría</a>
+            </nav>
+            <div class="p-3 border-t divider flex flex-col gap-1">
+                <button onclick="toggleTheme()" class="nav-item"><i data-theme-icon class="ph-bold ph-moon"></i> Cambiar tema</button>
+                <button onclick="localStorage.removeItem('wfm_admin_auth'); location.href='dash.html'" class="nav-item"><i class="ph-bold ph-sign-out"></i> Cerrar sesión</button>
+            </div>
+        </aside>
+
+        <main class="flex-1 flex flex-col min-w-0">
+            <header class="topbar">
+                <div class="min-w-0">
+                    <h1 class="text-[17px] font-semibold text-1 leading-tight">Auditoría</h1>
+                    <p class="text-[12.5px] subtle">Conexiones, pausas y desconexiones registradas por la extensión</p>
+                </div>
+                <div class="flex items-center gap-2">
+                    <button onclick="exportarCSV()" class="btn btn-secondary btn-sm"><i class="ph-bold ph-file-csv"></i> <span class="hidden sm:inline">Exportar CSV</span></button>
+                    <button onclick="toggleTheme()" class="btn btn-ghost btn-icon btn-sm md:hidden"><i data-theme-icon class="ph-bold ph-moon"></i></button>
+                </div>
+            </header>
+
+            <div class="page">
+                <div class="page-inner flex flex-col gap-5">
+
+                    <!-- Filtros -->
+                    <form onsubmit="buscarLogs(event)" class="card card-pad grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-[1fr_1fr_1.4fr_auto] gap-3 items-end">
+                        <div><label class="label">Desde</label><input type="date" id="fecha-inicio" required class="input"></div>
+                        <div><label class="label">Hasta</label><input type="date" id="fecha-fin" required class="input"></div>
+                        <div><label class="label">Asesor (opcional)</label><div class="field"><i class="ph-bold ph-magnifying-glass"></i><input type="text" id="filtro-agente" placeholder="ID o nombre" class="input"></div></div>
+                        <button type="submit" id="btn-buscar" class="btn btn-primary"><i class="ph-bold ph-magnifying-glass"></i> Consultar</button>
+                    </form>
+
+                    <!-- Resumen por tipo -->
+                    <div class="grid grid-cols-2 md:grid-cols-4 gap-3" id="resumen-tipos">
+                        <div class="card px-4 py-3"><p class="text-[12px] subtle flex items-center gap-1.5"><i class="ph-bold ph-sign-in c-ok"></i> Conexiones</p><p class="tnum text-xl font-semibold text-1" id="cnt-login">—</p></div>
+                        <div class="card px-4 py-3"><p class="text-[12px] subtle flex items-center gap-1.5"><i class="ph-bold ph-coffee c-brand"></i> Pausas</p><p class="tnum text-xl font-semibold text-1" id="cnt-break">—</p></div>
+                        <div class="card px-4 py-3"><p class="text-[12px] subtle flex items-center gap-1.5"><i class="ph-bold ph-sign-out muted"></i> Salidas manuales</p><p class="tnum text-xl font-semibold text-1" id="cnt-logout">—</p></div>
+                        <div class="card px-4 py-3"><p class="text-[12px] subtle flex items-center gap-1.5"><i class="ph-bold ph-warning c-danger"></i> Desconectados por tiempo</p><p class="tnum text-xl font-semibold c-danger" id="cnt-kick">—</p></div>
+                    </div>
+
+                    <!-- Resultados -->
+                    <div class="card overflow-hidden flex flex-col">
+                        <div class="overflow-auto max-h-[calc(100vh-360px)] min-h-[260px]">
+                            <table class="table min-w-[980px]">
+                                <thead>
+                                    <tr><th>Fecha</th><th>Asesor</th><th>Evento</th><th>Detalle</th><th>Inicio</th><th>Fin</th><th class="!text-right">Duración</th></tr>
+                                </thead>
+                                <tbody id="tabla-auditoria">
+                                    <tr><td colspan="7" class="empty"><i class="ph ph-magnifying-glass"></i>Elige un rango de fechas y presiona Consultar.</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                        <div class="px-4 py-2.5 border-t divider text-[12.5px] subtle" id="resumen-resultados">Esperando consulta…</div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <nav class="mobile-nav">
+        <a href="dash.html"><i class="ph-bold ph-broadcast"></i>Monitor</a>
+        <a href="dash.html#permisos"><i class="ph-bold ph-calendar-check"></i>Permisos</a>
+        <a href="agentes.html"><i class="ph-bold ph-users"></i>Personal</a>
+        <a href="logs.html" class="active"><i class="ph-bold ph-scroll"></i>Auditoría</a>
     </nav>
-
-    <main class="max-w-[1600px] w-full mx-auto p-4 sm:p-6 flex-1 flex flex-col h-[calc(100vh-4rem)]">
-        
-        <!-- Panel de Filtros -->
-        <div class="bg-white p-5 rounded-3xl shadow-sm border border-slate-200 mb-6 shrink-0">
-            <h2 class="font-bold text-slate-800 mb-4 flex items-center gap-2 text-sm"><i class="ph-fill ph-funnel text-blue-500"></i> Filtros de Auditoría</h2>
-            <form onsubmit="buscarLogs(event)" class="grid grid-cols-1 md:grid-cols-4 gap-4">
-                
-                <div>
-                    <label class="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5">Fecha Inicial</label>
-                    <input type="date" id="fecha-inicio" required class="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm outline-none focus:border-blue-500 font-medium text-slate-700 bg-slate-50">
-                </div>
-                <div>
-                    <label class="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5">Fecha Final</label>
-                    <input type="date" id="fecha-fin" required class="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm outline-none focus:border-blue-500 font-medium text-slate-700 bg-slate-50">
-                </div>
-                <div>
-                    <label class="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5">Agente (Opcional)</label>
-                    <input type="text" id="filtro-agente" placeholder="ID o Nombre..." class="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm outline-none focus:border-blue-500 bg-slate-50">
-                </div>
-                <div class="flex items-end">
-                    <button type="submit" id="btn-buscar" class="w-full bg-slate-900 hover:bg-slate-800 text-white font-bold py-2.5 rounded-xl transition-colors shadow-md flex justify-center items-center gap-2">
-                        <i class="ph-bold ph-magnifying-glass"></i> Consultar Base de Datos
-                    </button>
-                </div>
-
-            </form>
-        </div>
-
-        <!-- Tabla de Resultados -->
-        <div class="bg-white rounded-3xl shadow-sm border border-slate-200 overflow-hidden flex flex-col flex-1">
-            <div class="overflow-x-auto overflow-y-auto flex-1 custom-scrollbar">
-                <table class="w-full text-left border-collapse min-w-[1000px]">
-                    <thead class="sticky top-0 bg-slate-50 shadow-sm z-10 border-b border-slate-200">
-                        <tr class="text-slate-500 text-[11px] uppercase tracking-wider">
-                            <th class="px-6 py-4 font-bold">Fecha</th>
-                            <th class="px-6 py-4 font-bold">Agente</th>
-                            <th class="px-6 py-4 font-bold">Evento / Acción</th>
-                            <th class="px-6 py-4 font-bold">Detalle (Estado)</th>
-                            <th class="px-6 py-4 font-bold">Hora Inicio</th>
-                            <th class="px-6 py-4 font-bold">Hora Fin</th>
-                            <th class="px-6 py-4 font-bold text-right">Duración</th>
-                        </tr>
-                    </thead>
-                    <tbody id="tabla-auditoria" class="divide-y divide-slate-100 text-sm">
-                        <tr><td colspan="7" class="text-center py-16 text-slate-400 font-bold"><i class="ph-fill ph-magnifying-glass text-4xl mb-3 block opacity-50"></i>Selecciona un rango de fechas y presiona "Consultar".</td></tr>
-                    </tbody>
-                </table>
-            </div>
-            <div class="bg-slate-50 p-3 border-t border-slate-200 text-xs text-slate-500 font-medium text-center" id="resumen-resultados">
-                Esperando consulta...
-            </div>
-        </div>
-
-    </main>
 
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         import { getFirestore, collection, getDocs, query, where, orderBy } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
-        const firebaseConfig = {
-            apiKey: "AIzaSyBKYconuZXn53Eb4EJFsHj4rYaO0eK6liQ",
-            projectId: "tratocom-d38e7"
-        };
-
-        const app = initializeApp(firebaseConfig);
+        const app = initializeApp({ apiKey: "AIzaSyBKYconuZXn53Eb4EJFsHj4rYaO0eK6liQ", projectId: "tratocom-d38e7" });
         const db = getFirestore(app);
 
-        // Configurar fechas por defecto (Hoy)
         const getFechaISO = (date) => new Date(date.getTime() - (date.getTimezoneOffset() * 60000)).toISOString().split('T')[0];
         document.getElementById('fecha-inicio').value = getFechaISO(new Date());
         document.getElementById('fecha-fin').value = getFechaISO(new Date());
 
         let datosActuales = [];
+        const esc = (s) => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 
-        // Diccionario visual de Eventos
         const badges = {
-            'LOGIN': '<span class="px-2 py-1 bg-emerald-100 text-emerald-700 border border-emerald-200 text-[10px] font-black rounded-lg uppercase flex items-center gap-1 w-max"><i class="ph-bold ph-sign-in"></i> 1ra Conexión</span>',
-            'LOGOUT_MANUAL': '<span class="px-2 py-1 bg-slate-200 text-slate-600 border border-slate-300 text-[10px] font-black rounded-lg uppercase flex items-center gap-1 w-max"><i class="ph-bold ph-sign-out"></i> Salida Manual</span>',
-            'EXPULSION_SISTEMA': '<span class="px-2 py-1 bg-red-100 text-red-700 border border-red-300 text-[10px] font-black rounded-lg uppercase flex items-center gap-1 w-max shadow-sm"><i class="ph-bold ph-warning"></i> Botado por Sistema</span>',
-            'FIN_BREAK': '<span class="px-2 py-1 bg-blue-100 text-blue-700 border border-blue-200 text-[10px] font-black rounded-lg uppercase flex items-center gap-1 w-max"><i class="ph-bold ph-coffee"></i> Fin de Pausa</span>',
-            'FIN_TRABAJO': '<span class="px-2 py-1 bg-indigo-100 text-indigo-700 border border-indigo-200 text-[10px] font-black rounded-lg uppercase flex items-center gap-1 w-max"><i class="ph-bold ph-desktop"></i> Corte Estado</span>'
+            'LOGIN':             '<span class="chip chip-ok"><i class="ph-bold ph-sign-in"></i> Primera conexión</span>',
+            'LOGOUT_MANUAL':     '<span class="chip chip-neutral"><i class="ph-bold ph-sign-out"></i> Salida manual</span>',
+            'EXPULSION_SISTEMA': '<span class="chip chip-danger"><i class="ph-bold ph-warning"></i> Desconectado por tiempo</span>',
+            'FIN_BREAK':         '<span class="chip chip-brand"><i class="ph-bold ph-coffee"></i> Fin de pausa</span>',
+            'FIN_TRABAJO':       '<span class="chip chip-quality"><i class="ph-bold ph-desktop"></i> Cambio de estado</span>'
         };
+        const ESTADOS = {
+            bath: '<span class="flex items-center gap-1.5"><span class="dot bg-bath"></span>Baño</span>', 'Baño': null,
+            food: '<span class="flex items-center gap-1.5"><span class="dot bg-food"></span>Comida</span>', 'Comida': null,
+            quality: '<span class="flex items-center gap-1.5"><span class="dot bg-quality"></span>Calidad</span>', 'Calidad': null
+        };
+        ESTADOS['Baño'] = ESTADOS.bath; ESTADOS['Comida'] = ESTADOS.food; ESTADOS['Calidad'] = ESTADOS.quality;
 
         const formatearTiempo = (seg) => {
-            if(isNaN(seg) || seg === 0) return "--:--";
-            const m = Math.floor(seg / 60).toString().padStart(2, '0');
-            const s = (seg % 60).toString().padStart(2, '0');
-            return `${m}:${s}`;
+            if (isNaN(seg) || !seg) return "—";
+            const h = Math.floor(seg / 3600), m = Math.floor((seg % 3600) / 60), s = seg % 60;
+            return (h ? h + ':' + String(m).padStart(2, '0') : String(m).padStart(2, '0')) + ':' + String(s).padStart(2, '0');
         };
-
-        const formatearHora = (ms) => {
-            if(!ms) return '--:--';
-            return new Date(ms).toLocaleTimeString('es-ES', {hour: '2-digit', minute: '2-digit', second: '2-digit'});
-        };
+        const formatearHora = (ms) => ms ? new Date(ms).toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false }) : '—';
 
         window.buscarLogs = async function(e) {
-            e.preventDefault();
+            if (e) e.preventDefault();
             const btn = document.getElementById('btn-buscar');
             const tbody = document.getElementById('tabla-auditoria');
-            
             const fInicioStr = document.getElementById('fecha-inicio').value;
             const fFinStr = document.getElementById('fecha-fin').value;
             const agFiltro = document.getElementById('filtro-agente').value.trim().toLowerCase();
 
-            btn.innerHTML = `<div class="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>`;
+            btn.innerHTML = `<span class="spinner"></span>`;
             btn.disabled = true;
-            tbody.innerHTML = `<tr><td colspan="7" class="text-center py-16"><div class="w-8 h-8 border-4 border-slate-200 border-t-slate-800 rounded-full animate-spin mx-auto"></div></td></tr>`;
+            tbody.innerHTML = `<tr><td colspan="7" class="empty"><span class="spinner spinner-lg"></span></td></tr>`;
 
             try {
-                const startObj = new Date(fInicioStr + "T00:00:00");
-                const endObj = new Date(fFinStr + "T23:59:59");
-
-                const q = query(collection(db, "registros_tiempos"), 
-                    where("fecha", ">=", startObj), 
-                    where("fecha", "<=", endObj),
-                    orderBy("fecha", "desc")
-                );
-
+                const q = query(collection(db, "registros_tiempos"),
+                    where("fecha", ">=", new Date(fInicioStr + "T00:00:00")),
+                    where("fecha", "<=", new Date(fFinStr + "T23:59:59")),
+                    orderBy("fecha", "desc"));
                 const snap = await getDocs(q);
-                let datosCrudos = [];
 
+                const datosCrudos = [];
                 snap.forEach(doc => {
                     const d = doc.data();
-                    if (agFiltro && !d.asesor_nombre.toLowerCase().includes(agFiltro) && !d.asesor_id.toLowerCase().includes(agFiltro)) return;
+                    if (agFiltro && !(d.asesor_nombre || '').toLowerCase().includes(agFiltro) && !String(d.asesor_id || '').toLowerCase().includes(agFiltro)) return;
                     datosCrudos.push(d);
                 });
 
-                // --- FILTRO DE LIMPIEZA ANTI-ECOS ---
-                datosActuales = [];
-                for (let i = 0; i < datosCrudos.length; i++) {
-                    const d = datosCrudos[i];
-                    let esEco = false;
-                    
-                    // Si detectamos un Salida Manual (o corte) de 0-2 segundos
+                // Filtro anti-ecos: una salida de 0-2 s pegada al evento anterior (<15 s) es el rebote automático de la extensión
+                datosActuales = datosCrudos.filter((d, i) => {
                     if ((d.tipo_evento === 'LOGOUT_MANUAL' || d.tipo_evento === 'FIN_TRABAJO') && (!d.duracion_segundos || d.duracion_segundos < 3)) {
-                        // Revisamos el evento que sucedió JUSTO ANTES de este
-                        const eventoAnterior = datosCrudos[i+1]; 
-                        
-                        if (eventoAnterior && eventoAnterior.asesor_id === d.asesor_id) {
-                            // Calculamos la diferencia en tiempo real
-                            const diffMs = Math.abs(d.fin - eventoAnterior.fin);
-                            
-                            // Si la diferencia es menor a 15 segundos, sabemos que es el rebote automático de la extensión
-                            if (diffMs < 15000) {
-                                esEco = true; // Lo marcamos como "Eco" para ignorarlo
-                            }
-                        }
+                        const anterior = datosCrudos[i + 1];
+                        if (anterior && anterior.asesor_id === d.asesor_id && Math.abs(d.fin - anterior.fin) < 15000) return false;
                     }
-                    
-                    // Solo agregamos a la lista final los eventos que NO sean ecos
-                    if (!esEco) {
-                        datosActuales.push(d);
-                    }
-                }
-                // ------------------------------------
+                    return true;
+                });
+
+                const cuenta = (t) => datosActuales.filter(d => d.tipo_evento === t).length;
+                document.getElementById('cnt-login').innerText = cuenta('LOGIN');
+                document.getElementById('cnt-break').innerText = datosActuales.filter(d => d.tipo_evento === 'FIN_BREAK' || (!d.tipo_evento && ESTADOS[d.estado])).length;
+                document.getElementById('cnt-logout').innerText = cuenta('LOGOUT_MANUAL');
+                document.getElementById('cnt-kick').innerText = cuenta('EXPULSION_SISTEMA');
 
                 if (datosActuales.length === 0) {
-                    tbody.innerHTML = `<tr><td colspan="7" class="text-center py-16 text-slate-500 font-bold bg-slate-50">No se encontraron registros para estos filtros.</td></tr>`;
+                    tbody.innerHTML = `<tr><td colspan="7" class="empty"><i class="ph ph-tray"></i>No hay registros para estos filtros.</td></tr>`;
                     document.getElementById('resumen-resultados').innerText = '0 resultados';
                     return;
                 }
 
-                let html = '';
-                datosActuales.forEach(d => {
+                tbody.innerHTML = datosActuales.map(d => {
                     const fechaObj = d.fecha.toDate();
-                    const fechaStr = fechaObj.toLocaleDateString('es-ES', {day: '2-digit', month: 'short', year: 'numeric'});
-                    const badge = badges[d.tipo_evento] || `<span class="px-2 py-1 bg-slate-100 text-slate-600 rounded text-[10px] font-bold border">${d.tipo_evento || 'REGISTRO'}</span>`;
-                    
-                    let detalleEst = d.estado;
-                    if(detalleEst === 'bath') detalleEst = 'Baño';
-                    if(detalleEst === 'food') detalleEst = 'Comida';
-                    if(detalleEst === 'quality') detalleEst = 'Calidad';
-                    if(detalleEst === 'null') detalleEst = 'Trabajando';
-
-                    html += `
-                    <tr class="hover:bg-slate-50 transition-colors">
-                        <td class="px-6 py-4 text-xs font-bold text-slate-500 whitespace-nowrap">${fechaStr}</td>
-                        <td class="px-6 py-4"><div class="font-bold text-slate-800">${d.asesor_nombre}</div><div class="text-[10px] font-mono text-slate-400 mt-0.5">ID: ${d.asesor_id}</div></td>
-                        <td class="px-6 py-4">${badge}</td>
-                        <td class="px-6 py-4 text-xs font-bold text-slate-600 uppercase">${detalleEst}</td>
-                        <td class="px-6 py-4 font-mono text-xs text-slate-500">${formatearHora(d.inicio)}</td>
-                        <td class="px-6 py-4 font-mono text-xs text-slate-500">${formatearHora(d.fin)}</td>
-                        <td class="px-6 py-4 text-right font-mono font-black ${d.duracion_segundos > 0 ? 'text-blue-600' : 'text-slate-300'}">${formatearTiempo(d.duracion_segundos)}</td>
+                    const badge = badges[d.tipo_evento] || '<span class="chip chip-neutral"><i class="ph-bold ph-globe"></i> Registro web</span>';
+                    let detalle = ESTADOS[d.estado] || `<span class="muted">${esc(d.estado === 'null' || !d.estado ? 'Trabajando' : d.estado)}</span>`;
+                    const nombre = d.asesor_nombre || 'Sin nombre';
+                    return `
+                    <tr>
+                        <td class="muted whitespace-nowrap tnum">${fechaObj.toLocaleDateString('es-MX', { day: '2-digit', month: 'short' })}</td>
+                        <td><p class="font-medium leading-tight">${esc(nombre)}</p><p class="text-[12px] subtle tnum">ID ${esc(d.asesor_id)}</p></td>
+                        <td>${badge}</td>
+                        <td class="text-[13px]">${detalle}</td>
+                        <td class="tnum muted text-[13px]">${formatearHora(d.inicio)}</td>
+                        <td class="tnum muted text-[13px]">${formatearHora(d.fin || fechaObj.getTime())}</td>
+                        <td class="!text-right tnum font-semibold ${d.duracion_segundos > 0 ? 'text-1' : 'subtle'}">${formatearTiempo(d.duracion_segundos)}</td>
                     </tr>`;
-                });
-
-                tbody.innerHTML = html;
-                document.getElementById('resumen-resultados').innerText = `Se encontraron ${datosActuales.length} registros en el rango seleccionado.`;
+                }).join('');
+                document.getElementById('resumen-resultados').innerText = `${datosActuales.length} registros en el rango seleccionado`;
 
             } catch (error) {
                 console.error(error);
-                tbody.innerHTML = `<tr><td colspan="7" class="text-center py-16 text-red-500 font-bold bg-red-50">Error al consultar la base de datos.</td></tr>`;
+                tbody.innerHTML = `<tr><td colspan="7" class="empty c-danger"><i class="ph ph-warning-circle"></i>Error al consultar la base de datos.</td></tr>`;
             } finally {
-                btn.innerHTML = `<i class="ph-bold ph-magnifying-glass"></i> Consultar Base de Datos`;
+                btn.innerHTML = `<i class="ph-bold ph-magnifying-glass"></i> Consultar`;
                 btn.disabled = false;
             }
         };
 
         window.exportarCSV = function() {
-            if(datosActuales.length === 0) return alert('No hay datos para exportar.');
-            
-            let csvContent = "data:text/csv;charset=utf-8,";
-            csvContent += "Fecha,Hora Fin,Agente ID,Nombre,Tipo Evento,Estado,Inicio,Fin,Duracion Segundos\n";
-
+            if (datosActuales.length === 0) return alert('Primero consulta algún rango con resultados.');
+            const filas = [["Fecha", "Hora", "ID", "Nombre", "Evento", "Estado", "Inicio", "Fin", "Duración (s)"]];
             datosActuales.forEach(d => {
-                const fechaObj = d.fecha.toDate();
-                const fecha = fechaObj.toLocaleDateString();
-                const hora = fechaObj.toLocaleTimeString();
-                const hInicio = new Date(d.inicio).toLocaleTimeString();
-                const hFin = new Date(d.fin).toLocaleTimeString();
-                
-                let fila = [
-                    fecha, hora, d.asesor_id, `"${d.asesor_nombre}"`, 
-                    d.tipo_evento || 'REGISTRO', d.estado || '', 
-                    hInicio, hFin, d.duracion_segundos || 0
-                ];
-                csvContent += fila.join(",") + "\n";
+                const f = d.fecha.toDate();
+                filas.push([f.toLocaleDateString('es-MX'), f.toLocaleTimeString('es-MX'), d.asesor_id, d.asesor_nombre || '',
+                    d.tipo_evento || 'REGISTRO', d.estado || '', d.inicio ? new Date(d.inicio).toLocaleTimeString('es-MX') : '',
+                    d.fin ? new Date(d.fin).toLocaleTimeString('es-MX') : '', d.duracion_segundos || 0]);
             });
-
-            const encodedUri = encodeURI(csvContent);
-            const link = document.createElement("a");
-            link.setAttribute("href", encodedUri);
-            link.setAttribute("download", `auditoria_${Date.now()}.csv`);
-            document.body.appendChild(link);
-            link.click();
-            document.body.removeChild(link);
+            const csv = filas.map(r => r.map(v => `"${String(v).replace(/"/g, '""')}"`).join(',')).join('\n');
+            const blob = new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8' }); // BOM para que Excel respete acentos
+            const link = document.createElement('a');
+            link.href = URL.createObjectURL(blob);
+            link.download = `auditoria_${document.getElementById('fecha-inicio').value}_a_${document.getElementById('fecha-fin').value}.csv`;
+            document.body.appendChild(link); link.click(); link.remove();
         };
+
+        // Consulta automática del día al abrir
+        buscarLogs();
     </script>
 </body>
 </html>

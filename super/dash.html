@@ -3,354 +3,268 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Monitor en Vivo - WFM</title>
-    
+    <title>Monitor en vivo · Adherencia</title>
+
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <script src="https://cdn.tailwindcss.com"></script>
+    <script src="../assets/theme.js"></script>
     <script src="https://unpkg.com/@phosphor-icons/web"></script>
-    
-    <script>
-        tailwind.config = {
-            theme: {
-                extend: {
-                    fontFamily: { sans: ['Inter', 'sans-serif'] },
-                    animation: { 'pulse-slow': 'pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite' },
-                    colors: { brand: '#3b82f6' }
-                }
-            }
-        }
-    </script>
-
-    <style>
-        .loader {
-            border: 3px solid #e2e8f0; border-top: 3px solid #0f172a; border-radius: 50%;
-            width: 32px; height: 32px; animation: spin 0.8s linear infinite;
-        }
-        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
-        .custom-scrollbar::-webkit-scrollbar { width: 6px; height: 6px; }
-        .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
-        .custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
-        .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
-        .glass-panel { background: rgba(255, 255, 255, 0.90); backdrop-filter: blur(12px); }
-        .progress-transition { transition: width 1s linear, background-color 0.3s; }
-        .fade-in { animation: fadeIn 0.3s ease-in-out; }
-        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
-    </style>
+    <link rel="stylesheet" href="../assets/ui.css">
 </head>
-<body class="bg-slate-50 font-sans text-slate-800 h-screen overflow-hidden flex selection:bg-blue-100 selection:text-blue-900 transition-colors duration-300">
+<body>
 
     <!-- Notificaciones -->
-    <div id="notificacion" class="fixed top-6 left-1/2 transform -translate-x-1/2 z-[100] hidden max-w-md w-full shadow-2xl rounded-2xl p-4 transition-all duration-300 flex items-center gap-3 border">
-        <div id="notificacion-icon" class="text-2xl shrink-0"></div>
-        <p class="font-medium text-sm flex-1 text-white" id="notificacion-texto"></p>
-        <button onclick="document.getElementById('notificacion').classList.add('hidden')" class="text-slate-400 hover:text-white transition-colors">
-            <i class="ph ph-x"></i>
-        </button>
+    <div id="notificacion" class="toast hidden">
+        <div id="notificacion-icon"></div>
+        <p class="flex-1" id="notificacion-texto"></p>
+        <button onclick="document.getElementById('notificacion').classList.add('hidden')" class="opacity-60 hover:opacity-100"><i class="ph ph-x"></i></button>
     </div>
 
     <!-- Modales -->
-    <div id="modal-overlay" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 hidden flex items-center justify-center px-4 py-6 transition-opacity duration-300 opacity-0 overflow-y-auto">
-        
-        <!-- Modal: Confirmar Reset -->
-        <div id="modal-confirm-reset" class="bg-white rounded-3xl shadow-2xl w-full max-w-sm p-6 transform scale-95 transition-transform duration-300 hidden border border-transparent m-auto">
-            <div class="w-12 h-12 rounded-full bg-orange-100 flex items-center justify-center mb-4 mx-auto"><i class="ph ph-warning-circle text-orange-600 text-2xl"></i></div>
-            <h3 class="text-xl font-bold text-slate-800 mb-2 text-center">¿Reiniciar tiempos de hoy?</h3>
-            <p class="text-slate-500 text-sm mb-6 text-center">Esto pondrá en 00:00 los consumos del día para todos los colaboradores.</p>
-            <div class="flex gap-3">
-                <button onclick="App.Modals.cerrarTodos()" class="flex-1 py-2.5 text-slate-600 bg-slate-100 hover:bg-slate-200 rounded-xl font-semibold transition-colors">Cancelar</button>
-                <button onclick="App.Handlers.resetearDia()" class="flex-1 py-2.5 bg-orange-600 hover:bg-orange-700 text-white rounded-xl font-semibold transition-colors shadow-sm shadow-orange-200">Reiniciar</button>
+    <div id="modal-overlay" class="backdrop hidden opacity-0 flex items-center justify-center p-4 overflow-y-auto">
+
+        <!-- Confirmar reset -->
+        <div id="modal-confirm-reset" class="modal w-full max-w-sm p-6 scale-95 hidden m-auto">
+            <div class="icon-tile icon-tile-lg soft-warn c-warn mb-4"><i class="ph-bold ph-arrow-counter-clockwise"></i></div>
+            <h3 class="text-lg font-bold text-1">¿Reiniciar los tiempos de hoy?</h3>
+            <p class="muted text-sm mt-1.5 mb-6">Todos los asesores quedarán en 00:00 para hoy. El historial de pausas no se borra.</p>
+            <div class="flex gap-2.5">
+                <button onclick="App.Modals.cerrarTodos()" class="btn btn-secondary flex-1">Cancelar</button>
+                <button onclick="App.Handlers.resetearDia()" class="btn btn-primary flex-1" style="background:var(--warn)">Reiniciar</button>
             </div>
         </div>
 
-        <!-- Modal: Importar Conexiones -->
-        <div id="modal-importar" class="bg-white rounded-3xl shadow-2xl w-full max-w-2xl p-6 transform scale-95 transition-transform duration-300 hidden border border-transparent m-auto">
-            <div class="flex items-center justify-between mb-4">
-                <h3 class="text-xl font-bold text-slate-800 flex items-center gap-2">
-                    <div class="p-2 bg-blue-100 text-blue-600 rounded-lg"><i class="ph ph-download-simple"></i></div> Importar Reporte
-                </h3>
-                <button onclick="App.Modals.cerrarTodos()" class="text-slate-400 hover:text-slate-600 bg-slate-100 p-1.5 rounded-full transition-colors"><i class="ph ph-x"></i></button>
+        <!-- Importar conexiones -->
+        <div id="modal-importar" class="modal w-full max-w-2xl p-6 scale-95 hidden m-auto">
+            <div class="flex items-start justify-between gap-4 mb-1">
+                <div class="flex items-center gap-3">
+                    <div class="icon-tile soft-brand c-brand"><i class="ph-bold ph-upload-simple"></i></div>
+                    <div>
+                        <h3 class="text-lg font-bold text-1 leading-tight">Importar reporte de conexiones</h3>
+                        <p class="muted text-sm">Pega las filas tal cual vienen del Excel.</p>
+                    </div>
+                </div>
+                <button onclick="App.Modals.cerrarTodos()" class="btn btn-ghost btn-icon btn-sm"><i class="ph-bold ph-x"></i></button>
             </div>
-            <p class="text-slate-500 text-sm mb-4 leading-relaxed">Copia y pega aquí las filas de tu archivo directamente. El sistema extraerá el XOC y lo mapeará automáticamente con el ID correcto.</p>
-            
-            <textarea id="import-textarea" class="w-full h-48 border border-slate-300 rounded-xl p-4 text-xs font-mono text-slate-600 focus:border-blue-500 outline-none custom-scrollbar mb-4 bg-slate-50" placeholder="Pega los datos aquí... Ejemplo:&#10;30/03/2026	X90G05Q	TORRES AVILA..."></textarea>
-            
-            <div class="flex gap-3 pt-2 border-t border-slate-100">
-                <button onclick="App.Modals.cerrarTodos()" class="flex-1 py-2.5 text-slate-600 bg-slate-100 hover:bg-slate-200 rounded-xl font-semibold transition-colors">Cancelar</button>
-                <button id="btn-importar" onclick="App.Handlers.procesarImportacion()" class="flex-[2] py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-semibold transition-colors shadow-sm shadow-blue-200 flex justify-center items-center gap-2">
-                    <i class="ph ph-magic-wand"></i> Procesar y Guardar
-                </button>
+            <p class="subtle text-[13px] mt-4 mb-2">El sistema reconoce el XOC de cada fila y lo une con el ID del asesor automáticamente.</p>
+            <textarea id="import-textarea" class="input mono !text-xs h-52 mb-4" placeholder="Pega los datos aquí. Ejemplo:&#10;30/03/2026	X90G05Q	TORRES AVILA…"></textarea>
+            <div class="flex justify-end gap-2.5">
+                <button onclick="App.Modals.cerrarTodos()" class="btn btn-secondary">Cancelar</button>
+                <button id="btn-importar" onclick="App.Handlers.procesarImportacion()" class="btn btn-primary"><i class="ph-bold ph-check"></i> Procesar y guardar</button>
             </div>
         </div>
     </div>
 
-    <!-- PANEL LATERAL CONFIGURACIÓN -->
-    <div id="panel-config-overlay" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 hidden transition-opacity duration-300 opacity-0" onclick="App.Modals.cerrarConfig()">
-        <div class="absolute inset-y-0 right-0 w-full max-w-md bg-white shadow-2xl transform translate-x-full transition-transform duration-300 ease-in-out flex flex-col border-l border-slate-200" id="panel-config" onclick="event.stopPropagation()">
-            
-            <div class="p-5 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
-                <h2 class="text-lg font-bold text-slate-800 flex items-center gap-2"><i class="ph ph-gear text-blue-500 text-xl"></i> Ajustes del Sistema</h2>
-                <button onclick="App.Modals.cerrarConfig()" class="text-slate-400 hover:text-slate-600 bg-white p-2 rounded-full border border-slate-200 shadow-sm transition-colors"><i class="ph ph-x"></i></button>
+    <!-- Panel lateral: ajustes -->
+    <div id="panel-config-overlay" class="backdrop hidden opacity-0" onclick="App.Modals.cerrarConfig()">
+        <div id="panel-config" class="drawer translate-x-full" onclick="event.stopPropagation()">
+            <div class="card-header !py-4">
+                <div class="flex items-center gap-2.5"><i class="ph-bold ph-sliders-horizontal text-lg c-brand"></i><h2 class="h-card">Ajustes del sistema</h2></div>
+                <button onclick="App.Modals.cerrarConfig()" class="btn btn-ghost btn-icon btn-sm"><i class="ph-bold ph-x"></i></button>
             </div>
+            <div class="flex-1 overflow-y-auto p-5">
+                <h3 class="font-semibold text-1">Límites globales</h3>
+                <p class="muted text-[13px] mt-1 mb-4">Se aplican a todos los asesores que no tengan un límite personalizado.</p>
+                <div class="grid grid-cols-2 gap-3 mb-4">
+                    <div>
+                        <label class="label">Baño (min)</label>
+                        <div class="field"><i class="ph ph-toilet"></i><input type="number" id="cfg-global-bano" class="input tnum"></div>
+                    </div>
+                    <div>
+                        <label class="label">Comida (min)</label>
+                        <div class="field"><i class="ph ph-fork-knife"></i><input type="number" id="cfg-global-comida" class="input tnum"></div>
+                    </div>
+                </div>
+                <button onclick="App.Handlers.guardarGlobales()" class="btn btn-primary w-full"><i class="ph-bold ph-check"></i> Aplicar límites</button>
+            </div>
+        </div>
+    </div>
 
-            <div class="flex-1 overflow-y-auto p-5 space-y-6 custom-scrollbar bg-slate-50/30">
-                
-                <!-- Políticas Globales -->
-                <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-5">
-                    <h3 class="font-bold text-slate-800 mb-4 flex items-center gap-2 text-sm border-b border-slate-100 pb-2">
-                        <i class="ph ph-timer text-slate-400"></i> Políticas Globales
-                    </h3>
-                    <p class="text-xs text-slate-500 mb-4 leading-relaxed">Establece los límites predeterminados para todos los empleados que no tengan límites personalizados.</p>
-                    <div class="flex gap-3 mb-4">
-                        <div class="flex-1">
-                            <label class="block text-[10px] uppercase text-slate-500 font-bold mb-1.5 ml-1">Baño (min)</label>
-                            <div class="relative">
-                                <i class="ph ph-toilet absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400"></i>
-                                <input type="number" id="cfg-global-bano" class="w-full border border-slate-200 rounded-xl pl-9 pr-3 py-2 text-sm font-mono focus:border-slate-800 outline-none transition-all bg-slate-50">
+    <!-- LOGIN -->
+    <div id="vista-login-admin" class="auth-wrap fixed inset-0 z-50">
+        <div class="card auth-card fade-in" style="box-shadow: var(--shadow-lg)">
+            <div class="logo logo-lg mb-5"><i class="ph-bold ph-shield-check"></i></div>
+            <h1 class="text-[24px] font-bold tracking-tight text-1">Panel de supervisor</h1>
+            <p class="muted mt-1 mb-7">Ingresa tu palabra clave para continuar.</p>
+            <label class="label" for="pin-admin">Palabra clave</label>
+            <input type="password" id="pin-admin" autocomplete="off" placeholder="••••••" class="input !h-12 !text-lg tracking-[.3em] mb-4" onkeypress="if(event.key === 'Enter') App.Auth.login()">
+            <button onclick="App.Auth.login()" class="btn btn-primary btn-lg w-full">Entrar <i class="ph-bold ph-arrow-right"></i></button>
+        </div>
+    </div>
+
+    <div class="app-shell">
+        <!-- SIDEBAR -->
+        <aside class="sidebar hidden md:flex" id="sidebar-admin">
+            <div class="sidebar-brand">
+                <div class="logo"><i class="ph-bold ph-timer text-lg"></i></div>
+                <div class="leading-tight"><p class="font-semibold text-1 text-[15px]">Adherencia</p><p class="text-[12px] subtle">Panel de supervisor</p></div>
+            </div>
+            <nav class="nav-section flex-1 flex flex-col gap-1">
+                <p class="eyebrow px-3 mb-1.5">Operación</p>
+                <button onclick="App.UI.cambiarSeccion('seccion-monitor', this)" data-sec="seccion-monitor" class="nav-item nav-sec active"><i class="ph-bold ph-broadcast"></i> Monitor en vivo</button>
+                <button onclick="App.UI.cambiarSeccion('seccion-vacaciones', this)" data-sec="seccion-vacaciones" class="nav-item nav-sec"><i class="ph-bold ph-calendar-check"></i> Permisos <span id="badge-pendientes" class="chip chip-brand !h-5 !px-1.5 ml-auto hidden">0</span></button>
+                <p class="eyebrow px-3 mt-4 mb-1.5">Administración</p>
+                <a href="agentes.html" class="nav-item"><i class="ph-bold ph-users"></i> Personal</a>
+                <a href="logs.html" class="nav-item"><i class="ph-bold ph-scroll"></i> Auditoría</a>
+            </nav>
+            <div class="p-3 border-t divider flex flex-col gap-1">
+                <button onclick="toggleTheme()" class="nav-item"><i data-theme-icon class="ph-bold ph-moon"></i> Cambiar tema</button>
+                <button onclick="App.Auth.logout()" class="nav-item"><i class="ph-bold ph-sign-out"></i> Cerrar sesión</button>
+            </div>
+        </aside>
+
+        <!-- MAIN -->
+        <main class="flex-1 flex flex-col min-w-0 hidden" id="vista-admin">
+            <header class="topbar">
+                <div class="min-w-0">
+                    <h1 class="text-[17px] font-semibold text-1 leading-tight truncate" id="header-title">Monitor en vivo</h1>
+                    <p class="text-[12.5px] subtle first-letter:uppercase truncate" id="fecha-admin-display">Hoy</p>
+                </div>
+                <div class="flex items-center gap-2">
+                    <button onclick="App.Modals.abrirReset()" class="btn btn-secondary btn-sm hidden sm:inline-flex"><i class="ph-bold ph-arrow-counter-clockwise"></i> Reiniciar día</button>
+                    <button onclick="App.Modals.abrirImportar()" class="btn btn-primary btn-sm"><i class="ph-bold ph-upload-simple"></i> <span class="hidden sm:inline">Importar reporte</span></button>
+                    <button onclick="App.Modals.abrirConfig()" class="btn btn-ghost btn-icon btn-sm" title="Límites globales"><i class="ph-bold ph-sliders-horizontal"></i></button>
+                    <button onclick="toggleTheme()" class="btn btn-ghost btn-icon btn-sm md:hidden"><i data-theme-icon class="ph-bold ph-moon"></i></button>
+                </div>
+            </header>
+
+            <!-- SECCIÓN 1: MONITOR -->
+            <div id="seccion-monitor" class="admin-section page fade-in">
+                <div class="page-inner flex flex-col gap-5">
+
+                    <!-- KPIs -->
+                    <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
+                        <div class="card kpi">
+                            <div class="icon-tile icon-tile-lg soft-brand c-brand"><i class="ph-bold ph-users"></i></div>
+                            <div><p class="text-[13px] muted">Personal</p><p class="kpi-value tnum" id="kpi-total">0</p></div>
+                        </div>
+                        <div class="card kpi">
+                            <div class="icon-tile icon-tile-lg soft-ok c-ok"><i class="ph-bold ph-headset"></i></div>
+                            <div><p class="text-[13px] muted">Disponibles</p><p class="kpi-value tnum" id="kpi-conectados">0</p></div>
+                        </div>
+                        <div class="card kpi">
+                            <div class="icon-tile icon-tile-lg soft-warn c-warn"><i class="ph-bold ph-pause-circle"></i></div>
+                            <div><p class="text-[13px] muted">En pausa ahora</p><p class="kpi-value tnum" id="kpi-activos">0</p></div>
+                        </div>
+                        <div class="card kpi">
+                            <div class="icon-tile icon-tile-lg soft-danger c-danger"><i class="ph-bold ph-warning"></i></div>
+                            <div><p class="text-[13px] muted">Excedidos hoy</p><p class="kpi-value tnum c-danger" id="kpi-excedidos">0</p></div>
+                        </div>
+                    </div>
+
+                    <!-- Monitor -->
+                    <section>
+                        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-3">
+                            <h2 class="h-card flex items-center gap-2.5"><span class="dot dot-live c-ok"></span> En tiempo real</h2>
+                            <div class="field w-full sm:w-72">
+                                <i class="ph-bold ph-magnifying-glass"></i>
+                                <input type="text" id="search-monitor" onkeyup="App.UI.renderMonitor()" placeholder="Buscar por nombre, ID o XOC" class="input">
                             </div>
                         </div>
-                        <div class="flex-1">
-                            <label class="block text-[10px] uppercase text-slate-500 font-bold mb-1.5 ml-1">Comida (min)</label>
-                            <div class="relative">
-                                <i class="ph ph-fork-knife absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400"></i>
-                                <input type="number" id="cfg-global-comida" class="w-full border border-slate-200 rounded-xl pl-9 pr-3 py-2 text-sm font-mono focus:border-slate-800 outline-none transition-all bg-slate-50">
+                        <div id="lista-activos" class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-4">
+                            <div class="col-span-full card empty"><span class="spinner spinner-lg"></span><p class="mt-3">Conectando…</p></div>
+                        </div>
+                    </section>
+
+                    <!-- Bitácora -->
+                    <section class="card overflow-hidden">
+                        <div class="card-header flex-col md:flex-row !items-start md:!items-center">
+                            <div class="flex items-center gap-2.5">
+                                <div class="icon-tile soft-brand c-brand !w-8 !h-8 !text-base"><i class="ph-bold ph-clock-counter-clockwise"></i></div>
+                                <h2 class="h-card">Bitácora de pausas</h2>
+                            </div>
+                            <div class="flex flex-col sm:flex-row gap-2 w-full md:w-auto">
+                                <div class="field sm:w-56">
+                                    <i class="ph-bold ph-magnifying-glass"></i>
+                                    <input type="text" id="filtro-agente-historial" onkeyup="App.UI.renderHistorialLocal()" placeholder="Filtrar asesor" class="input !h-9 !text-[13px]">
+                                </div>
+                                <input type="date" id="filtro-fecha-historial" onchange="App.UI.renderHistorialLocal()" class="input !h-9 !text-[13px] sm:!w-auto">
                             </div>
                         </div>
-                    </div>
-                    <button onclick="App.Handlers.guardarGlobales()" class="w-full bg-slate-100 hover:bg-slate-200 text-slate-800 text-xs font-bold py-2.5 rounded-xl transition-colors flex items-center justify-center gap-2"><i class="ph ph-check-circle"></i> Aplicar Límites</button>
+                        <div class="grid grid-cols-3 border-b divider">
+                            <div class="px-5 py-3.5"><p class="text-[12px] subtle flex items-center gap-2"><span class="dot bg-bath"></span> Total baño</p><p class="tnum text-lg font-semibold text-1 mt-0.5" id="super-hist-tot-bath">00:00</p></div>
+                            <div class="px-5 py-3.5 border-l divider"><p class="text-[12px] subtle flex items-center gap-2"><span class="dot bg-food"></span> Total comida</p><p class="tnum text-lg font-semibold text-1 mt-0.5" id="super-hist-tot-food">00:00</p></div>
+                            <div class="px-5 py-3.5 border-l divider"><p class="text-[12px] subtle flex items-center gap-2"><span class="dot bg-quality"></span> Total calidad</p><p class="tnum text-lg font-semibold text-1 mt-0.5" id="super-hist-tot-quality">00:00</p></div>
+                        </div>
+                        <div class="overflow-auto max-h-[480px]">
+                            <table class="table min-w-[640px]">
+                                <thead><tr><th>Hora (fin)</th><th>Asesor</th><th>Pausa</th><th class="!text-right">Duración</th></tr></thead>
+                                <tbody id="tabla-registros-global"></tbody>
+                            </table>
+                        </div>
+                    </section>
                 </div>
             </div>
-        </div>
+
+            <!-- SECCIÓN 2: PERMISOS -->
+            <div id="seccion-vacaciones" class="admin-section page hidden fade-in">
+                <div class="page-inner flex flex-col gap-5">
+                    <section class="card overflow-hidden">
+                        <div class="card-header">
+                            <div class="flex items-center gap-2.5">
+                                <div class="icon-tile soft-warn c-warn !w-8 !h-8 !text-base"><i class="ph-bold ph-bell-ringing"></i></div>
+                                <h2 class="h-card">Solicitudes pendientes</h2>
+                            </div>
+                        </div>
+                        <div class="overflow-x-auto">
+                            <table class="table min-w-[760px]">
+                                <thead><tr><th>Solicitud</th><th>Asesor</th><th>Motivo</th><th>Fechas</th><th class="!text-center">Días</th><th class="!text-right">Acciones</th></tr></thead>
+                                <tbody id="tabla-solicitudes-pendientes"></tbody>
+                            </table>
+                        </div>
+                    </section>
+                    <section class="card overflow-hidden">
+                        <div class="card-header">
+                            <div class="flex items-center gap-2.5">
+                                <div class="icon-tile soft-ok c-ok !w-8 !h-8 !text-base"><i class="ph-bold ph-calendar-check"></i></div>
+                                <h2 class="h-card">Historial de permisos</h2>
+                            </div>
+                        </div>
+                        <div class="overflow-x-auto">
+                            <table class="table min-w-[760px]">
+                                <thead><tr><th>Solicitud</th><th>Asesor</th><th>Motivo</th><th>Fechas</th><th class="!text-center">Días</th><th class="!text-right">Estado</th></tr></thead>
+                                <tbody id="tabla-solicitudes-historial"></tbody>
+                            </table>
+                        </div>
+                    </section>
+                </div>
+            </div>
+        </main>
     </div>
 
-    <!-- PANTALLAS DE ESTADO Y LOGIN -->
-    <div id="vista-login-admin" class="min-h-screen w-full flex items-center justify-center px-4 relative overflow-hidden bg-slate-50 absolute inset-0 z-50">
-        <div class="absolute top-[-10%] left-[-10%] w-96 h-96 bg-blue-400 rounded-full mix-blend-multiply filter blur-3xl opacity-10 animate-pulse-slow"></div>
-        <div class="absolute bottom-[-10%] right-[-10%] w-96 h-96 bg-purple-400 rounded-full mix-blend-multiply filter blur-3xl opacity-10 animate-pulse-slow" style="animation-delay: 2s;"></div>
+    <!-- Navegación móvil -->
+    <nav class="mobile-nav hidden" id="mobile-nav">
+        <button onclick="App.UI.cambiarSeccion('seccion-monitor', this)" data-sec="seccion-monitor" class="nav-sec active"><i class="ph-bold ph-broadcast"></i>Monitor</button>
+        <button onclick="App.UI.cambiarSeccion('seccion-vacaciones', this)" data-sec="seccion-vacaciones" class="nav-sec"><i class="ph-bold ph-calendar-check"></i>Permisos</button>
+        <a href="agentes.html"><i class="ph-bold ph-users"></i>Personal</a>
+        <a href="logs.html"><i class="ph-bold ph-scroll"></i>Auditoría</a>
+    </nav>
 
-        <div class="bg-white p-8 md:p-10 rounded-3xl shadow-2xl border border-slate-100 w-full max-w-sm relative z-10 transform transition-all hover:scale-[1.01]">
-            <div class="w-16 h-16 bg-slate-900 rounded-2xl flex items-center justify-center mb-6 shadow-lg shadow-slate-200"><i class="ph ph-fingerprint text-3xl text-white"></i></div>
-            <h2 class="text-2xl font-bold text-slate-900 mb-1">Acceso Root</h2>
-            <p class="text-slate-500 text-sm mb-8 font-medium">Monitor Táctico WFM</p>
-            
-            <div class="relative mb-6">
-                <input type="password" id="pin-admin" autocomplete="off" placeholder="Palabra clave" class="w-full text-center text-lg tracking-[0.3em] font-mono border-b-2 border-slate-200 bg-slate-50/50 rounded-t-xl p-4 focus:border-slate-900 outline-none transition-all" onkeypress="if(event.key === 'Enter') App.Auth.login()">
-            </div>
-            
-            <button onclick="App.Auth.login()" class="w-full bg-slate-900 hover:bg-slate-800 text-white font-semibold py-3.5 rounded-xl shadow-lg shadow-slate-200 transition-all active:scale-95 flex items-center justify-center gap-2">Autenticar <i class="ph ph-arrow-right font-bold"></i></button>
-        </div>
-    </div>
-
-    <!-- SIDEBAR (Navegación Admin) -->
-    <aside class="w-64 bg-slate-900 text-white hidden md:flex flex-col shadow-xl shrink-0 z-20" id="sidebar-admin">
-        <div class="h-20 flex items-center px-6 border-b border-slate-800">
-            <div class="w-10 h-10 bg-blue-600 rounded-xl flex items-center justify-center shadow-lg shadow-blue-600/30">
-                <i class="ph-bold ph-users-three text-2xl"></i>
-            </div>
-            <span class="ml-3 font-black text-xl tracking-tight">WFM Admin</span>
-        </div>
-        <nav class="flex-1 p-4 space-y-2 overflow-y-auto">
-            <button onclick="App.UI.cambiarSeccion('seccion-monitor', this)" class="w-full flex items-center gap-3 p-3 rounded-xl bg-blue-600/10 text-blue-400 font-bold border border-blue-500/20 transition-colors nav-item">
-                <i class="ph-fill ph-chart-polar text-xl"></i> Monitor en Vivo
-            </button>
-            <button onclick="App.UI.cambiarSeccion('seccion-vacaciones', this)" class="w-full flex items-center gap-3 p-3 rounded-xl text-slate-400 border border-transparent hover:text-white hover:bg-slate-800 transition-colors font-medium nav-item">
-                <i class="ph-fill ph-calendar-star text-xl"></i> Permisos y Vacaciones
-            </button>
-            <a href="agentes.html" class="flex items-center gap-3 p-3 rounded-xl text-slate-400 border border-transparent hover:text-white hover:bg-slate-800 transition-colors font-medium">
-                <i class="ph-fill ph-address-book text-xl"></i> Gestión de Personal
-            </a>
-        </nav>
-        <div class="p-4 border-t border-slate-800">
-            <button onclick="App.Auth.logout()" class="w-full flex items-center justify-center gap-2 p-3 rounded-xl text-slate-400 hover:text-red-400 hover:bg-red-500/10 transition-colors font-medium">
-                <i class="ph-bold ph-sign-out text-xl"></i> Cerrar Sesión
-            </button>
-        </div>
-    </aside>
-
-    <!-- MAIN CONTENT AREA (Monitor) -->
-    <main class="flex-1 h-screen flex flex-col relative overflow-hidden bg-slate-50/50 hidden" id="vista-admin">
-        
-        <header class="bg-white border-b border-slate-200 px-8 py-6 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 shrink-0 shadow-sm z-10">
-            <div>
-                <h1 class="text-2xl font-black text-slate-900 leading-tight" id="header-title">Monitor de Operaciones</h1>
-                <p class="text-sm text-slate-500 font-medium" id="fecha-admin-display">Hoy</p>
-            </div>
-            <div class="flex items-center gap-3">
-                <button onclick="App.Modals.abrirReset()" class="text-slate-600 hover:text-orange-600 bg-white hover:bg-orange-50 border border-slate-200 px-4 py-2 rounded-xl transition-colors flex items-center gap-2 shadow-sm text-sm font-bold"><i class="ph-bold ph-arrow-counter-clockwise text-lg"></i> Reset Día</button>
-                <button onclick="App.Modals.abrirImportar()" class="text-white bg-blue-600 hover:bg-blue-700 px-4 py-2 rounded-xl transition-colors flex items-center gap-2 shadow-sm shadow-blue-200 text-sm font-bold"><i class="ph-bold ph-download-simple text-lg"></i> Importar Reporte</button>
-                <div class="w-px h-6 bg-slate-200 mx-1"></div>
-                <button onclick="App.Modals.abrirConfig()" class="text-slate-500 hover:text-slate-800 p-2.5 rounded-xl border border-slate-200 bg-white transition-colors" title="Límites Globales"><i class="ph-bold ph-gear text-lg"></i></button>
-            </div>
-        </header>
-
-        <!-- SECCIÓN 1: MONITOR EN VIVO -->
-        <div id="seccion-monitor" class="admin-section flex-1 overflow-y-auto custom-scrollbar p-6 space-y-6 fade-in">
-            
-            <!-- KPIs -->
-            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-                <div class="bg-white rounded-3xl shadow-sm border border-slate-200 p-6 flex items-center gap-5 relative overflow-hidden">
-                    <div class="absolute -right-4 -top-4 w-24 h-24 bg-blue-50 rounded-full opacity-50 pointer-events-none"></div>
-                    <div class="w-14 h-14 rounded-2xl bg-gradient-to-br from-blue-500 to-blue-600 text-white flex items-center justify-center shadow-lg shadow-blue-200 shrink-0"><i class="ph ph-users text-2xl"></i></div>
-                    <div><p class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">Personal Total</p><p class="text-3xl font-black text-slate-800 leading-none" id="kpi-total">0</p></div>
-                </div>
-                <div class="bg-white rounded-3xl shadow-sm border border-slate-200 p-6 flex items-center gap-5 relative overflow-hidden">
-                    <div class="absolute -right-4 -top-4 w-24 h-24 bg-emerald-50 rounded-full opacity-50 pointer-events-none"></div>
-                    <div class="w-14 h-14 rounded-2xl bg-gradient-to-br from-emerald-400 to-emerald-500 text-white flex items-center justify-center shadow-lg shadow-emerald-200 shrink-0 relative"><div class="absolute inset-0 border-2 border-white/50 rounded-2xl animate-ping opacity-20"></div><i class="ph ph-broadcast text-2xl"></i></div>
-                    <div><p class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">En Receso (Vivo)</p><p class="text-3xl font-black text-slate-800 leading-none" id="kpi-activos">0</p></div>
-                </div>
-                <div class="bg-white rounded-3xl shadow-sm border border-slate-200 p-6 flex items-center gap-5 relative overflow-hidden">
-                    <div class="absolute -right-4 -top-4 w-24 h-24 bg-red-50 rounded-full opacity-50 pointer-events-none"></div>
-                    <div class="w-14 h-14 rounded-2xl bg-gradient-to-br from-red-500 to-red-600 text-white flex items-center justify-center shadow-lg shadow-red-200 shrink-0"><i class="ph ph-warning text-2xl"></i></div>
-                    <div><p class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">Excedidos Hoy</p><p class="text-3xl font-black text-red-600 leading-none" id="kpi-excedidos">0</p></div>
-                </div>
-            </div>
-
-            <!-- Monitor en Vivo -->
-            <section class="bg-white rounded-3xl shadow-sm border border-slate-200 overflow-hidden flex flex-col">
-                <div class="px-6 py-5 border-b border-slate-100 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-slate-50/50">
-                    <div>
-                        <h2 class="font-bold text-slate-800 flex items-center gap-2 text-lg">
-                            <span class="relative flex h-3 w-3"><span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span><span class="relative inline-flex rounded-full h-3 w-3 bg-emerald-500"></span></span>
-                            Rastreo en Tiempo Real
-                        </h2>
-                    </div>
-                    <div class="relative w-full sm:w-64 group">
-                        <i class="ph-bold ph-magnifying-glass absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400 group-focus-within:text-blue-500 transition-colors"></i>
-                        <input type="text" id="search-monitor" onkeyup="App.UI.renderMonitor()" placeholder="Buscar colaborador..." class="w-full border border-slate-200 rounded-xl pl-10 pr-4 py-2.5 text-sm focus:border-blue-500 focus:ring-2 focus:ring-blue-100 outline-none transition-all shadow-sm bg-white font-medium">
-                    </div>
-                </div>
-                <div class="p-6 bg-slate-50/30">
-                    <div id="lista-activos" class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-5">
-                        <div class="col-span-full text-center py-10"><div class="loader mx-auto mb-4"></div><p class="text-slate-500 font-bold">Conectando al sistema...</p></div>
-                    </div>
-                </div>
-            </section>
-
-            <!-- Historial Avanzado con Filtros -->
-            <section class="bg-white rounded-3xl shadow-sm border border-slate-200 overflow-hidden flex flex-col mb-10">
-                <div class="px-6 py-5 border-b border-slate-100 flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-slate-50/50 shrink-0">
-                    <div>
-                        <h2 class="font-bold text-slate-800 flex items-center gap-2 text-lg"><i class="ph-fill ph-clock-counter-clockwise text-blue-500 text-xl"></i> Bitácora de Movimientos</h2>
-                    </div>
-                    <div class="flex flex-col sm:flex-row items-center gap-3 w-full md:w-auto">
-                        <div class="relative w-full sm:w-56 group">
-                            <i class="ph-bold ph-magnifying-glass absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400 group-focus-within:text-blue-500 transition-colors"></i>
-                            <input type="text" id="filtro-agente-historial" onkeyup="App.UI.renderHistorialLocal()" placeholder="Buscar en historial..." class="w-full border border-slate-200 rounded-xl pl-9 pr-4 py-2 text-sm focus:border-blue-500 focus:ring-2 focus:ring-blue-100 outline-none transition-all shadow-sm bg-white font-medium">
-                        </div>
-                        <div class="relative w-full sm:w-auto">
-                            <i class="ph-bold ph-calendar-blank absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400"></i>
-                            <input type="date" id="filtro-fecha-historial" onchange="App.UI.renderHistorialLocal()" class="pl-9 pr-4 py-2 w-full border border-slate-200 bg-white rounded-xl text-sm text-slate-600 font-bold outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 transition-all cursor-pointer shadow-sm">
-                        </div>
-                    </div>
-                </div>
-
-                <div class="grid grid-cols-3 divide-x divide-slate-100 border-b border-slate-100 bg-white shrink-0">
-                    <div class="p-3 text-center bg-purple-50/20 transition-colors">
-                        <p class="text-[10px] font-bold text-purple-500 uppercase tracking-widest mb-0.5">Total Baño</p>
-                        <p class="text-xl font-mono font-black text-purple-700" id="super-hist-tot-bath">00:00</p>
-                    </div>
-                    <div class="p-3 text-center bg-orange-50/20 transition-colors">
-                        <p class="text-[10px] font-bold text-orange-500 uppercase tracking-widest mb-0.5">Total Comida</p>
-                        <p class="text-xl font-mono font-black text-orange-700" id="super-hist-tot-food">00:00</p>
-                    </div>
-                    <div class="p-3 text-center bg-blue-50/20 transition-colors">
-                        <p class="text-[10px] font-bold text-blue-500 uppercase tracking-widest mb-0.5">Total Calidad</p>
-                        <p class="text-xl font-mono font-black text-blue-700" id="super-hist-tot-quality">00:00</p>
-                    </div>
-                </div>
-
-                <div class="overflow-x-auto overflow-y-auto max-h-[500px] custom-scrollbar relative">
-                    <table class="w-full text-left border-collapse min-w-[800px]">
-                        <thead class="sticky top-0 bg-slate-50 shadow-sm z-10 backdrop-blur-md bg-white/90 border-b border-slate-200">
-                            <tr class="text-slate-500 text-[11px] uppercase tracking-wider">
-                                <th class="px-6 py-4 font-bold rounded-tl-lg">Hora (Fin)</th>
-                                <th class="px-6 py-4 font-bold">Colaborador</th>
-                                <th class="px-6 py-4 font-bold">Tipo</th>
-                                <th class="px-6 py-4 font-bold text-right text-blue-600 rounded-tr-lg">Tiempo Consumido</th>
-                            </tr>
-                        </thead>
-                        <tbody id="tabla-registros-global" class="divide-y divide-slate-100 text-sm"></tbody>
-                    </table>
-                </div>
-            </section>
-        </div>
-
-        <!-- SECCIÓN 2: PERMISOS Y VACACIONES -->
-        <div id="seccion-vacaciones" class="admin-section flex-1 overflow-y-auto custom-scrollbar p-6 space-y-6 hidden fade-in">
-            
-            <!-- Solicitudes Pendientes -->
-            <section class="bg-white rounded-3xl shadow-sm border border-slate-200 overflow-hidden flex flex-col mb-6">
-                 <div class="px-6 py-5 border-b border-slate-100 bg-slate-50/50">
-                     <h2 class="font-bold text-slate-800 flex items-center gap-2 text-lg"><i class="ph-fill ph-bell-ringing text-brand text-xl"></i> Solicitudes Pendientes</h2>
-                 </div>
-                 <div class="overflow-x-auto custom-scrollbar">
-                     <table class="w-full text-left min-w-[800px]">
-                         <thead class="bg-slate-50 border-b border-slate-200 text-xs text-slate-500 uppercase tracking-widest font-bold">
-                            <tr>
-                                <th class="px-6 py-4">F. Solicitud</th>
-                                <th class="px-6 py-4">Colaborador</th>
-                                <th class="px-6 py-4">Motivo</th>
-                                <th class="px-6 py-4">Fechas Solicitadas</th>
-                                <th class="px-6 py-4 text-center">Días</th>
-                                <th class="px-6 py-4 text-right">Acciones</th>
-                            </tr>
-                        </thead>
-                         <tbody id="tabla-solicitudes-pendientes" class="divide-y divide-slate-100"></tbody>
-                     </table>
-                 </div>
-            </section>
-            
-            <!-- Historial de Permisos -->
-            <section class="bg-white rounded-3xl shadow-sm border border-slate-200 overflow-hidden flex flex-col">
-                 <div class="px-6 py-5 border-b border-slate-100 bg-slate-50/50">
-                     <h2 class="font-bold text-slate-800 flex items-center gap-2 text-lg"><i class="ph-fill ph-calendar-check text-emerald-500 text-xl"></i> Historial de Permisos</h2>
-                 </div>
-                 <div class="overflow-x-auto custom-scrollbar">
-                     <table class="w-full text-left min-w-[800px]">
-                         <thead class="bg-slate-50 border-b border-slate-200 text-xs text-slate-500 uppercase tracking-widest font-bold">
-                            <tr>
-                                <th class="px-6 py-4">F. Solicitud</th>
-                                <th class="px-6 py-4">Colaborador</th>
-                                <th class="px-6 py-4">Motivo</th>
-                                <th class="px-6 py-4">Fechas Solicitadas</th>
-                                <th class="px-6 py-4 text-center">Días</th>
-                                <th class="px-6 py-4 text-right">Estado</th>
-                            </tr>
-                        </thead>
-                         <tbody id="tabla-solicitudes-historial" class="divide-y divide-slate-100"></tbody>
-                     </table>
-                 </div>
-            </section>
-
-        </div>
-
-    </main>
-
-    <!-- NÚCLEO JAVASCRIPT (APP LOGIC) -->
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         import { getFirestore, collection, onSnapshot, doc, getDocs, setDoc, updateDoc, query, orderBy, limit } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        const META = {
+            bath:    { icon: 'ph-toilet',     label: 'Sanitario', chip: 'chip-bath',    c: 'c-bath',    bg: 'bg-bath' },
+            food:    { icon: 'ph-fork-knife', label: 'Comida',    chip: 'chip-food',    c: 'c-food',    bg: 'bg-food' },
+            quality: { icon: 'ph-headset',    label: 'Calidad',   chip: 'chip-quality', c: 'c-quality', bg: 'bg-quality' }
+        };
+        META['Baño'] = META.bath; META['Comida'] = META.food; META['Calidad'] = META.quality;
 
         window.App = {
             db: null,
             state: {
                 operadores: {},
                 sesiones: {},
-                registrosHistorial: [], 
+                registrosHistorial: [],
                 solicitudes: [],
-                fechaFiltro: new Date().toLocaleDateString('en-CA') 
+                fechaFiltro: new Date().toLocaleDateString('en-CA')
             },
             config: {
                 limites: { bano: 15, comida: 30 },
-                meta: {
-                    'bath': { icon: 'ph-toilet', label: 'Sanitario', cText: 'text-purple-600', cBg: 'bg-purple-100', cBorder: 'border-purple-200', cBar: 'bg-purple-500' },
-                    'food': { icon: 'ph-hamburger', label: 'Comida', cText: 'text-orange-600', cBg: 'bg-orange-100', cBorder: 'border-orange-200', cBar: 'bg-orange-500' },
-                    'quality': { icon: 'ph-star', label: 'Calidad', cText: 'text-blue-600', cBg: 'bg-blue-100', cBorder: 'border-blue-200', cBar: 'bg-blue-500' },
-                    'Baño': { icon: 'ph-toilet', label: 'Sanitario', cText: 'text-purple-600', cBg: 'bg-purple-100', cBorder: 'border-purple-200', cBar: 'bg-purple-500' },
-                    'Comida': { icon: 'ph-hamburger', label: 'Comida', cText: 'text-orange-600', cBg: 'bg-orange-100', cBorder: 'border-orange-200', cBar: 'bg-orange-500' },
-                    'Calidad': { icon: 'ph-star', label: 'Calidad', cText: 'text-blue-600', cBg: 'bg-blue-100', cBorder: 'border-blue-200', cBar: 'bg-blue-500' }
-                }
+                meta: META
             }
         };
 
@@ -359,8 +273,8 @@
             authDomain: "tratocom-d38e7.firebaseapp.com",
             projectId: "tratocom-d38e7",
             storageBucket: "tratocom-d38e7.firebasestorage.app",
-            messagingSenderId: "634601793039",
-            appId: "1:634601793039:web:4412da30d31ff6f6e5657a"
+            messagingSenderId: "205037546432",
+            appId: "1:205037546432:web:b5bce8294aba3fa8cfb625"
         };
 
         const app = initializeApp(firebaseConfig);
@@ -376,13 +290,17 @@
             },
             toast: (msg, type = 'success') => {
                 const toast = document.getElementById('notificacion');
-                document.getElementById('notificacion-icon').innerHTML = type === 'error' ? '<i class="ph-fill ph-warning-circle text-red-200"></i>' : '<i class="ph-fill ph-check-circle text-emerald-200"></i>';
-                toast.className = `fixed top-6 left-1/2 transform -translate-x-1/2 z-[100] max-w-md w-full shadow-2xl rounded-2xl p-4 flex items-center gap-3 border ${type === 'error' ? 'bg-red-600 border-red-700' : 'bg-slate-900 border-slate-800'} fade-in`;
+                document.getElementById('notificacion-icon').innerHTML = type === 'error' ? '<i class="ph-fill ph-warning-circle"></i>' : '<i class="ph-fill ph-check-circle text-emerald-400"></i>';
+                toast.className = `toast ${type === 'error' ? 'toast-error' : ''} fade-in`;
                 document.getElementById('notificacion-texto').textContent = msg;
-                toast.classList.remove('hidden');
                 setTimeout(() => toast.classList.add('hidden'), 4000);
             },
-            fechaHoyNormal: () => new Date().toLocaleDateString() 
+            fechaHoyNormal: () => new Date().toLocaleDateString(),
+            fechaHoyISO: () => { const d = new Date(); return new Date(d - d.getTimezoneOffset() * 60000).toISOString().split('T')[0]; },
+            esHoy: (f) => f === Utils.fechaHoyNormal() || f === Utils.fechaHoyISO(),
+            nombre: (ag) => ag?.nombreCorto || ag?.nombre || 'Sin nombre',
+            iniciales: (txt) => (txt || '').trim().split(/\s+/).slice(0, 2).map(p => p[0] || '').join('').toUpperCase() || '?',
+            esc: (s) => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]))
         };
 
         App.Auth = {
@@ -390,24 +308,27 @@
                 const pinInput = document.getElementById('pin-admin');
                 const pin = pinInput ? pinInput.value.trim().toLowerCase() : '';
                 const hoy = Utils.fechaHoyNormal();
-                
-                // Valida si el pin es correcto o si ya se había logueado hoy
-                if(pin === 'blqa' || (silencioso && localStorage.getItem('wfm_admin_auth') === hoy)) {
-                    if (pin === 'blqa') localStorage.setItem('wfm_admin_auth', hoy); // Guarda para persistencia diaria
-                    
+
+                // Valida si el pin es correcto o si ya se había entrado hoy
+                if (pin === 'blqa' || (silencioso && localStorage.getItem('wfm_admin_auth') === hoy)) {
+                    if (pin === 'blqa') localStorage.setItem('wfm_admin_auth', hoy);
+
                     document.getElementById('vista-login-admin').classList.add('hidden');
                     document.getElementById('vista-admin').classList.remove('hidden');
                     document.getElementById('sidebar-admin').classList.remove('hidden');
-                    document.getElementById('fecha-admin-display').innerText = new Date().toLocaleDateString('es-ES', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+                    document.getElementById('mobile-nav').classList.remove('hidden');
+                    document.getElementById('fecha-admin-display').innerText = new Date().toLocaleDateString('es-MX', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+                    if (location.hash === '#permisos') App.UI.cambiarSeccion('seccion-vacaciones');
                     App.Firebase.init();
                 } else if (!silencioso) {
-                    Utils.toast('PIN incorrecto', 'error');
+                    Utils.toast('Palabra clave incorrecta', 'error');
                 }
             },
             logout: () => {
                 localStorage.removeItem('wfm_admin_auth');
                 document.getElementById('vista-admin').classList.add('hidden');
                 document.getElementById('sidebar-admin').classList.add('hidden');
+                document.getElementById('mobile-nav').classList.add('hidden');
                 document.getElementById('vista-login-admin').classList.remove('hidden');
                 const pinInput = document.getElementById('pin-admin');
                 if (pinInput) pinInput.value = '';
@@ -417,94 +338,64 @@
         App.Modals = {
             abrirConfig: () => {
                 const o = document.getElementById('panel-config-overlay'); const p = document.getElementById('panel-config');
-                const banoInput = document.getElementById('cfg-global-bano');
-                const comidaInput = document.getElementById('cfg-global-comida');
-                if (banoInput) banoInput.value = App.config.limites.bano;
-                if (comidaInput) comidaInput.value = App.config.limites.comida;
-                
-                if (o && p) {
-                    o.classList.remove('hidden'); 
-                    setTimeout(() => { o.classList.remove('opacity-0'); p.classList.remove('translate-x-full'); }, 10);
-                }
+                document.getElementById('cfg-global-bano').value = App.config.limites.bano;
+                document.getElementById('cfg-global-comida').value = App.config.limites.comida;
+                o.classList.remove('hidden');
+                setTimeout(() => { o.classList.remove('opacity-0'); p.classList.remove('translate-x-full'); }, 10);
             },
             cerrarConfig: () => {
                 const o = document.getElementById('panel-config-overlay'); const p = document.getElementById('panel-config');
-                if (o && p) {
-                    o.classList.add('opacity-0'); p.classList.add('translate-x-full'); 
-                    setTimeout(() => o.classList.add('hidden'), 300);
-                }
+                o.classList.add('opacity-0'); p.classList.add('translate-x-full');
+                setTimeout(() => o.classList.add('hidden'), 250);
             },
-            abrirReset: () => {
+            abrir: (id) => {
                 const overlay = document.getElementById('modal-overlay');
-                const m = document.getElementById('modal-confirm-reset');
-                if (overlay && m) {
-                    overlay.classList.remove('hidden');
-                    m.classList.remove('hidden'); 
-                    setTimeout(() => { overlay.classList.remove('opacity-0'); m.classList.remove('scale-95'); }, 10);
-                }
+                const m = document.getElementById(id);
+                overlay.classList.remove('hidden'); m.classList.remove('hidden');
+                setTimeout(() => { overlay.classList.remove('opacity-0'); m.classList.remove('scale-95'); }, 10);
             },
-            abrirImportar: () => {
-                const overlay = document.getElementById('modal-overlay');
-                const m = document.getElementById('modal-importar');
-                const txt = document.getElementById('import-textarea');
-                if (txt) txt.value = ''; 
-                
-                if (overlay && m) {
-                    overlay.classList.remove('hidden');
-                    m.classList.remove('hidden'); 
-                    setTimeout(() => { overlay.classList.remove('opacity-0'); m.classList.remove('scale-95'); }, 10);
-                }
-            },
+            abrirReset: () => App.Modals.abrir('modal-confirm-reset'),
+            abrirImportar: () => { document.getElementById('import-textarea').value = ''; App.Modals.abrir('modal-importar'); },
             cerrarTodos: () => {
                 const o = document.getElementById('modal-overlay');
-                if (!o) return;
                 o.classList.add('opacity-0');
-                ['modal-confirm-reset', 'modal-importar'].forEach(id => {
-                    const el = document.getElementById(id); if(el) el.classList.add('scale-95');
-                });
-                setTimeout(() => { 
-                    o.classList.add('hidden'); 
-                    ['modal-confirm-reset', 'modal-importar'].forEach(id => {
-                        const el = document.getElementById(id);
-                        if (el) el.classList.add('hidden');
-                    }); 
-                }, 300);
+                ['modal-confirm-reset', 'modal-importar'].forEach(id => document.getElementById(id).classList.add('scale-95'));
+                setTimeout(() => {
+                    o.classList.add('hidden');
+                    ['modal-confirm-reset', 'modal-importar'].forEach(id => document.getElementById(id).classList.add('hidden'));
+                }, 200);
             }
         };
 
         App.Handlers = {
             procesarImportacion: async () => {
                 const text = document.getElementById('import-textarea').value.trim();
-                if (!text) { Utils.toast('Por favor, pega los datos primero.', 'error'); return; }
+                if (!text) { Utils.toast('Primero pega los datos.', 'error'); return; }
 
                 const btn = document.getElementById('btn-importar');
-                if (btn) btn.disabled = true;
+                btn.disabled = true;
 
-                const rows = text.split('\n');
                 const batch = [];
                 let procesados = 0;
 
-                rows.forEach((row) => {
+                text.split('\n').forEach((row) => {
                     const cols = row.split('\t');
                     if (cols.length < 14 || cols[0].toLowerCase().includes('fecha')) return;
 
                     const dateParts = cols[0].trim().split('/');
                     const isoDate = dateParts.length === 3 ? `${dateParts[2]}-${dateParts[1]}-${dateParts[0]}` : cols[0].trim();
                     const xocImportado = cols[1].trim().toUpperCase();
-
                     if (!xocImportado) return;
 
                     let asesorId = xocImportado;
-                    const asesorNom = cols[2].trim();
-
                     const operador = Object.values(App.state.operadores).find(o => (o.xoc && o.xoc.toUpperCase() === xocImportado) || o.id === xocImportado);
                     if (operador) asesorId = operador.id;
 
                     const dataToSave = {
                         fecha_reporte: cols[0].trim(),
                         fecha_iso: isoDate,
-                        asesor_id: asesorId, 
-                        asesor_nombre: asesorNom,
+                        asesor_id: asesorId,
+                        asesor_nombre: cols[2].trim(),
                         hora_inicio: cols[3].trim(),
                         hora_fin: cols[4].trim(),
                         duracion_dia_laboral: cols[5].trim(),
@@ -518,303 +409,265 @@
                         calidad_total: cols[13].trim(),
                         timestamp_subida: Date.now()
                     };
-
-                    const docId = `${asesorId}_${isoDate}`;
-                    const ref = doc(App.db, "conexiones_diarias", docId);
-                    batch.push(setDoc(ref, dataToSave, { merge: true }));
+                    batch.push(setDoc(doc(App.db, "conexiones_diarias", `${asesorId}_${isoDate}`), dataToSave, { merge: true }));
                     procesados++;
                 });
 
                 if (procesados === 0) {
                     Utils.toast("No se encontraron filas válidas para importar.", 'error');
-                    if (btn) btn.disabled = false;
+                    btn.disabled = false;
                     return;
                 }
 
                 try {
                     await Promise.all(batch);
                     App.Modals.cerrarTodos();
-                    Utils.toast(`${procesados} registros importados correctamente.`);
+                    Utils.toast(`${procesados} registros importados.`);
                 } catch (error) {
-                    Utils.toast("Error al guardar los datos en la base.", 'error');
+                    Utils.toast("Error al guardar los datos.", 'error');
                 } finally {
-                    if (btn) btn.disabled = false;
+                    btn.disabled = false;
                 }
             },
             guardarGlobales: async () => {
-                const banoInput = document.getElementById('cfg-global-bano');
-                const comidaInput = document.getElementById('cfg-global-comida');
-                
-                const bano = banoInput ? (parseInt(banoInput.value) || 15) : 15;
-                const comida = comidaInput ? (parseInt(comidaInput.value) || 30) : 30;
-                
+                const bano = parseInt(document.getElementById('cfg-global-bano').value) || 15;
+                const comida = parseInt(document.getElementById('cfg-global-comida').value) || 30;
                 try {
                     await setDoc(doc(App.db, "config", "global"), { limites: { bano, comida } }, { merge: true });
-                    App.config.limites = {bano, comida};
+                    App.config.limites = { bano, comida };
                     App.Modals.cerrarConfig(); Utils.toast("Límites globales aplicados.");
-                } catch(err) { Utils.toast("Error al guardar.", "error"); }
+                } catch (err) { Utils.toast("Error al guardar.", "error"); }
             },
             resetearDia: async () => {
                 App.Modals.cerrarTodos();
                 try {
-                    const promesas = Object.keys(App.state.operadores).map(id => {
-                        return setDoc(doc(App.db, "sesiones_activas", id), { estadoActivo: null, tiempoInicioEstado: null, fecha: Utils.fechaHoyNormal(), tiemposAcumulados: {bath:0, food:0, quality:0} });
-                    });
-                    await Promise.all(promesas); Utils.toast("Tiempos reiniciados a cero.");
-                } catch(err) { Utils.toast("Error al reiniciar.", "error"); }
+                    await Promise.all(Object.keys(App.state.operadores).map(id =>
+                        setDoc(doc(App.db, "sesiones_activas", id), { estadoActivo: null, tiempoInicioEstado: null, fecha: Utils.fechaHoyNormal(), tiemposAcumulados: { bath: 0, food: 0, quality: 0 } })));
+                    Utils.toast("Tiempos reiniciados a cero.");
+                } catch (err) { Utils.toast("Error al reiniciar.", "error"); }
             },
             responderSolicitud: async (id, estado, asesorId, dias, motivo) => {
-                if(!confirm(`¿Estás seguro de marcar esta solicitud como ${estado.toUpperCase()}?`)) return;
-                
+                if (!confirm(`¿Marcar esta solicitud como ${estado.toUpperCase()}?`)) return;
                 try {
                     await updateDoc(doc(window.db, "solicitudes", id), { estado });
-                    
-                    // Lógica mágica: Descontar días de vacaciones si fue aprobada
-                    if(estado === 'aprobada' && motivo.includes('Vacaciones') && asesorId && App.state.operadores[asesorId]) {
-                        const op = App.state.operadores[asesorId];
-                        const vac = op.vacaciones || { diasDisponibles: 0 };
-                        let currentDias = parseInt(vac.diasDisponibles) || 0;
-                        let nuevosDias = Math.max(0, currentDias - dias); // Para no tener negativos
-                        
-                        await updateDoc(doc(window.db, "operadores", asesorId), {
-                            "vacaciones.diasDisponibles": nuevosDias
-                        });
+                    // Si se aprueban vacaciones, se descuentan los días
+                    if (estado === 'aprobada' && motivo.includes('Vacaciones') && asesorId && App.state.operadores[asesorId]) {
+                        const vac = App.state.operadores[asesorId].vacaciones || { diasDisponibles: 0 };
+                        const nuevosDias = Math.max(0, (parseInt(vac.diasDisponibles) || 0) - dias);
+                        await updateDoc(doc(window.db, "operadores", asesorId), { "vacaciones.diasDisponibles": nuevosDias });
                         Utils.toast(`Solicitud aprobada. Se descontaron ${dias} días de vacaciones.`);
                     } else {
-                        Utils.toast(`Solicitud ${estado} correctamente.`);
+                        Utils.toast(`Solicitud ${estado}.`);
                     }
-                } catch(e) {
+                } catch (e) {
                     Utils.toast("Error al procesar la solicitud.", "error");
                 }
             }
         };
 
         App.UI = {
-            cambiarSeccion: (seccionId, btn) => {
-                // Quitar estilos activos
-                document.querySelectorAll('.nav-item').forEach(el => {
-                    el.classList.remove('bg-blue-600/10', 'text-blue-400', 'font-bold', 'border-blue-500/20');
-                    el.classList.add('text-slate-400', 'font-medium', 'border-transparent');
-                });
-                
-                // Agregar estilos al activo
-                btn.classList.remove('text-slate-400', 'font-medium', 'border-transparent');
-                btn.classList.add('bg-blue-600/10', 'text-blue-400', 'font-bold', 'border-blue-500/20');
-
-                // Ocultar todas las secciones
+            cambiarSeccion: (seccionId) => {
+                document.querySelectorAll('.nav-sec').forEach(el => el.classList.toggle('active', el.dataset.sec === seccionId));
                 document.querySelectorAll('.admin-section').forEach(el => el.classList.add('hidden'));
-                
-                // Mostrar la seleccionada
                 document.getElementById(seccionId).classList.remove('hidden');
-
-                // Actualizar el título
-                const titles = {
-                    'seccion-monitor': 'Monitor de Operaciones',
-                    'seccion-vacaciones': 'Gestión de Permisos y Vacaciones'
-                };
-                const titleEl = document.getElementById('header-title');
-                if (titleEl) titleEl.innerText = titles[seccionId] || 'Monitor de Operaciones';
+                const titles = { 'seccion-monitor': 'Monitor en vivo', 'seccion-vacaciones': 'Permisos y vacaciones' };
+                document.getElementById('header-title').innerText = titles[seccionId] || 'Monitor en vivo';
+                history.replaceState(null, '', seccionId === 'seccion-vacaciones' ? '#permisos' : location.pathname);
             },
             renderMonitor: () => {
                 const grid = document.getElementById('lista-activos');
-                if (!grid) return;
-                
-                const searchEl = document.getElementById('search-monitor');
-                const term = searchEl ? searchEl.value.toLowerCase() : '';
-                
-                let html = ''; let excedidos = 0; let activos = 0; let total = Object.keys(App.state.operadores).length;
+                const term = document.getElementById('search-monitor').value.toLowerCase();
+
+                let excedidos = 0, activos = 0, conectados = 0;
+                const total = Object.keys(App.state.operadores).length;
+                const tarjetas = [];
 
                 Object.values(App.state.operadores).forEach(ag => {
                     const ses = App.state.sesiones[ag.id];
                     const isReceso = ses && ses.estadoActivo && ses.estadoActivo !== 'null';
                     const isWorking = ses && (!ses.estadoActivo || ses.estadoActivo === 'null');
-                    const isOffline = !ses;
-
-                    if(term && !ag.nombre.toLowerCase().includes(term) && !ag.id.toLowerCase().includes(term) && !(ag.xoc && ag.xoc.toLowerCase().includes(term))) return;
-
-                    if(isReceso) activos++;
 
                     const limB = ag.limites?.bano || App.config.limites.bano;
                     const limC = ag.limites?.comida || App.config.limites.comida;
-                    
-                    const tB = ses?.tiemposAcumulados?.bath || 0; const tC = ses?.tiemposAcumulados?.food || 0; const tQ = ses?.tiemposAcumulados?.quality || 0;
-                    const excB = tB >= (limB * 60); const excC = tC >= (limC * 60);
-                    if(excB || excC) excedidos++;
+                    const tB = ses?.tiemposAcumulados?.bath || 0, tC = ses?.tiemposAcumulados?.food || 0, tQ = ses?.tiemposAcumulados?.quality || 0;
+                    const excB = tB >= limB * 60, excC = tC >= limC * 60;
 
-                    let statusHtml, timerHtml;
-                    let opacity = isOffline ? 'opacity-60 grayscale-[20%] bg-slate-50' : 'bg-white shadow-sm';
+                    // Los KPIs cuentan a todos, no solo a los filtrados
+                    if (isReceso) activos++;
+                    if (isWorking) conectados++;
+                    if (excB || excC) excedidos++;
 
+                    const nombre = Utils.nombre(ag);
+                    if (term && !(ag.nombre || '').toLowerCase().includes(term) && !nombre.toLowerCase().includes(term) && !ag.id.toLowerCase().includes(term) && !(ag.xoc && ag.xoc.toLowerCase().includes(term))) return;
+
+                    let statusHtml, centro, orden;
                     if (isReceso) {
-                        const m = App.config.meta[ses.estadoActivo] || { icon: 'ph-question', label: ses.estadoActivo || 'Desconocido', cText: 'text-slate-600', cBg: 'bg-slate-100', cBorder: 'border-slate-200', cBar: 'bg-slate-500' };
-                        statusHtml = `<span class="px-2 py-1 ${m.cBg} ${m.cText} text-[10px] font-bold rounded flex items-center gap-1.5 shrink-0 border ${m.cBorder}"><span class="w-1.5 h-1.5 ${m.cBar} rounded-full animate-pulse"></span> ${m.label}</span>`;
-                        timerHtml = `
-                            <div class="${m.cBg} rounded-2xl p-4 flex flex-col items-center justify-center border ${m.cBorder} relative overflow-hidden mb-4">
-                                <div class="absolute bottom-0 left-0 h-1.5 ${m.cBorder.replace('border-','bg-')} w-full opacity-50"><div id="p-${ag.id}" class="h-full ${m.cBar} progress-transition" style="width:0%"></div></div>
-                                <span id="t-${ag.id}" class="${m.cText} font-mono text-3xl font-black tracking-wider">00:00</span>
-                                <span class="text-[9px] font-bold uppercase tracking-widest mt-1 opacity-80 ${m.cText}">En Curso</span>
-                            </div>`;
+                        const m = META[ses.estadoActivo] || { icon: 'ph-question', label: ses.estadoActivo, chip: 'chip-neutral', c: 'muted', bg: 'bg-ok' };
+                        orden = 0;
+                        statusHtml = `<span class="chip ${m.chip}"><span class="dot dot-live"></span>${m.label}</span>`;
+                        centro = `
+                            <div class="rounded-xl surface-2 border divider px-4 py-3 flex items-center justify-between gap-3">
+                                <div class="flex items-center gap-2.5 ${m.c}"><i class="ph-fill ${m.icon} text-xl"></i><span class="text-[13px] font-medium muted">En curso</span></div>
+                                <span id="t-${ag.id}" class="tnum text-[26px] font-bold tracking-tight ${m.c}">00:00</span>
+                            </div>
+                            <div class="progress !h-1.5 mt-2"><div id="p-${ag.id}" class="${m.bg}"></div></div>`;
                     } else if (isWorking) {
-                        statusHtml = `<span class="px-2 py-1 bg-emerald-100 text-emerald-700 text-[10px] font-bold rounded flex items-center gap-1 shrink-0 border border-emerald-200"><span class="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse"></span> Operando</span>`;
-                        timerHtml = `<div class="bg-emerald-50/50 rounded-2xl p-4 flex flex-col items-center justify-center border border-emerald-100 mb-4 h-[94px]"><i class="ph-fill ph-check-circle text-3xl text-emerald-400 mb-1"></i><span class="text-[10px] font-bold uppercase tracking-widest text-emerald-600">Conectado</span></div>`;
+                        orden = 1;
+                        statusHtml = `<span class="chip chip-ok"><span class="dot"></span>Disponible</span>`;
+                        centro = `<div class="rounded-xl surface-2 border divider px-4 py-3 h-[62px] flex items-center gap-2.5 muted text-[13px]"><i class="ph-bold ph-headset text-lg c-ok"></i> Atendiendo llamadas</div><div class="h-1.5 mt-2"></div>`;
                     } else {
-                        statusHtml = `<span class="px-2 py-1 bg-slate-200 text-slate-500 text-[10px] font-bold rounded flex items-center gap-1 shrink-0 border border-slate-300"><i class="ph-fill ph-moon"></i> Ausente</span>`;
-                        timerHtml = `<div class="bg-slate-50 rounded-2xl p-4 flex flex-col items-center justify-center border border-slate-100 mb-4 h-[94px]"><i class="ph-fill ph-coffee text-3xl text-slate-300 mb-1"></i><span class="text-[10px] font-bold uppercase tracking-widest text-slate-400">Desconectado</span></div>`;
+                        orden = 2;
+                        statusHtml = `<span class="chip chip-neutral"><i class="ph-fill ph-moon"></i>Sin conexión</span>`;
+                        centro = `<div class="rounded-xl surface-2 border divider px-4 py-3 h-[62px] flex items-center gap-2.5 subtle text-[13px]"><i class="ph-bold ph-plugs text-lg"></i> No se ha conectado hoy</div><div class="h-1.5 mt-2"></div>`;
                     }
 
-                    html += `
-                    <div class="${opacity} rounded-3xl p-5 border border-slate-200 flex flex-col transition-all h-full relative">
-                        <div class="flex justify-between items-start mb-4 pr-2 min-h-[44px]">
-                            <div class="min-w-0">
-                                <h3 class="font-bold text-slate-800 text-base leading-tight truncate mb-1" title="${ag.nombre}">${ag.nombre}</h3>
-                                <span class="text-[10px] text-slate-500 font-mono font-bold bg-slate-100 px-1.5 py-0.5 rounded">ID: ${ag.id}</span>
+                    const mini = (key, t, lim, exc) => `
+                        <div class="rounded-lg px-2.5 py-2 ${exc ? 'soft-danger' : 'surface-2'}">
+                            <p class="text-[11px] ${exc ? 'c-danger' : 'subtle'} flex items-center gap-1"><span class="dot ${META[key].bg} !w-1.5 !h-1.5"></span>${META[key].label}</p>
+                            <p class="tnum text-[13px] font-semibold ${exc ? 'c-danger' : 'text-1'}"><span id="tot-${key}-${ag.id}">${Utils.formatSeg(t)}</span><span class="subtle font-normal"> ${lim}</span></p>
+                        </div>`;
+
+                    tarjetas.push({ orden, nombre, html: `
+                    <div class="card agent-card p-4 flex flex-col gap-3 ${orden === 2 ? 'offline' : ''}">
+                        <div class="flex items-center gap-3">
+                            <div class="avatar">${Utils.esc(Utils.iniciales(nombre))}</div>
+                            <div class="min-w-0 flex-1">
+                                <p class="font-semibold text-1 truncate leading-tight" title="${Utils.esc(ag.nombre)}">${Utils.esc(nombre)}</p>
+                                <p class="text-[12px] subtle tnum">ID ${Utils.esc(ag.id)}${ag.horarios?.turno ? ' · ' + Utils.esc(ag.horarios.turno) : ''}</p>
                             </div>
+                            ${statusHtml}
                         </div>
-                        ${timerHtml}
-                        <div class="flex justify-between items-end mb-3 mt-auto pt-2 border-t border-slate-100">${statusHtml}<span class="text-[9px] text-slate-400 font-bold uppercase tracking-widest bg-slate-100 px-2 py-1 rounded">Consumo Hoy</span></div>
+                        <div>${centro}</div>
                         <div class="grid grid-cols-3 gap-2">
-                            <div class="flex flex-col items-center justify-center rounded-2xl p-2 border ${excB ? 'bg-red-50 border-red-200 text-red-700' : 'bg-slate-50 border-slate-100 text-slate-600'}"><i class="ph-fill ph-toilet ${excB ? 'text-red-500' : 'text-blue-400'} mb-1 text-lg"></i><span id="tot-bath-${ag.id}" class="text-xs font-mono font-bold leading-none mb-1">${Utils.formatSeg(tB)}</span><span class="text-[9px] opacity-70 font-medium">/ ${limB}m</span></div>
-                            <div class="flex flex-col items-center justify-center rounded-2xl p-2 border ${excC ? 'bg-red-50 border-red-200 text-red-700' : 'bg-slate-50 border-slate-100 text-slate-600'}"><i class="ph-fill ph-hamburger ${excC ? 'text-red-500' : 'text-orange-400'} mb-1 text-lg"></i><span id="tot-food-${ag.id}" class="text-xs font-mono font-bold leading-none mb-1">${Utils.formatSeg(tC)}</span><span class="text-[9px] opacity-70 font-medium">/ ${limC}m</span></div>
-                            <div class="flex flex-col items-center justify-center rounded-2xl p-2 border bg-slate-50 border-slate-100 text-slate-600"><i class="ph-fill ph-star text-purple-400 mb-1 text-lg"></i><span id="tot-quality-${ag.id}" class="text-xs font-mono font-bold leading-none mb-1">${Utils.formatSeg(tQ)}</span><span class="text-[9px] opacity-70 font-medium">Libre</span></div>
+                            ${mini('bath', tB, '/' + limB + 'm', excB)}
+                            ${mini('food', tC, '/' + limC + 'm', excC)}
+                            ${mini('quality', tQ, '', false)}
                         </div>
-                    </div>`;
+                    </div>` });
                 });
+
+                tarjetas.sort((a, b) => a.orden - b.orden || a.nombre.localeCompare(b.nombre));
 
                 document.getElementById('kpi-total').innerText = total;
                 document.getElementById('kpi-activos').innerText = activos;
+                document.getElementById('kpi-conectados').innerText = conectados;
                 document.getElementById('kpi-excedidos').innerText = excedidos;
-                
-                grid.innerHTML = html || `<div class="col-span-full py-10 text-center text-slate-400 font-bold">No hay coincidencias con tu búsqueda.</div>`;
-                App.UI.tickRelojes(); 
+
+                grid.innerHTML = tarjetas.map(t => t.html).join('') || `<div class="col-span-full card empty"><i class="ph ph-magnifying-glass"></i>Nadie coincide con tu búsqueda.</div>`;
+                App.UI.tickRelojes();
             },
             tickRelojes: () => {
                 const ahora = Date.now();
                 Object.values(App.state.operadores).forEach(ag => {
                     const ses = App.state.sesiones[ag.id];
-                    if(!ses || !ses.estadoActivo || ses.estadoActivo === 'null') return;
-                    
-                    const estado = ses.estadoActivo;
-                    let segs = ses.tiemposAcumulados[estado] || 0;
-                    if(ses.tiempoInicioEstado) segs += Math.floor((ahora - ses.tiempoInicioEstado) / 1000);
+                    if (!ses || !ses.estadoActivo || ses.estadoActivo === 'null') return;
 
-                    const limMax = (ag.limites[estado === 'bath' ? 'bano' : estado] || App.config.limites[estado === 'bath' ? 'bano' : estado] || 999) * 60;
-                    
+                    const estado = ses.estadoActivo;
+                    let segs = ses.tiemposAcumulados?.[estado] || 0;
+                    if (ses.tiempoInicioEstado) segs += Math.floor((ahora - ses.tiempoInicioEstado) / 1000);
+
+                    const key = estado === 'bath' ? 'bano' : (estado === 'food' ? 'comida' : estado);
+                    const limMax = ((ag.limites || {})[key] || App.config.limites[key] || 999) * 60;
+
                     const txtDisp = document.getElementById(`t-${ag.id}`);
                     const barProg = document.getElementById(`p-${ag.id}`);
                     const txtTot = document.getElementById(`tot-${estado}-${ag.id}`);
 
-                    if(txtDisp) {
+                    if (txtDisp) {
                         txtDisp.innerText = Utils.formatSeg(segs);
-                        if(txtTot) txtTot.innerText = Utils.formatSeg(segs);
-                        
-                        if(barProg) barProg.style.width = `${Math.min((segs/limMax)*100, 100)}%`;
-
-                        if(segs >= limMax) {
-                            txtDisp.className = "text-red-600 font-mono text-3xl font-black tracking-wider animate-pulse";
-                            if(barProg) barProg.className = "h-full bg-red-500 progress-transition";
+                        if (txtTot) txtTot.innerText = Utils.formatSeg(segs);
+                        if (barProg) barProg.style.width = `${Math.min((segs / limMax) * 100, 100)}%`;
+                        if (segs >= limMax) {
+                            txtDisp.className = "tnum text-[26px] font-bold tracking-tight c-danger";
+                            if (barProg) barProg.className = "bg-danger";
                         }
                     }
                 });
             },
             renderHistorialLocal: () => {
                 const tbody = document.getElementById('tabla-registros-global');
-                const filtroFechaEl = document.getElementById('filtro-fecha-historial');
-                const filtroAgenteEl = document.getElementById('filtro-agente-historial');
-                if(!tbody || !filtroFechaEl) return;
-                
-                const fechaFiltro = filtroFechaEl.value; 
-                const agenteFiltro = filtroAgenteEl ? filtroAgenteEl.value.trim().toLowerCase() : '';
-                
-                tbody.innerHTML = '';
-                let rCount = 0;
-                let totB = 0, totC = 0, totQ = 0;
+                const fechaFiltro = document.getElementById('filtro-fecha-historial').value;
+                const agenteFiltro = document.getElementById('filtro-agente-historial').value.trim().toLowerCase();
+
+                let html = '', rCount = 0, totB = 0, totC = 0, totQ = 0;
 
                 App.state.registrosHistorial.forEach(data => {
                     const dateObj = data.fecha.toDate();
                     const isoStr = new Date(dateObj.getTime() - (dateObj.getTimezoneOffset() * 60000)).toISOString().split('T')[0];
-                    
-                    if (isoStr === fechaFiltro) {
-                        if (agenteFiltro && !data.asesor_nombre.toLowerCase().includes(agenteFiltro) && !data.asesor_id.toLowerCase().includes(agenteFiltro)) {
-                            return; 
-                        }
+                    if (isoStr !== fechaFiltro) return;
 
-                        rCount++;
-                        
-                        if (data.estado === 'bath' || data.estado === 'Baño') totB += data.duracion_segundos;
-                        if (data.estado === 'food' || data.estado === 'Comida') totC += data.duracion_segundos;
-                        if (data.estado === 'quality' || data.estado === 'Calidad') totQ += data.duracion_segundos;
+                    const ui = META[data.estado];
+                    if (!ui) return; // solo pausas; los eventos de conexión están en Auditoría
 
-                        const fStr = dateObj.toLocaleTimeString('es-ES', {hour:'2-digit', minute:'2-digit'});
-                        const ui = App.config.meta[data.estado] || { icon: 'ph-question', label: data.estado || 'Desconocido', cText: 'text-slate-600', cBg: 'bg-slate-100', cBorder: 'border-slate-200', cBar: 'bg-slate-500' };
-                        
-                        tbody.innerHTML += `
-                        <tr class="hover:bg-slate-50/80 transition-colors group border-b border-slate-100">
-                            <td class="px-6 py-4 text-xs font-bold text-slate-500 bg-slate-50/30 group-hover:bg-slate-100/50 transition-colors w-32"><i class="ph-fill ph-clock text-slate-400"></i> ${fStr}</td>
-                            <td class="px-6 py-4"><div class="font-bold text-slate-800">${data.asesor_nombre}</div><div class="text-[10px] font-mono font-bold text-slate-400 mt-0.5">ID: ${data.asesor_id}</div></td>
-                            <td class="px-6 py-4"><span class="px-2.5 py-1 text-xs font-bold rounded-lg border inline-flex items-center gap-1.5 ${ui.cBg} ${ui.cText} ${ui.cBorder}"><i class="${ui.icon} text-sm"></i> ${ui.label}</span></td>
-                            <td class="px-6 py-4 font-mono font-black text-blue-600 text-lg tracking-wider text-right">${Utils.formatSeg(data.duracion_segundos)}</td>
+                    const op = App.state.operadores[data.asesor_id];
+                    const nombreLargo = data.asesor_nombre || op?.nombre || '';
+                    const nombre = op ? Utils.nombre(op) : (nombreLargo || 'Asesor');
+                    if (agenteFiltro && !nombreLargo.toLowerCase().includes(agenteFiltro) && !nombre.toLowerCase().includes(agenteFiltro) && !String(data.asesor_id).toLowerCase().includes(agenteFiltro)) return;
+
+                    rCount++;
+                    if (data.estado === 'bath' || data.estado === 'Baño') totB += data.duracion_segundos;
+                    if (data.estado === 'food' || data.estado === 'Comida') totC += data.duracion_segundos;
+                    if (data.estado === 'quality' || data.estado === 'Calidad') totQ += data.duracion_segundos;
+
+                    const fStr = dateObj.toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit', hour12: false });
+                    const kick = data.tipo_evento === 'EXPULSION_SISTEMA' ? ` <span class="chip chip-danger !h-5 !text-[11px]" title="La extensión lo desconectó por exceder el tiempo">Desconectado</span>` : '';
+                    html += `
+                        <tr>
+                            <td class="tnum muted w-28">${fStr}</td>
+                            <td><div class="flex items-center gap-2.5"><div class="avatar avatar-sm">${Utils.esc(Utils.iniciales(nombre))}</div><div><p class="font-medium leading-tight">${Utils.esc(nombre)}</p><p class="text-[12px] subtle tnum">ID ${Utils.esc(data.asesor_id)}</p></div></div></td>
+                            <td><span class="chip ${ui.chip}"><i class="ph-fill ${ui.icon}"></i> ${ui.label}</span>${kick}</td>
+                            <td class="!text-right tnum font-semibold">${Utils.formatSeg(data.duracion_segundos)}</td>
                         </tr>`;
-                    }
                 });
 
                 document.getElementById('super-hist-tot-bath').innerText = Utils.formatSeg(totB);
                 document.getElementById('super-hist-tot-food').innerText = Utils.formatSeg(totC);
                 document.getElementById('super-hist-tot-quality').innerText = Utils.formatSeg(totQ);
-
-                if(rCount === 0) tbody.innerHTML = `<tr><td colspan="4" class="text-center py-10 text-slate-400 font-bold italic">No hay registros para los filtros seleccionados.</td></tr>`;
+                tbody.innerHTML = rCount ? html : `<tr><td colspan="4" class="empty"><i class="ph ph-clock"></i>No hay pausas para este filtro.</td></tr>`;
             },
             renderSolicitudes: () => {
                 const tbPendientes = document.getElementById('tabla-solicitudes-pendientes');
                 const tbHistorial = document.getElementById('tabla-solicitudes-historial');
-                if (!tbPendientes || !tbHistorial) return;
+                let htmlP = '', htmlH = '', pendientes = 0;
 
-                let htmlP = '', htmlH = '';
-                
                 App.state.solicitudes.forEach(sol => {
+                    const op = App.state.operadores[sol.asesor_id];
+                    const nombre = op ? Utils.nombre(op) : (sol.asesor_nombre || 'Asesor');
+                    const motivoSafe = Utils.esc(sol.motivo).replace(/'/g, '&#39;');
+                    const acciones = sol.estado === 'pendiente'
+                        ? `<div class="flex justify-end gap-2">
+                               <button onclick="App.Handlers.responderSolicitud('${sol.id}', 'aprobada', '${sol.asesor_id}', ${sol.dias_solicitados}, '${motivoSafe}')" class="btn btn-success btn-sm"><i class="ph-bold ph-check"></i> Aprobar</button>
+                               <button onclick="App.Handlers.responderSolicitud('${sol.id}', 'rechazada', '${sol.asesor_id}', 0, '')" class="btn btn-danger btn-sm"><i class="ph-bold ph-x"></i> Rechazar</button>
+                           </div>`
+                        : `<span class="chip ${sol.estado === 'aprobada' ? 'chip-ok' : 'chip-danger'} capitalize">${Utils.esc(sol.estado)}</span>`;
                     const row = `
-                        <tr class="border-b border-slate-50 hover:bg-slate-50/50">
-                            <td class="px-6 py-4 text-sm font-medium text-slate-600">${new Date(sol.timestamp).toLocaleDateString()}</td>
-                            <td class="px-6 py-4 text-sm font-bold text-slate-800">${sol.asesor_nombre} <br><span class="text-[10px] text-slate-400 font-mono">ID: ${sol.asesor_id}</span></td>
-                            <td class="px-6 py-4 text-sm font-bold text-blue-600">${sol.motivo}</td>
-                            <td class="px-6 py-4 text-sm text-slate-600">${sol.fecha_inicio} <span class="text-slate-400 mx-1">al</span> ${sol.fecha_fin}</td>
-                            <td class="px-6 py-4 text-center text-sm font-bold text-slate-700">${sol.dias_solicitados}</td>
-                            ${sol.estado === 'pendiente' ? `
-                            <td class="px-6 py-4 text-right">
-                                <button onclick="App.Handlers.responderSolicitud('${sol.id}', 'aprobada', '${sol.asesor_id}', ${sol.dias_solicitados}, '${sol.motivo}')" class="bg-emerald-50 text-emerald-600 border border-emerald-200 hover:bg-emerald-500 hover:text-white px-3 py-1.5 rounded-lg text-xs font-bold transition-colors mr-2">Aprobar</button>
-                                <button onclick="App.Handlers.responderSolicitud('${sol.id}', 'rechazada', '${sol.asesor_id}', 0, '')" class="bg-red-50 text-red-600 border border-red-200 hover:bg-red-500 hover:text-white px-3 py-1.5 rounded-lg text-xs font-bold transition-colors">Rechazar</button>
-                            </td>` : `
-                            <td class="px-6 py-4 text-right">
-                                <span class="px-3 py-1 text-[10px] font-bold uppercase tracking-wider rounded-lg border ${sol.estado === 'aprobada' ? 'bg-emerald-100 text-emerald-700 border-emerald-200' : 'bg-red-100 text-red-700 border-red-200'}">${sol.estado}</span>
-                            </td>
-                            `}
-                        </tr>
-                    `;
-                    if (sol.estado === 'pendiente') htmlP += row;
-                    else htmlH += row;
+                        <tr>
+                            <td class="muted tnum">${new Date(sol.timestamp).toLocaleDateString('es-MX')}</td>
+                            <td><p class="font-medium leading-tight">${Utils.esc(nombre)}</p><p class="text-[12px] subtle tnum">ID ${Utils.esc(sol.asesor_id)}</p></td>
+                            <td><span class="chip chip-brand">${Utils.esc(sol.motivo)}</span></td>
+                            <td class="muted tnum">${Utils.esc(sol.fecha_inicio)} <span class="subtle">→</span> ${Utils.esc(sol.fecha_fin)}</td>
+                            <td class="!text-center tnum font-semibold">${sol.dias_solicitados}</td>
+                            <td class="!text-right">${acciones}</td>
+                        </tr>`;
+                    if (sol.estado === 'pendiente') { htmlP += row; pendientes++; } else htmlH += row;
                 });
 
-                tbPendientes.innerHTML = htmlP || `<tr><td colspan="6" class="text-center py-8 text-slate-400 font-medium">No hay solicitudes pendientes por revisar.</td></tr>`;
-                tbHistorial.innerHTML = htmlH || `<tr><td colspan="6" class="text-center py-8 text-slate-400 font-medium">Aún no hay historial de solicitudes.</td></tr>`;
+                tbPendientes.innerHTML = htmlP || `<tr><td colspan="6" class="empty"><i class="ph ph-check-circle"></i>No hay solicitudes pendientes.</td></tr>`;
+                tbHistorial.innerHTML = htmlH || `<tr><td colspan="6" class="empty"><i class="ph ph-tray"></i>Aún no hay historial de solicitudes.</td></tr>`;
+                const badge = document.getElementById('badge-pendientes');
+                badge.innerText = pendientes;
+                badge.classList.toggle('hidden', pendientes === 0);
             }
         };
 
         App.Firebase = {
             listenReportes: () => {
-                const tbody = document.getElementById('tabla-registros-global');
-                if(!tbody) return;
-                
                 const q = query(collection(window.db, "registros_tiempos"), orderBy("fecha", "desc"), limit(2000));
-                
                 onSnapshot(q, (snap) => {
                     App.state.registrosHistorial = [];
-                    snap.forEach(d => {
-                        const data = d.data();
-                        if(data.fecha) App.state.registrosHistorial.push(data);
-                    });
-                    
+                    snap.forEach(d => { const data = d.data(); if (data.fecha) App.state.registrosHistorial.push(data); });
                     App.UI.renderHistorialLocal();
-                }, (error) => {
-                    console.error("Error escuchando reportes", error);
-                });
+                }, (error) => console.error("Error escuchando reportes", error));
             },
             listenSolicitudes: () => {
                 const q = query(collection(window.db, "solicitudes"), orderBy("timestamp", "desc"));
@@ -822,42 +675,34 @@
                     App.state.solicitudes = [];
                     snap.forEach(d => App.state.solicitudes.push({ id: d.id, ...d.data() }));
                     App.UI.renderSolicitudes();
-                }, (error) => {
-                    console.error("Error escuchando solicitudes", error);
-                });
+                }, (error) => console.error("Error escuchando solicitudes", error));
             },
             init: async () => {
-                onSnapshot(doc(window.db, "config", "global"), (d) => { if(d.exists() && d.data().limites) App.config.limites = d.data().limites; });
-                
+                onSnapshot(doc(window.db, "config", "global"), (d) => { if (d.exists() && d.data().limites) { App.config.limites = { ...App.config.limites, ...d.data().limites }; App.UI.renderMonitor(); } });
+
                 onSnapshot(collection(window.db, "operadores"), (snap) => {
                     App.state.operadores = {};
-                    snap.forEach(d => App.state.operadores[d.id] = d.data());
+                    snap.forEach(d => App.state.operadores[d.id] = { id: d.id, ...d.data() });
                     App.UI.renderMonitor();
+                    App.UI.renderHistorialLocal();
                 });
 
                 onSnapshot(collection(window.db, "sesiones_activas"), (snap) => {
                     App.state.sesiones = {};
-                    snap.forEach(d => { if(d.data().fecha === Utils.fechaHoyNormal()) App.state.sesiones[d.id] = d.data(); });
+                    // Acepta la fecha en formato local (extensión) o ISO (web del asesor)
+                    snap.forEach(d => { if (Utils.esHoy(d.data().fecha)) App.state.sesiones[d.id] = d.data(); });
                     App.UI.renderMonitor();
                 });
 
                 setInterval(App.UI.tickRelojes, 1000);
-                
-                const filtroHistorial = document.getElementById('filtro-fecha-historial');
-                if(filtroHistorial) filtroHistorial.value = App.state.fechaFiltro;
-                
+                document.getElementById('filtro-fecha-historial').value = App.state.fechaFiltro;
                 App.Firebase.listenReportes();
                 App.Firebase.listenSolicitudes();
             }
         };
 
         window.App = App;
-
-        // Intentar autologin silencioso al cargar la página
-        window.addEventListener('DOMContentLoaded', () => {
-            App.Auth.login(true);
-        });
-
+        App.Auth.login(true);
     </script>
 </body>
 </html>
