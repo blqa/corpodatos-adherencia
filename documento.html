@@ -11,8 +11,11 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="assets/theme.js"></script>
     <script>
-        // Color y tema que el asesor eligió en "Personalizar" (o tema del supervisor)
+        // Desde el panel: tema del supervisor. Si no: el color que eligió el asesor.
         (function () {
+            var q = new URLSearchParams(location.search);
+            if (q.get('panel') === '1') sessionStorage.setItem('docPanel', '1');
+            if (sessionStorage.getItem('docPanel') === '1') { document.documentElement.classList.add('dark', 'super'); return; }
             var A = { indigo: ['#4f46e5', '#6366f1'], azul: ['#2563eb', '#3b82f6'], verde: ['#059669', '#10b981'], rosa: ['#db2777', '#ec4899'], naranja: ['#ea580c', '#f97316'], grafito: ['#334155', '#64748b'] };
             try {
                 var p = JSON.parse(localStorage.getItem('prefsAsesor') || '{}');
@@ -20,62 +23,65 @@
                     var c = A[p.acento];
                     document.write('<style>:root{--brand:' + c[0] + ';--brand-600:' + c[0] + ';--brand-text:' + c[0] + ';--brand-soft:color-mix(in srgb,' + c[0] + ' 11%,white)}html.dark{--brand:' + c[1] + ';--brand-text:' + c[1] + ';--brand-soft:color-mix(in srgb,' + c[1] + ' 18%,transparent)}.logo{background:linear-gradient(135deg,' + c[1] + ',' + c[0] + ')}</style>');
                 }
-                if (p.intensidad === 'marcada') document.addEventListener('DOMContentLoaded', function () { document.body.classList.add('tint-strong'); });
             } catch (e) {}
         })();
     </script>
     <script src="https://unpkg.com/@phosphor-icons/web"></script>
     <link rel="stylesheet" href="assets/ui.css">
     <style>
-        .auth-pending .app-shell, .auth-pending .mobile-nav { visibility: hidden; }
-        .tab-link { display: flex; align-items: center; gap: 9px; width: 100%; height: 34px; padding: 0 10px; border-radius: 8px; font-size: 13.5px; color: var(--text-2); text-align: left; }
-        .tab-link:hover { background: var(--surface-3); color: var(--text); }
-        .tab-link.active { background: var(--brand-soft); color: var(--brand-text); font-weight: 600; }
-        .tab-link i { font-size: 16px; flex-shrink: 0; }
-        .tab-link .lbl { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-        .grupo { font-size: 11px; font-weight: 600; letter-spacing: .07em; text-transform: uppercase; color: var(--text-3); padding: 14px 10px 6px; }
+        .sec-link { display: flex; align-items: center; gap: 10px; width: 100%; height: 38px; padding: 0 12px; border-radius: 9px; font-size: 14px; color: var(--text-2); text-align: left; }
+        .sec-link:hover { background: var(--surface-3); color: var(--text); }
+        .sec-link.active { background: var(--brand-soft); color: var(--brand-text); font-weight: 600; }
+        .sec-link i { font-size: 18px; }
+        .sec-link .badge-dia { margin-left: auto; font-size: 10.5px; font-weight: 600; color: var(--text-3); }
+        .seccion { display: none; }
+        .seccion.activa { display: block; animation: fadeIn .2s ease both; }
 
-        .hoja { border-collapse: separate; border-spacing: 0; font-size: 13.5px; min-width: 100%; }
-        .hoja th, .hoja td { padding: 9px 12px; border-bottom: 1px solid var(--border); border-right: 1px solid color-mix(in srgb, var(--border) 55%, transparent); vertical-align: top; text-align: left; }
-        .hoja th { position: sticky; top: 0; z-index: 2; background: var(--surface-2); color: var(--text-2); font-size: 12px; font-weight: 600; white-space: nowrap; }
-        .hoja td { color: var(--text); max-width: 460px; white-space: pre-wrap; word-break: break-word; }
-        .hoja td.corta { white-space: nowrap; }
-        .hoja .c0 { position: sticky; left: 0; z-index: 1; background: var(--surface); font-weight: 500; }
-        .hoja th.c0 { z-index: 3; background: var(--surface-2); }
-        .hoja tbody tr:hover td { background: color-mix(in srgb, var(--brand) 6%, var(--surface)); }
-        .hoja tr.mia td { background: color-mix(in srgb, var(--brand) 12%, var(--surface)) !important; }
-        .hoja tr.mia td.c0 { box-shadow: inset 3px 0 0 var(--brand); }
-        .hoja tr.titulo td { background: var(--surface-3) !important; font-weight: 700; color: var(--text); font-size: 13px; letter-spacing: .02em; }
-        .hoja a { color: var(--brand-text); text-decoration: underline; text-underline-offset: 2px; word-break: break-all; }
-        .hoja .num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+        .tabla { border-collapse: separate; border-spacing: 0; font-size: 13.5px; width: 100%; }
+        .tabla th, .tabla td { padding: 10px 12px; border-bottom: 1px solid var(--border); border-right: 1px solid color-mix(in srgb, var(--border) 55%, transparent); vertical-align: top; text-align: left; }
+        .tabla th:last-child, .tabla td:last-child { border-right: 0; }
+        .tabla tbody tr:last-child td { border-bottom: 0; }
+        .tabla th { position: sticky; top: 0; z-index: 2; background: var(--surface-2); color: var(--text-2); font-size: 12px; font-weight: 600; white-space: nowrap; }
+        .tabla td { color: var(--text); white-space: pre-wrap; word-break: break-word; line-height: 1.5; }
+        .tabla td.corta { white-space: nowrap; }
+        .tabla .c0 { position: sticky; left: 0; z-index: 1; background: var(--surface); font-weight: 600; }
+        .tabla th.c0 { z-index: 3; background: var(--surface-2); }
+        .tabla tbody tr:hover td { background: color-mix(in srgb, var(--brand) 5%, var(--surface)); }
+        .tabla tr.mia td { background: color-mix(in srgb, var(--brand) 12%, var(--surface)) !important; }
+        .tabla tr.mia td.c0 { box-shadow: inset 3px 0 0 var(--brand); }
+        .tabla .num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+        .tabla a { color: var(--brand-text); text-decoration: underline; text-underline-offset: 2px; }
+        .tabla .vacia { color: var(--text-3); }
         .cod { display: inline-grid; place-items: center; min-width: 24px; height: 22px; padding: 0 5px; border-radius: 6px; font-size: 11.5px; font-weight: 700; }
-        .cod-A { background: var(--ok-soft); color: var(--ok); }
-        .cod-R { background: var(--warn-soft); color: var(--warn); }
-        .cod-F { background: var(--danger-soft); color: var(--danger); }
-        .cod-D { background: var(--surface-3); color: var(--text-3); }
-        .cod-V { background: var(--quality-soft); color: var(--quality); }
-        .cod-J { background: var(--bath-soft); color: var(--bath); }
-        .flash { animation: flash 1.4s ease; }
-        @keyframes flash { 0% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--brand) 60%, transparent); } 100% { box-shadow: 0 0 0 14px transparent; } }
-        .nowrap { white-space: nowrap; }
+        .cod-A { background: var(--ok-soft); color: var(--ok); } .cod-R { background: var(--warn-soft); color: var(--warn); }
+        .cod-F { background: var(--danger-soft); color: var(--danger); } .cod-D { background: var(--surface-3); color: var(--text-3); }
+        .cod-V { background: var(--quality-soft); color: var(--quality); } .cod-J { background: var(--bath-soft); color: var(--bath); }
+        .script-txt { white-space: pre-wrap; line-height: 1.6; font-size: 14.5px; color: var(--text); }
+        .app-card { transition: border-color .15s, box-shadow .15s, transform .15s; }
+        .app-card:hover { border-color: color-mix(in srgb, var(--brand) 50%, var(--border)); transform: translateY(-1px); }
+        mark { background: color-mix(in srgb, var(--warn) 35%, transparent); color: inherit; border-radius: 3px; padding: 0 1px; }
     </style>
 </head>
-<body class="auth-pending">
-
+<body>
     <div class="app-shell">
-        <!-- Pestañas -->
         <aside class="sidebar">
             <div class="sidebar-brand">
-                <div class="logo"><i class="ph-bold ph-table text-lg"></i></div>
-                <div class="leading-tight min-w-0"><p class="font-semibold text-1 text-[15px] truncate" id="doc-titulo">Documento OMT</p><p class="text-[12px] subtle flex items-center gap-1.5"><span class="dot dot-live c-ok"></span> En vivo desde Sheets</p></div>
+                <div class="logo"><i class="ph-bold ph-book-open-text text-lg"></i></div>
+                <div class="leading-tight"><p class="font-semibold text-1 text-[15px]">Documento OMT</p><p class="text-[12px] subtle">Corpodatos</p></div>
             </div>
-            <div class="px-3 pt-3">
-                <div class="field"><i class="ph-bold ph-magnifying-glass"></i><input id="buscar-pestana" class="input !h-9 !text-[13px]" placeholder="Buscar pestaña"></div>
-            </div>
-            <nav class="flex-1 overflow-y-auto px-2 pb-3" id="lista-pestanas">
-                <div class="empty !py-8"><span class="spinner spinner-lg"></span></div>
+            <nav class="flex-1 overflow-y-auto p-3 flex flex-col gap-1" id="menu">
+                <p class="eyebrow px-3 mb-1">Operación</p>
+                <button class="sec-link" data-sec="scripts"><i class="ph-bold ph-chat-text"></i> Scripts</button>
+                <button class="sec-link" data-sec="autenticacion"><i class="ph-bold ph-shield-check"></i> Autenticación</button>
+                <p class="eyebrow px-3 mt-4 mb-1">Herramientas</p>
+                <button class="sec-link" data-sec="aplicativos"><i class="ph-bold ph-app-window"></i> Aplicativos</button>
+                <button class="sec-link" data-sec="directorio"><i class="ph-bold ph-address-book"></i> Directorio</button>
+                <p class="eyebrow px-3 mt-4 mb-1">Equipo · se actualiza diario</p>
+                <button class="sec-link" data-sec="rol"><i class="ph-bold ph-calendar-dots"></i> Rol <span class="badge-dia">12:00</span></button>
+                <button class="sec-link" data-sec="adherencia"><i class="ph-bold ph-calendar-check"></i> Adherencia <span class="badge-dia">12:00</span></button>
+                <button class="sec-link" data-sec="productividad"><i class="ph-bold ph-trophy"></i> Productividad <span class="badge-dia">12:00</span></button>
             </nav>
-            <div class="p-3 border-t divider flex flex-col gap-1">
+            <div class="p-3 border-t divider">
                 <a id="link-volver" href="index.html" class="nav-item"><i class="ph-bold ph-arrow-left"></i> <span id="txt-volver">Mi adherencia</span></a>
             </div>
         </aside>
@@ -85,219 +91,669 @@
                 <div class="flex items-center gap-3 min-w-0">
                     <a href="index.html" id="volver-movil" class="btn btn-ghost btn-icon btn-sm md:hidden"><i class="ph-bold ph-arrow-left"></i></a>
                     <div class="min-w-0">
-                        <h1 class="text-[17px] font-semibold text-1 leading-tight truncate" id="pestana-titulo">Cargando…</h1>
-                        <p class="text-[12.5px] subtle truncate" id="pestana-sub">Conectando con la hoja</p>
+                        <h1 class="text-[17px] font-semibold text-1 leading-tight truncate" id="titulo">Documento OMT</h1>
+                        <p class="text-[12.5px] subtle truncate" id="subtitulo"></p>
                     </div>
                 </div>
                 <div class="flex items-center gap-2">
-                    <select id="selector-movil" class="input !h-9 !w-44 !text-[13px] md:hidden"></select>
-                    <div class="field hidden sm:block w-56"><i class="ph-bold ph-magnifying-glass"></i><input id="buscar-fila" class="input !h-9 !text-[13px]" placeholder="Buscar en esta pestaña"></div>
-                    <label class="btn btn-secondary btn-sm cursor-pointer" id="lbl-mio" title="Muestra solo las filas donde apareces"><input type="checkbox" id="solo-mio" class="checkbox"> Solo lo mío</label>
+                    <select id="menu-movil" class="input !h-9 !w-40 !text-[13px] md:hidden">
+                        <option value="scripts">Scripts</option><option value="autenticacion">Autenticación</option><option value="aplicativos">Aplicativos</option>
+                        <option value="directorio">Directorio</option><option value="rol">Rol</option><option value="adherencia">Adherencia</option><option value="productividad">Productividad</option>
+                    </select>
+                    <div class="field hidden sm:block w-64"><i class="ph-bold ph-magnifying-glass"></i><input id="buscar" class="input !h-9 !text-[13px]" placeholder="Buscar en esta sección"></div>
                 </div>
             </header>
 
-            <div class="page !pt-4">
-                <div class="sm:hidden mb-3"><div class="field"><i class="ph-bold ph-magnifying-glass"></i><input id="buscar-fila-m" class="input" placeholder="Buscar en esta pestaña"></div></div>
-                <div id="contenido" class="card overflow-auto" style="max-height: calc(100vh - 120px)">
-                    <div class="empty"><span class="spinner spinner-lg"></span></div>
+            <div class="page">
+                <div class="page-inner">
+                    <div class="sm:hidden mb-3"><div class="field"><i class="ph-bold ph-magnifying-glass"></i><input id="buscar-m" class="input" placeholder="Buscar en esta sección"></div></div>
+
+                    <section class="seccion" id="sec-scripts"><div id="lista-scripts" class="grid grid-cols-1 xl:grid-cols-2 gap-4"></div></section>
+
+                    <section class="seccion" id="sec-autenticacion">
+                        <div class="card overflow-auto mb-5"><table class="tabla min-w-[980px]" id="t-aut"></table></div>
+                        <h2 class="h-card mb-3">Por tipo de línea corporativa</h2>
+                        <div class="card overflow-auto"><table class="tabla min-w-[700px]" id="t-tipo"></table></div>
+                    </section>
+
+                    <section class="seccion" id="sec-aplicativos"><div id="lista-apps" class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4"></div></section>
+
+                    <section class="seccion" id="sec-directorio">
+                        <div class="card overflow-auto mb-5"><table class="tabla min-w-[860px]" id="t-dir"></table></div>
+                        <div class="grid grid-cols-1 xl:grid-cols-[1fr_1.6fr] gap-5">
+                            <div><h2 class="h-card mb-3">Regiones</h2><div class="card overflow-auto"><table class="tabla" id="t-reg"></table></div></div>
+                            <div><h2 class="h-card mb-3">Interregionales · ciclo 31 y 32</h2><div class="card overflow-auto"><table class="tabla min-w-[640px]" id="t-inter"></table></div></div>
+                        </div>
+                    </section>
+
+                    <section class="seccion" id="sec-rol"><div class="card overflow-auto" style="max-height: calc(100vh - 150px)" id="d-rol"></div></section>
+                    <section class="seccion" id="sec-adherencia"><div class="card overflow-auto" style="max-height: calc(100vh - 150px)" id="d-adherencia"></div></section>
+                    <section class="seccion" id="sec-productividad"><div class="card overflow-auto" style="max-height: calc(100vh - 150px)" id="d-productividad"></div></section>
                 </div>
-                <p class="text-[12px] subtle mt-3 text-center" id="pie">Los cambios que se hacen en Google Sheets aparecen aquí solos.</p>
             </div>
         </main>
     </div>
 
+    <div id="toast" class="toast hidden"><i class="ph-fill ph-check-circle text-emerald-400"></i><span>Copiado</span></div>
+
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import { getFirestore, doc, onSnapshot, getDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
-        import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, doc, onSnapshot } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
-        const app = initializeApp({
-            apiKey: "AIzaSyBKYconuZXn53Eb4EJFsHj4rYaO0eK6liQ",
-            authDomain: "tratocom-d38e7.firebaseapp.com",
-            projectId: "tratocom-d38e7",
-            storageBucket: "tratocom-d38e7.firebasestorage.app",
-            messagingSenderId: "205037546432",
-            appId: "1:205037546432:web:b5bce8294aba3fa8cfb625"
-        });
+        const D = {
+ "scripts": [
+  [
+   "SCRIPT BIENVENIDA",
+   "\"Buen día/tarde/noche, gracias por llamar a Telcel, le atiende (Nombre), ¿Con quién tengo el gusto? Mucho gusto (Nombre cliente), ¿cómo le puedo ayudar?\"",
+   ""
+  ],
+  [
+   "SCRIPT SALIDA",
+   "\"Gracias por llamar a Telcel, le atendió (Nombre). Antes de finalizar la llamada, le envío a la breve encuesta de satisfacción para calificar mi atención. Que tenga buen día/tarde/noche.\"",
+   ""
+  ],
+  [
+   "¿POR QUÉ ME APARECE CAMBIO DE UBICACIÓN?",
+   "\"Este mensaje aparece por variaciones de corriente eléctrica que el módem detecta o por algún corte de luz reciente. En este momento le realizo un reseteo sin costo para que pueda seguir navegando sin problema.\"",
+   ""
+  ],
+  [
+   "TRANSFERENCIA DE LLAMADAS",
+   "Muchas gracias, Sr/Srta. Le comento que en esta área de soporte no contamos con la información completa. En este caso le voy a transferir de manera directa con su área administrativa para que nos apoyen con la información. Por parte del área de soporte ¿hay algo más con lo que le pueda apoyar?… Gracias por llamar a Telcel le atendió (Nombre y apellido), en este momento le transfiero al área correspondiente por favor no cuelgue.",
+   ""
+  ],
+  [
+   "TRANSFERENCIA REGIONAL",
+   "Sin embargo, sus megas de este mes se le entregaron desde el día 05. Como ya consumió todo ese paquete, su velocidad actual es reducida. Para que pueda volver a navegar con rapidez y no esperar hasta el próximo día 05, le puedo activar un paquete de 25 GB por $100 pesos, que se cobraría hasta su siguiente factura. ¿Se lo activo?",
+   ""
+  ],
+  [
+   "INTERNET EN CASA PUJ EXPLICACIÓN",
+   "El pago que realizó corresponde a su ciclo anterior, ya que usted cuenta con 20 días para realizar el pago después de su fecha de corte.\n\nSin embargo, los megas correspondientes a este mes se le entregaron de forma puntual el día de su fecha de corte. Usted ya consumió todos sus megas y su velocidad actual es reducida.\n\nPara que pueda volver a navegar con rapidez en este momento y no tenga que esperar hasta su próxima fecha de corte, le puedo ofrecer un paquete adicional de 25 GB por $100 pesos, que se cobraría hasta su siguiente factura. ¿Le confirmo la activación?",
+   ""
+  ],
+  [
+   "INTERNET EN CASA PUJ",
+   "\"Estimado usuario, validando su servicio: su línea llegó al tope de megas por lo que su navegación es lenta, la recomendación para restablecer la velocidad es que active un paquete de datos de 25 GB por un costo de $100 en su próxima factura.\" Si el usuario pregunta por alguna alternativa: \"o puede esperar a la fecha de corte, que es el _______\".",
+   ""
+  ],
+  [
+   "LLAMADA SIN AUDIO",
+   "Mencionar script de recepción en 2 ocasiones cada 20 segundos. Si no se obtiene respuesta pasar al script de despedida. \"Se termina la llamada por falta de audio, le sugerimos comunicarse nuevamente, hasta luego.\"",
+   ""
+  ],
+  [
+   "PUNTOS A CONSIDERAR",
+   "En la llamada se debe de personalizar mínimo tres veces al usuario con su apellido.\n\nVamos a evitar las muletillas en nuestra llamada. Las muletillas son frases que solemos repetir de manera mecánica al hablar como lo son: eh, este, okey, ajá, pues, etc. Vamos a ampliar nuestro vocabulario con más sinónimos como lo son: Un momento por favor, un minuto más por favor, Claro que sí, Permítame revisarlo o validarlo, entiendo, comprendo, le comento que.\n\nVamos a retomar la llamada cada minuto mientras el usuario espera en línea con las frases:\n   - Continúo con usted, permítame un minuto más.\n   - Seguimos revisando la información, un minuto más.\n\nVamos a dirigirnos al usuario con cortesía indiferentemente del estado de ánimo del usuario.\n   - Gracias por su amable tiempo en espera, le comento que…\n   - Le pido vamos a realizar el siguiente movimiento con su equipo por favor\n\nVamos a procurar mantener un tono de voz moderado. Antes de hablar vamos a tomar aire tres segundos y lo vamos a ir soltando mientras hablamos de manera tranquila y lineal.\n\nVamos a esperar a que el usuario deje de hablar para poder brindarle alguna información ya que al interrumpirlo se puede malinterpretar por parte del usuario nuestra acción.\nMientras éste habla hay que escuchar de manera activa lo que nos está diciendo para poder identificar la necesidad del usuario y el motivo de su llamada.\nAdicional al escucharlo nos ayudará a poder identificar de manera mental los movimientos o procesos que le vamos a solicitar realizar en su línea.",
+   ""
+  ],
+  [
+   "FALLA PAC / BES",
+   "\"Sr/Srta. Le comento que por el momento no contamos con la información en nuestra aplicación, le pido por favor me proporcione un número de contacto para comunicarme con usted y darle seguimiento a su petición o si desea regalarnos un segundo enlace más tarde.\"",
+   "ÚNICAMENTE UTILIZAR ESTE SCRIPT CUANDO ESTÉ AUTORIZADO."
+  ],
+  [
+   "REPORTE FALLAS EN LA RED",
+   "\"Sr/Srta. Le informo se está interviniendo la red a fin de brindar un mejor servicio y es probable que experimente algunos eventos, nuestras áreas de Ingeniería se encuentran trabajando, pero de igual manera tomaré su número para dar prioridad a su reporte y hacer las validaciones correspondientes.\"",
+   "ÚNICAMENTE UTILIZAR ESTE SCRIPT CUANDO ESTÉ AUTORIZADO."
+  ]
+ ],
+ "autCab": [
+  "Trámite",
+  "Líneas Prepago",
+  "Líneas Pospago",
+  "*COR9",
+  "Chat"
+ ],
+ "aut": [
+  [
+   "Usuario solicita información general",
+   "Sin validación",
+   "",
+   "",
+   "Desde Mi Telcel / Ayuda en línea:"
+  ],
+  [
+   "Titular y/o Usuario de la línea solicita activación de algún servicio (con y sin costo)",
+   "Si nos contacta de su mismo número sólo confirmar número celular y nombre del Titular.",
+   "",
+   "Se deberá validar la Clave NISI, si el Usuario lo desconoce SOLO deberá responder UNA de las siguientes opciones:\n - Nombre de la Empresa\n - Dirección de la Empresa\n - RFC de la Empresa.",
+   ""
+  ],
+  [
+   "Persona Moral solicita activación de algún servicio (con y sin costo)",
+   "Si nos contacta de su mismo número confirmar nombre de la Empresa, Nombre del Representante Legal o RFC de la empresa.",
+   "",
+   "",
+   "Para todos los trámites recibidos desde Ayuda en línea:\nValidar lo especificado en los rubros Líneas Prepago/Líneas Pospago cuando el titular y/o Usuario de la línea solicita trámite particular de su línea o desea realizar un trámite de otro número."
+  ],
+  [
+   "Titular y/o Usuario de la línea solicita trámite particular de su línea o desea realizar un trámite de otro número",
+   "Deberá confirmar el número celular y nombre del Titular (Persona Física).\n\nAdicional se tendrá una pregunta prioritaria que si el Cliente responde de manera correcta se procederá con el trámite:\n - Marca del equipo utilizado los últimos 15 días (validar IMEI en Formato único).\n\nEn caso de que no conteste correctamente la pregunta anterior deberá responder correctamente al menos 1 de las siguientes preguntas:\n - Fecha de última recarga (aproximada).\n - Números marcados con mayor frecuencia\n - Importe de última recarga",
+   "Deberá confirmar el número celular y nombre del Titular y Nombre de la Empresa / Representante Legal (Persona Moral).\n\nAdicional se tendrá una pregunta prioritaria que si el Cliente responde de manera correcta se procederá con el trámite:\n - Marca del equipo utilizado los últimos 15 días (validar IMEI en Formato único o BES).\n\nEn caso de que no conteste correctamente la pregunta anterior deberá responder correctamente al menos 1 de las siguientes preguntas:\n - Domicilio.\n - RFC (no fecha de nacimiento)\n - Forma de pago.\n - Cuenta de correo electrónico registrado.\n - Antigüedad aproximada de la línea.\n - Saldo de la última factura.",
+   "",
+   ""
+  ],
+  [
+   "Suspensión por robo",
+   "Adicional para el trámite de Suspensión por robo se tendrán tres preguntas adicionales para dar un total de 5 preguntas de validación y si el Cliente responde de manera correcta se procederá con el trámite:\n - Marca del equipo utilizado los últimos 15 días (validar IMEI en Formato único).\n - Importe de última recarga.\n - Números marcados con mayor frecuencia.\n - Fecha de última recarga (aproximado).",
+   "Adicional para el trámite de Suspensión por robo se tendrán 3 preguntas más para dar un total de 5 preguntas de validación si el Cliente responde de manera correcta se procederá con el trámite:\n - Marca del equipo utilizado los últimos 15 días (validar IMEI en Formato único o BES).\n - Domicilio.\n - RFC (no fecha de nacimiento)\n - Forma de pago.\n - Cuenta de correo electrónico registrado.\n - Antigüedad aproximada de la línea.\n - Saldo de la última factura.\n - Fecha de su último financiamiento / arrendamiento / contratación de línea.",
+   "Adicional para el trámite de Suspensión por robo el Asesor debe solicitar autorización al ejecutivo de la cuenta mediante llamada telefónica.",
+   ""
+  ]
+ ],
+ "tipoCab": [
+  "Tipo de Línea",
+  "Acción Principal",
+  "Requisitos de Seguridad / Notas Adicionales"
+ ],
+ "tipo": [
+  [
+   "Prepago / Pospago / Pyme",
+   "Transferir",
+   "Transferir directamente a su área administrativa correspondiente."
+  ],
+  [
+   "Corporativa (Estándar)",
+   "Suspender",
+   "Pedir Clave NISI\n> Nota si no cuenta con NISI: Transferir a Corpovoz"
+  ],
+  [
+   "Corporativa PBI / PA",
+   "Suspender",
+   "Pedir 3 datos de seguridad obligatorios y proceder con la suspensión (Nombre, RFC y Domicilio)"
+  ],
+  [
+   "Atención Avanzada",
+   "Transferir",
+   "Transferir directamente a Corpovoz."
+  ],
+  [
+   "Kenmar",
+   "Transferir",
+   "Transferir directamente a Corpovoz."
+  ]
+ ],
+ "apps": [
+  [
+   "TOUCHPOINT",
+   "https://touchpoint.eccspr9.com/TouchPoint",
+   "Sistema de telefonía principal. Aquí recibimos/sacamos llamadas. Mide el tiempo de conexión laboral y los estados (comida, baño, etc.). Herramienta esencial.",
+   ""
+  ],
+  [
+   "PAC",
+   "http://pac.telcel.com:9087/D05_PACV3/login.do",
+   "Portal de Atención a Clientes. Sistema principal para visualizar toda la información general de la línea.",
+   ""
+  ],
+  [
+   "BES",
+   "http://bes.telcel.com/oc/bes/sm/portal/home.html",
+   "Utilizado para ver información detallada de las líneas.",
+   ""
+  ],
+  [
+   "OSSQUERY",
+   "http://10.119.111.66/ossquery/index.jsp",
+   "Soporte Técnico principal. Herramienta para borrar VLR, detach, y resolución de problemas con SMS.",
+   ""
+  ],
+  [
+   "SMART",
+   "http://10.203.15.71/SMART/",
+   "Directorio empresarial. Para validar ejecutivos de cuentas empresariales y consulta de claves NISI.",
+   ""
+  ],
+  [
+   "CALIDAD",
+   "http://10.202.79.10/Intranet/Administrativos/Calidad/Cuestionarios.aspx",
+   "Portal de Monitoreo. Aquí pueden revisar las calificaciones y retroalimentación de sus llamadas.",
+   ""
+  ],
+  [
+   "NEKO CAPTURA",
+   "http://10.202.79.10/Intranet/Telcel/NekoCaptura/MainScript.aspx#",
+   "Sistema de tipificación. Uso obligatorio para registrar todas las llamadas y generar los tickets internos de atención.",
+   ""
+  ],
+  [
+   "CONSOLA SMARTWATCH",
+   "http://prc.gwtsva.telcelinstitucional.com:9140/PortalRioConsole/getAccesoLogin?accesoSeguro=true",
+   "Rastreo de activaciones IOT. Permite ver el paso a paso de las activaciones de Smartwatch, ver dónde fallaron y obtener datos para escalar.",
+   ""
+  ],
+  [
+   "CONSOLA INTERNET EN CASA",
+   "http://10.119.248.238:8060/cpih/login",
+   "Validación de portal. Sirve para revisar si la línea tiene registro o no en Internet en Casa.",
+   "Usuario y contraseña: pídelos a tu supervisor."
+  ],
+  [
+   "LANZADERA",
+   "http://10.202.79.10/Intranet/Administrativos/Shutlle/",
+   "Portal de RH y Comunicación. Novedades de la empresa, gestión de nómina, consulta de días de vacaciones y solicitud de documentos a Recursos Humanos.",
+   ""
+  ],
+  [
+   "SUAS",
+   "https://suas.telcelinstitucional.com/SUA/com.suatelcel.suainicio",
+   "Solicitud Única de Accesos. De uso muy poco frecuente o nulo en operación, pero disponible si se requiere.",
+   ""
+  ],
+  [
+   "SERVICE DESK",
+   "https://gestion.telcel.com/CAisd/pdmweb.exe",
+   "Gestor de Incidentes. Para reportar temas de: Tiempo Aire Electrónico, Redes, Portabilidad, VPN, Pago de Comisiones, Facturación y Activaciones. Uso nulo.",
+   ""
+  ],
+  [
+   "ADHERENCIA",
+   "https://omt.godsplan.site/",
+   "Tus tiempos de pausa (esta misma página).",
+   ""
+  ],
+  [
+   "PAQUETES ADICIONALES",
+   "",
+   "Paquetes adicionales septiembre.",
+   ""
+  ],
+  [
+   "ROAMING",
+   "",
+   "Corpodatos OMT.",
+   ""
+  ]
+ ],
+ "dirCab": [
+  "Área / Servicio",
+  "Teléfono fijo",
+  "Desde Telcel",
+  "TouchPoint",
+  "Extensiones regionales / Notas"
+ ],
+ "dir": [
+  [
+   "Prepago",
+   "55 2581 3344",
+   "*264",
+   "3393 / 0052",
+   "R1:9912, R2:9922, R3:9932, R4:9942, R5:9952, R6:9962, R7:9972, R8:9982, R9:9992"
+  ],
+  [
+   "Pospago",
+   "55 2581 3333",
+   "*111",
+   "0050",
+   ""
+  ],
+  [
+   "Corpovoz",
+   "55 2581 3380",
+   "*2679",
+   "3350",
+   "800 581 8304"
+  ],
+  [
+   "Corpodatos",
+   "55 2581 3380",
+   "*2679",
+   "0021",
+   "Email: TELEFONICOCORPORATIVO@MAIL.TELCEL.COM"
+  ],
+  [
+   "Roaming",
+   "55 2581 3300",
+   "*500",
+   "3382",
+   "Marcar 111 desde cualquier parte del mundo sin *"
+  ],
+  [
+   "Mini Switch",
+   "55 2581 3355",
+   "*0070",
+   "3355",
+   ""
+  ],
+  [
+   "Help Desk",
+   "-",
+   "-",
+   "3347",
+   "Ext: 6318 (HDD Informática). Email: helpdesk_datos@telcel.com"
+  ],
+  [
+   "Trato Compartido",
+   "55 2581 3700 Ext. 1",
+   "-",
+   "-",
+   "800 227 7700"
+  ],
+  [
+   "Cobranza",
+   "55 2581 3311",
+   "Misma línea",
+   "3311 / 3336",
+   ""
+  ],
+  [
+   "Atención Avanzada",
+   "55 5424 7095",
+   "Misma línea",
+   "Misma línea",
+   ""
+  ],
+  [
+   "Asignado Módem",
+   "55 1010 9632",
+   "Misma línea",
+   "Misma línea",
+   ""
+  ],
+  [
+   "TelcelUP Seguro",
+   "800 099 0802",
+   "*788",
+   "-",
+   ""
+  ],
+  [
+   "Buzón de Voz",
+   "-",
+   "*86",
+   "-",
+   ""
+  ],
+  [
+   "Contestone",
+   "-",
+   "*728",
+   "-",
+   ""
+  ],
+  [
+   "Rescatel (Uso)",
+   "55 5238 0689",
+   "*100",
+   "-",
+   ""
+  ],
+  [
+   "Rescatel (Baja)",
+   "55 5447 8010",
+   "*300",
+   "-",
+   ""
+  ]
+ ],
+ "regCab": [
+  "Región",
+  "Ext. TouchPoint",
+  "Teléfono 800 (fijo)",
+  "Horario de atención"
+ ],
+ "reg": [
+  [
+   "R01",
+   "9911",
+   "800 026 2626",
+   "8:00 AM a 8:00 PM"
+  ],
+  [
+   "R02",
+   "9921",
+   "800 623 6000",
+   "8:00 AM a 8:00 PM"
+  ],
+  [
+   "R03",
+   "9931",
+   "800 711 4111",
+   "8:00 AM a 8:00 PM"
+  ],
+  [
+   "R04",
+   "9941",
+   "800 838 1500",
+   "8:00 AM a 8:00 PM"
+  ],
+  [
+   "R05",
+   "9951",
+   "800 363 0800",
+   "8:30 AM a 8:30 PM"
+  ],
+  [
+   "R06",
+   "9961",
+   "800 713 9600",
+   "8:00 AM a 8:00 PM"
+  ],
+  [
+   "R07",
+   "9971",
+   "800 227 7700",
+   "8:00 AM a 8:00 PM"
+  ],
+  [
+   "R08",
+   "9981",
+   "800 712 0320",
+   "9:00 AM a 8:00 PM"
+  ],
+  [
+   "R09",
+   "0049",
+   "55 2581 3350",
+   "24 HORAS"
+  ]
+ ],
+ "interCab": [
+  "Región",
+  "Teléfonos",
+  "Extensiones / Notas",
+  "Horario"
+ ],
+ "inter": [
+  [
+   "R01 · *2671",
+   "664 633 33 39\n664 674 9900\n800 026 2727",
+   "MG: 8300\nCM: 2222",
+   "Lunes a viernes: 7:00 a 19:00 hrs.\nSábado: 8:00 a 18:00 hrs."
+  ],
+  [
+   "R02 · *2672",
+   "800 267 7115 (MG)\n662 272 0210 (CM)",
+   "800 267 7115 MG\n662 272 0210 CM",
+   "Lunes a viernes: 9:00 a 19:00 hrs.\nSábado: 9:00 a 17:00 hrs."
+  ],
+  [
+   "R03 · *2673",
+   "(614) 439 47 77",
+   "CM: 800 823 0475\nMG: 800 500 0538",
+   "Lunes a viernes: 8:00 a 19:00 hrs."
+  ],
+  [
+   "R04 · *2674",
+   "800 838 1500 (Opc 9)",
+   "MG: 2266 y 2267\nCM: 2215 y 2274, 2252, 2265",
+   "Lunes a viernes 9:00 a 19:00 hrs."
+  ],
+  [
+   "R05 · *2675",
+   "",
+   "MG: 800 267 4700 (el ingreso es directo)\nCM: 800 363 0800 (Opc. 6, ext. 704)",
+   "Lunes a viernes: 9:00 a 19:00 hrs.\nSábado: 9:00 a 14:00"
+  ],
+  [
+   "R06 · *2676",
+   "442 249 5550\n800 480 0965",
+   "MG/CM",
+   "Lunes a viernes: 8:00 a 20:00 hrs.\nSábado 9:00 a 17:00 hrs."
+  ],
+  [
+   "R07 · *2677",
+   "222 202 2485\n800 702 4310\nCM: 222 202 1515",
+   "MG/CM",
+   "Lunes a viernes 9:00 a 19:00 hrs.\nSábado y domingo 10:00 a 17:00 hrs."
+  ],
+  [
+   "R08 · *2678",
+   "800 001 2677 (Ext. 2100 al 2106)\n2113 CM",
+   "MG/CM",
+   "Lunes a sábado: 8:00 a 19:00 hrs."
+  ]
+ ]
+};
+
+        const app = initializeApp({ apiKey: "AIzaSyBKYconuZXn53Eb4EJFsHj4rYaO0eK6liQ", authDomain: "tratocom-d38e7.firebaseapp.com", projectId: "tratocom-d38e7" });
         const db = getFirestore(app);
-        const auth = getAuth(app);
-        const SUPERVISOR_EMAIL = '17620@omt.godsplan.site';
-
         const $ = (id) => document.getElementById(id);
         const esc = (s) => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
         const norm = (s) => String(s || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toUpperCase().trim();
-        const hace = (ms) => { const s = Math.round((Date.now() - ms) / 1000); if (s < 60) return 'hace unos segundos'; const m = Math.round(s / 60); if (m < 60) return `hace ${m} min`; const h = Math.round(m / 60); return h < 24 ? `hace ${h} h` : new Date(ms).toLocaleDateString('es-MX'); };
 
-        // Grupos e íconos como en la pestaña MENÚ de la hoja
-        const GRUPOS = [
-            { nombre: 'Operación y procesos', tabs: ['AUTENTICACIÓN', 'SCRIPT', 'CASOS', 'H_CASOS', 'CASOS_ANTIGUOS', 'TD_CASOS', 'TRANSFERENCIAS', 'ASIGN'] },
-            { nombre: 'Herramientas', tabs: ['AVISOS', 'APLICATIVOS', 'DIRECTORIO'] },
-            { nombre: 'Personal y métricas', tabs: ['ADHERENCIA', 'ROL', 'VACACIONES', 'GUARDIA', 'CUMPLEAÑOS', 'PRODUCTIVIDAD', 'CALIDAD', 'CALIDAD_PROMEDIOS', 'H_CALIDAD'] }
-        ];
-        const ICONOS = { 'MENÚ': 'ph-house', 'AUTENTICACIÓN': 'ph-shield-check', 'SCRIPT': 'ph-chat-text', 'CASOS': 'ph-ticket', 'H_CASOS': 'ph-clock-counter-clockwise', 'CASOS_ANTIGUOS': 'ph-archive',
-            'TD_CASOS': 'ph-chart-bar', 'TRANSFERENCIAS': 'ph-arrows-left-right', 'ASIGN': 'ph-user-switch', 'AVISOS': 'ph-megaphone', 'APLICATIVOS': 'ph-app-window', 'DIRECTORIO': 'ph-address-book',
-            'ADHERENCIA': 'ph-calendar-check', 'ROL': 'ph-calendar-dots', 'VACACIONES': 'ph-airplane-tilt', 'GUARDIA': 'ph-shield-star', 'CUMPLEAÑOS': 'ph-cake', 'PRODUCTIVIDAD': 'ph-trophy',
-            'CALIDAD': 'ph-star', 'CALIDAD_PROMEDIOS': 'ph-chart-line-up', 'H_CALIDAD': 'ph-list-checks', 'SYNC': 'ph-arrows-clockwise' };
-
-        let yo = { id: null, nombre: '', claves: [] };
-        let indice = [], actualId = null, cancelarHoja = null, datosHoja = null, ultimoAct = 0;
-
-        // ---------- Sesión ----------
-        onAuthStateChanged(auth, async (u) => {
-            if (!u) { location.replace('index.html'); return; }
-            const esSup = u.email === SUPERVISOR_EMAIL;
-            yo.id = u.email.split('@')[0].toUpperCase();
-            if (esSup) {
-                document.documentElement.classList.add('dark', 'super');
-                $('link-volver').href = 'super/dash.html'; $('volver-movil').href = 'super/dash.html';
-                $('txt-volver').textContent = 'Panel de supervisor';
-            }
-            try {
-                const op = await getDoc(doc(db, 'operadores', yo.id));
-                const d = op.exists() ? op.data() : {};
-                yo.nombre = d.nombre || (esSup ? 'LUIS ORTIZ' : '');
-                // Palabras para reconocer "lo mío": ID, nombre completo, nombre corto, usuario tipo DVILLAMAR
-                const partes = norm(yo.nombre).split(/\s+/).filter(Boolean);
-                yo.claves = [yo.id, norm(yo.nombre), norm(d.nombreCorto)].filter(Boolean);
-                if (partes.length >= 2) yo.claves.push(partes.slice(0, 2).join(' '));
-                if (d.nombreCorto) { const nc = norm(d.nombreCorto).split(/\s+/); if (nc.length >= 2) yo.claves.push(nc[0][0] + nc[1]); }
-            } catch (e) {}
-            document.body.classList.remove('auth-pending');
-            iniciar();
-        });
-
-        function iniciar() {
-            onSnapshot(doc(db, 'hoja', '_indice'), (snap) => {
-                if (!snap.exists()) {
-                    $('lista-pestanas').innerHTML = '';
-                    $('pestana-titulo').textContent = 'Documento OMT';
-                    $('pestana-sub').textContent = 'Todavía no se ha sincronizado';
-                    $('contenido').innerHTML = `<div class="empty"><i class="ph ph-cloud-slash"></i>La hoja todavía no se ha conectado.<br><span class="text-[13px]">En Google Sheets: menú <b>🌐 Página OMT</b> → <b>Activar sincronización automática</b>.</span></div>`;
-                    return;
-                }
-                const d = snap.data();
-                $('doc-titulo').textContent = 'Documento ' + (d.documento || 'OMT');
-                indice = JSON.parse(d.pestanas || '[]').filter(p => !p.oculta).sort((a, b) => a.orden - b.orden);
-                pintarIndice();
-                const pedido = decodeURIComponent(location.hash.slice(1));
-                const destino = indice.find(p => p.id === pedido || p.titulo === pedido) ||
-                                indice.find(p => p.id === actualId) ||
-                                indice.find(p => p.titulo === 'ROL') || indice.find(p => p.titulo !== 'MENÚ') || indice[0];
-                if (destino && destino.id !== actualId) abrir(destino.id);
-            }, (err) => {
-                $('contenido').innerHTML = `<div class="empty c-danger"><i class="ph ph-lock"></i>No tienes permiso para ver el documento (${esc(err.code || 'error')}).<br><span class="text-[13px] muted">Revisa que las reglas de Firestore incluyan la colección "hoja".</span></div>`;
-            });
+        // Volver al panel o a la página del asesor
+        if (sessionStorage.getItem('docPanel') === '1') {
+            $('link-volver').href = 'super/dash.html'; $('volver-movil').href = 'super/dash.html'; $('txt-volver').textContent = 'Panel de supervisor';
         }
 
-        function pintarIndice() {
-            const filtro = norm($('buscar-pestana').value);
-            const usados = new Set();
-            let html = '';
-            const item = (p) => `<button class="tab-link ${p.id === actualId ? 'active' : ''}" onclick="abrir('${p.id}')"><i class="ph-bold ${ICONOS[p.titulo] || 'ph-file-text'}"></i><span class="lbl">${esc(p.titulo)}</span></button>`;
-            GRUPOS.forEach(g => {
-                const ps = indice.filter(p => g.tabs.includes(p.titulo) && (!filtro || norm(p.titulo).includes(filtro)));
-                ps.forEach(p => usados.add(p.id));
-                if (ps.length) html += `<p class="grupo">${g.nombre}</p>` + ps.map(item).join('');
-            });
-            const resto = indice.filter(p => !usados.has(p.id) && (!filtro || norm(p.titulo).includes(filtro)));
-            if (resto.length) html += `<p class="grupo">Otras</p>` + resto.map(item).join('');
-            $('lista-pestanas').innerHTML = html || `<p class="text-[13px] subtle px-3 py-4">Sin resultados.</p>`;
-            $('selector-movil').innerHTML = indice.map(p => `<option value="${p.id}" ${p.id === actualId ? 'selected' : ''}>${esc(p.titulo)}</option>`).join('');
-        }
-        $('buscar-pestana').addEventListener('input', pintarIndice);
-        $('selector-movil').addEventListener('change', (e) => abrir(e.target.value));
+        // "Lo mío": el asesor que inició sesión en esta computadora
+        let yo = {};
+        try { yo = JSON.parse(localStorage.getItem('asesorDashboard') || '{}') || {}; } catch (e) {}
+        const claves = [yo.id, norm(yo.nombre), norm(yo.nombreCorto)].filter(k => k && String(k).length >= 4).map(String);
 
-        // ---------- Pestaña ----------
-        window.abrir = function (id) {
-            if (cancelarHoja) cancelarHoja();
-            actualId = id; datosHoja = null;
-            history.replaceState(null, '', '#' + id);
-            const p = indice.find(x => x.id === id);
-            $('pestana-titulo').textContent = p ? p.titulo : 'Pestaña';
-            $('pestana-sub').textContent = 'Cargando…';
-            $('contenido').innerHTML = `<div class="empty"><span class="spinner spinner-lg"></span></div>`;
-            pintarIndice();
-            cancelarHoja = onSnapshot(doc(db, 'hoja', id), (snap) => {
-                if (!snap.exists()) { $('contenido').innerHTML = `<div class="empty"><i class="ph ph-file-dashed"></i>Esta pestaña aún no se sincroniza.</div>`; return; }
-                const d = snap.data();
-                const cambio = datosHoja && d.actualizado !== ultimoAct;
-                datosHoja = d; ultimoAct = d.actualizado;
-                pintarTabla();
-                if (cambio) { $('contenido').classList.remove('flash'); void $('contenido').offsetWidth; $('contenido').classList.add('flash'); }
-            });
+        // ---------- Búsqueda ----------
+        const q = () => norm($('buscar').value || $('buscar-m').value);
+        const resaltar = (html, term) => {
+            if (!term) return html;
+            const t = term.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+            return html.replace(new RegExp('(>[^<]*?)(' + t + ')', 'gi'), '$1<mark>$2</mark>');
         };
-
-        const ESTADOS = { 'APROBADO': 'chip-ok', 'APROBADA': 'chip-ok', 'PENDIENTE': 'chip-warn', 'RECHAZADO': 'chip-danger', 'RECHAZADA': 'chip-danger',
-            'EN PROCESO': 'chip-brand', 'CERRADO': 'chip-neutral', 'RESUELTO': 'chip-ok', 'DESCANSO': 'chip-neutral', 'SÍ': 'chip-ok', 'SI': 'chip-ok', 'NO': 'chip-neutral' };
-
-        function celda(v, tituloHoja, esCodigo) {
-            const t = String(v ?? '');
-            if (!t) return '';
-            if (esCodigo && /^[ARFDVJ]$/.test(t)) return `<span class="cod cod-${t}">${t}</span>`;
-            const up = norm(t);
-            if (ESTADOS[up] && t.length < 14) return `<span class="chip ${ESTADOS[up]}">${esc(t)}</span>`;
-            let h = esc(t);
+        const celdaTexto = (v) => {
+            let h = esc(v);
             h = h.replace(/(https?:\/\/[^\s<]+)/g, '<a href="$1" target="_blank" rel="noopener">$1</a>');
             return h;
+        };
+        function tabla(id, cab, filas, opciones = {}) {
+            const term = q();
+            const visibles = filas.filter(f => !term || norm(f.join(' ')).includes(term));
+            $(id).innerHTML = `<thead><tr>${cab.map((c, i) => `<th class="${i === 0 ? 'c0' : ''}">${esc(c)}</th>`).join('')}</tr></thead><tbody>${
+                visibles.map(f => `<tr>${cab.map((_, i) => `<td class="${i === 0 ? 'c0 ' : ''}${String(f[i] || '').length < 24 ? 'corta' : ''}">${f[i] ? resaltar(celdaTexto(f[i]), term && f[i] && norm(f[i]).includes(term) ? (($('buscar').value || $('buscar-m').value).trim()) : '') : '<span class="vacia">—</span>'}</td>`).join('')}</tr>`).join('')
+                || `<tr><td colspan="${cab.length}" class="empty">Nada coincide con tu búsqueda.</td></tr>`}</tbody>`;
+            return visibles.length;
         }
 
-        function pintarTabla() {
-            const d = datosHoja; if (!d) return;
-            let filas = [];
-            try { filas = JSON.parse(d.filas || '[]'); } catch (e) {}
-            // Quitar la fila "🏠 VOLVER AL ÍNDICE" de las pestañas que la traen
-            while (filas.length && /VOLVER AL ÍNDICE|VOLVER AL INDICE/i.test(filas[0][0] || '') && filas[0].filter(Boolean).length <= 1) filas.shift();
+        // ---------- Secciones fijas ----------
+        function pintarScripts() {
+            const term = q();
+            const lista = D.scripts.map((s, i) => ({ s, i })).filter(({ s }) => !term || norm(s.join(' ')).includes(term));
+            const raw = ($('buscar').value || $('buscar-m').value).trim();
+            $('lista-scripts').innerHTML = lista.map(({ s, i }) => `
+                <div class="card p-5 flex flex-col gap-3">
+                    <div class="flex items-start justify-between gap-3">
+                        <h3 class="font-semibold text-1 leading-snug">${resaltar(esc(s[0]), raw)}</h3>
+                        <button class="btn btn-secondary btn-sm shrink-0" onclick="copiar(${i})"><i class="ph-bold ph-copy"></i> Copiar</button>
+                    </div>
+                    <p class="script-txt">${resaltar(esc(s[1]), raw)}</p>
+                    ${s[2] ? `<span class="chip chip-warn !h-auto !py-1.5 !whitespace-normal self-start"><i class="ph-bold ph-warning"></i>${esc(s[2])}</span>` : ''}
+                </div>`).join('') || `<div class="card empty col-span-full">Nada coincide con tu búsqueda.</div>`;
+            return lista.length;
+        }
+        window.copiar = async (i) => {
+            try { await navigator.clipboard.writeText(D.scripts[i][1].replace(/^"|"$/g, '')); } catch (e) {}
+            const t = $('toast'); t.classList.remove('hidden'); t.classList.add('fade-in'); setTimeout(() => t.classList.add('hidden'), 1500);
+        };
+        function pintarApps() {
+            const term = q(), raw = ($('buscar').value || $('buscar-m').value).trim();
+            const lista = D.apps.filter(a => !term || norm(a.join(' ')).includes(term));
+            $('lista-apps').innerHTML = lista.map(a => `
+                <div class="card app-card p-5 flex flex-col gap-2.5">
+                    <div class="flex items-center gap-3">
+                        <div class="icon-tile soft-brand c-brand"><i class="ph-bold ph-${a[1] ? 'globe' : 'file-text'}"></i></div>
+                        <h3 class="font-semibold text-1">${resaltar(esc(a[0]), raw)}</h3>
+                    </div>
+                    <p class="text-[13.5px] muted leading-relaxed flex-1">${resaltar(esc(a[2]), raw)}</p>
+                    ${a[3] ? `<span class="chip chip-neutral !h-auto !py-1.5 !whitespace-normal self-start"><i class="ph-bold ph-lock-key"></i>${esc(a[3])}</span>` : ''}
+                    ${a[1] ? `<div class="flex items-center gap-2 pt-1">
+                        <a href="${esc(a[1])}" target="_blank" rel="noopener" class="btn btn-primary btn-sm"><i class="ph-bold ph-arrow-square-out"></i> Abrir</a>
+                        <span class="text-[11.5px] subtle truncate" title="${esc(a[1])}">${esc(a[1].replace(/^https?:\/\//, ''))}</span>
+                    </div>` : ''}
+                </div>`).join('') || `<div class="card empty col-span-full">Nada coincide con tu búsqueda.</div>`;
+            return lista.length;
+        }
+
+        // ---------- Secciones diarias (vienen de la hoja vía Firebase) ----------
+        const DIARIAS = { rol: 'ROL', adherencia: 'ADHERENCIA', productividad: 'PRODUCTIVIDAD' };
+        const datosDiarios = {};
+        const ESTADOS = { 'DESCANSO': 'chip-neutral', 'VACACIONES': 'chip-quality' };
+
+        function pintarDiaria(clave) {
+            const cont = $('d-' + clave);
+            const d = datosDiarios[clave];
+            if (d === undefined) { cont.innerHTML = `<div class="empty"><span class="spinner spinner-lg"></span></div>`; return 0; }
+            if (d === null) { cont.innerHTML = `<div class="empty"><i class="ph ph-cloud-slash"></i>Todavía no se ha copiado desde la hoja.<br><span class="text-[13px]">Se copia todos los días a las 12:00.</span></div>`; return 0; }
+            let filas = []; try { filas = JSON.parse(d.filas || '[]'); } catch (e) {}
             const ncols = Math.max(1, ...filas.map(f => f.length));
-            const nonEmpty = (f) => f.filter(c => c !== '').length;
-
-            // Encabezado: primera fila con 2+ celdas si la hoja tiene filas congeladas
-            let cab = null;
-            // o, si no tiene, cuando la primera fila está casi completa (típico de tablas como APLICATIVOS)
-            if (filas.length > 1 && nonEmpty(filas[0]) >= 2 && ((d.filasCongeladas || 0) >= 1 || nonEmpty(filas[0]) >= Math.ceil(ncols * 0.6))) cab = filas.shift();
-            const tituloHoja = d.titulo || '';
-            const esCodigo = /ADHERENCIA/i.test(tituloHoja);
-
-            const q = norm($('buscar-fila').value || $('buscar-fila-m').value);
-            const soloMio = $('solo-mio').checked;
-            const esMia = (f) => { const txt = norm(f.join(' | ')); return yo.claves.some(k => k && k.length >= 4 && txt.includes(k)); };
+            const cab = filas.shift() || [];
+            const term = q();
+            const esCod = clave === 'adherencia';
             const numerica = Array.from({ length: ncols }, (_, c) => {
-                const vals = filas.map(f => f[c]).filter(v => v !== undefined && v !== '');
+                const vals = filas.map(f => f[c]).filter(v => v);
                 return vals.length > 0 && vals.filter(v => /^-?[\d.,:%$ ]+$/.test(v)).length / vals.length > 0.8;
             });
-
-            let mostradas = 0, mias = 0;
+            let n = 0;
             const cuerpo = filas.map(f => {
-                const n = nonEmpty(f);
-                if (n === 0) return '';
-                const mia = esMia(f); if (mia) mias++;
-                if (q && !norm(f.join(' ')).includes(q)) return '';
-                if (soloMio && !mia) return '';
-                if (n === 1 && f[0] && ncols > 1 && !cab) {
-                    // Fila título (ej. "GUARDIA 16 DE NOVIEMBRE")
-                    mostradas++;
-                    return `<tr class="titulo"><td class="c0" colspan="${ncols}">${esc(f[0])}</td></tr>`;
-                }
-                mostradas++;
-                let tds = '';
-                for (let c = 0; c < ncols; c++) {
-                    const v = f[c] ?? '';
-                    const corta = String(v).length < 22 && !String(v).includes('\n');
-                    tds += `<td class="${c === 0 ? 'c0 ' : ''}${numerica[c] ? 'num ' : ''}${corta ? 'corta' : ''}">${celda(v, tituloHoja, esCodigo)}</td>`;
-                }
-                return `<tr class="${mia ? 'mia' : ''}">${tds}</tr>`;
+                if (!f.some(Boolean)) return '';
+                const txt = norm(f.join(' | '));
+                if (term && !txt.includes(term)) return '';
+                n++;
+                const mia = claves.some(k => txt.includes(norm(k)));
+                return `<tr class="${mia ? 'mia' : ''}">${Array.from({ length: ncols }, (_, c) => {
+                    const v = f[c] || '';
+                    let h;
+                    if (esCod && /^[ARFDVJ]$/.test(v)) h = `<span class="cod cod-${v}">${v}</span>`;
+                    else if (ESTADOS[norm(v)]) h = `<span class="chip ${ESTADOS[norm(v)]}">${esc(v)}</span>`;
+                    else h = esc(v);
+                    return `<td class="${c === 0 ? 'c0 ' : ''}${numerica[c] ? 'num ' : ''}${v.length < 24 ? 'corta' : ''}">${h}</td>`;
+                }).join('')}</tr>`;
             }).join('');
-
-            const thead = cab ? `<thead><tr>${Array.from({ length: ncols }, (_, c) => `<th class="${c === 0 ? 'c0 ' : ''}${numerica[c] ? 'num' : ''}">${esc(cab[c] || '')}</th>`).join('')}</tr></thead>` : '';
-            $('contenido').innerHTML = mostradas
-                ? `<table class="hoja">${thead}<tbody>${cuerpo}</tbody></table>`
-                : `<div class="empty"><i class="ph ph-magnifying-glass"></i>${soloMio ? 'No apareces en esta pestaña.' : (q ? 'Nada coincide con tu búsqueda.' : 'Esta pestaña está vacía.')}</div>`;
-
-            $('pestana-sub').textContent = `${filas.length} filas · actualizado ${hace(d.actualizado)}${d.recortada ? ' · muy grande: se muestran las primeras filas' : ''}`;
-            $('lbl-mio').title = mias ? `Apareces en ${mias} fila(s)` : 'No apareces en esta pestaña';
+            cont.innerHTML = `<table class="tabla"><thead><tr>${Array.from({ length: ncols }, (_, c) => `<th class="${c === 0 ? 'c0 ' : ''}${numerica[c] ? 'num' : ''}">${esc(cab[c] || '')}</th>`).join('')}</tr></thead><tbody>${cuerpo || `<tr><td colspan="${ncols}" class="empty">Nada coincide con tu búsqueda.</td></tr>`}</tbody></table>`;
+            return n;
         }
-        ['buscar-fila', 'buscar-fila-m'].forEach(id => $(id).addEventListener('input', pintarTabla));
-        $('solo-mio').addEventListener('change', pintarTabla);
-        setInterval(() => { if (datosHoja) $('pestana-sub').textContent = $('pestana-sub').textContent.replace(/actualizado .*?( ·|$)/, `actualizado ${hace(datosHoja.actualizado)}$1`); }, 30000);
+        Object.keys(DIARIAS).forEach(clave => {
+            onSnapshot(doc(db, 'hoja', clave), (snap) => {
+                datosDiarios[clave] = snap.exists() ? snap.data() : null;
+                if (actual === clave) mostrar(clave);
+            }, () => { datosDiarios[clave] = null; if (actual === clave) mostrar(clave); });
+        });
+
+        // ---------- Navegación ----------
+        const TITULOS = { scripts: 'Scripts', autenticacion: 'Autenticación', aplicativos: 'Aplicativos', directorio: 'Directorio', rol: 'Rol de turnos', adherencia: 'Adherencia del mes', productividad: 'Productividad del mes' };
+        let actual = null;
+        function mostrar(sec) {
+            actual = sec;
+            document.querySelectorAll('.seccion').forEach(s => s.classList.toggle('activa', s.id === 'sec-' + sec));
+            document.querySelectorAll('.sec-link').forEach(b => b.classList.toggle('active', b.dataset.sec === sec));
+            $('menu-movil').value = sec;
+            $('titulo').textContent = TITULOS[sec];
+            let n = 0, sub = '';
+            if (sec === 'scripts') { n = pintarScripts(); sub = `${n} scripts · toca "Copiar" para pegarlo`; }
+            else if (sec === 'autenticacion') { n = tabla('t-aut', D.autCab, D.aut); tabla('t-tipo', D.tipoCab, D.tipo); sub = 'Qué validar antes de cada trámite'; }
+            else if (sec === 'aplicativos') { n = pintarApps(); sub = `${n} herramientas`; }
+            else if (sec === 'directorio') { n = tabla('t-dir', D.dirCab, D.dir); tabla('t-reg', D.regCab, D.reg); tabla('t-inter', D.interCab, D.inter); sub = 'Teléfonos y extensiones'; }
+            else {
+                n = pintarDiaria(sec);
+                const d = datosDiarios[sec];
+                sub = d ? `Copiado de la hoja el ${new Date(d.actualizado).toLocaleDateString('es-MX', { weekday: 'long', day: 'numeric', month: 'long' })} a las ${new Date(d.actualizado).toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit', hour12: false })} · se actualiza diario a las 12:00` : 'Se actualiza diario a las 12:00';
+            }
+            $('subtitulo').textContent = sub;
+            history.replaceState(null, '', '#' + sec);
+        }
+        document.querySelectorAll('.sec-link').forEach(b => b.addEventListener('click', () => mostrar(b.dataset.sec)));
+        $('menu-movil').addEventListener('change', (e) => mostrar(e.target.value));
+        ['buscar', 'buscar-m'].forEach(id => $(id).addEventListener('input', () => mostrar(actual)));
+        mostrar(TITULOS[location.hash.slice(1)] ? location.hash.slice(1) : 'scripts');
     </script>
 </body>
 </html>

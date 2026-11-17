@@ -1,16 +1,17 @@
 /**
  * =====================================================================
- *  OMT → Página web (omt.godsplan.site)
- *  Copia cada pestaña de esta hoja a Firebase para que la página la
- *  muestre EN VIVO. Solo escribe las pestañas que cambiaron.
+ *  OMT → Página web (omt.godsplan.site/documento.html)
+ *  Copia SOLO las pestañas PRODUCTIVIDAD, ADHERENCIA y ROL a Firebase
+ *  una vez al día, a las 12:00 (hora de CDMX). Lo demás del documento
+ *  (scripts, autenticación, aplicativos, directorio) ya vive en la página.
  *
  *  Cómo se usa (una sola vez):
  *    1. Pega este código en Extensiones → Apps Script y guarda.
  *    2. Recarga la hoja: aparece el menú "🌐 Página OMT".
  *    3. 🌐 Página OMT → "1. Configurar contraseña" (la del usuario
  *       hoja@omt.godsplan.site que creaste en Firebase).
- *    4. 🌐 Página OMT → "2. Activar sincronización automática".
- *  Listo: cada vez que edites, la página se actualiza sola.
+ *    4. 🌐 Página OMT → "2. Activar actualización diaria".
+ *  Si cambias algo y no quieres esperar a las 12, usa "Actualizar ahora".
  * =====================================================================
  */
 
@@ -19,8 +20,10 @@ const CONFIG = {
   projectId: 'tratocom-d38e7',
   email: 'hoja@omt.godsplan.site',
   coleccion: 'hoja',
-  maxCaracteres: 900000,   // Firestore permite ~1 MB por documento
-  minutosRevision: 10      // revisión periódica (para pestañas con fórmulas que cambian solas)
+  hora: 12,
+  zona: 'America/Mexico_City',
+  // pestaña de la hoja → documento en Firebase
+  pestanas: { 'PRODUCTIVIDAD': 'productividad', 'ADHERENCIA': 'adherencia', 'ROL': 'rol' }
 };
 
 // ---------------------------------------------------------------------
@@ -29,11 +32,11 @@ const CONFIG = {
 function onOpen() {
   SpreadsheetApp.getUi().createMenu('🌐 Página OMT')
     .addItem('1. Configurar contraseña', 'configurarContrasena')
-    .addItem('2. Activar sincronización automática', 'activarSincronizacion')
+    .addItem('2. Activar actualización diaria (12:00)', 'activarDiario')
     .addSeparator()
-    .addItem('Sincronizar todo ahora', 'sincronizarTodoForzado')
+    .addItem('Actualizar ahora', 'actualizarAhora')
     .addItem('Ver estado', 'verEstado')
-    .addItem('Desactivar sincronización', 'desactivarSincronizacion')
+    .addItem('Desactivar actualización diaria', 'desactivarDiario')
     .addToUi();
 }
 
@@ -49,117 +52,73 @@ function configurarContrasena() {
   CacheService.getScriptCache().remove('TOKEN');
   try {
     obtenerToken_();
-    ui.alert('✅ Contraseña correcta. Ahora usa "2. Activar sincronización automática".');
+    ui.alert('✅ Contraseña correcta. Ahora usa "2. Activar actualización diaria".');
   } catch (e) {
     ui.alert('❌ No se pudo iniciar sesión: ' + e.message);
   }
 }
 
-function activarSincronizacion() {
-  desactivarSincronizacion(true);
-  const ss = SpreadsheetApp.getActive();
-  ScriptApp.newTrigger('alEditar').forSpreadsheet(ss).onEdit().create();
-  ScriptApp.newTrigger('alCambiar').forSpreadsheet(ss).onChange().create();
-  ScriptApp.newTrigger('sincronizarTodo').timeBased().everyMinutes(CONFIG.minutosRevision).create();
-  const res = sincronizarTodoForzado(true);
-  SpreadsheetApp.getUi().alert('✅ Sincronización activada.\n\n' + res + '\n\nDesde ahora cada edición se refleja en la página en segundos.');
+function activarDiario() {
+  desactivarDiario(true);
+  ScriptApp.newTrigger('sincronizarDiario').timeBased().everyDays(1).atHour(CONFIG.hora).inTimezone(CONFIG.zona).create();
+  const res = sincronizarDiario();
+  SpreadsheetApp.getUi().alert('✅ Actualización diaria activada.\n\nCada día entre las 12:00 y las 12:59 se copian Productividad, Adherencia y Rol a la página.\n\nPrimera copia de una vez:\n' + res);
 }
 
-function desactivarSincronizacion(silencioso) {
+function desactivarDiario(silencioso) {
+  // También borra los activadores viejos de la versión "en vivo"
   ScriptApp.getProjectTriggers().forEach(function (t) {
-    if (['alEditar', 'alCambiar', 'sincronizarTodo'].indexOf(t.getHandlerFunction()) >= 0) ScriptApp.deleteTrigger(t);
+    if (['sincronizarDiario', 'alEditar', 'alCambiar', 'sincronizarTodo'].indexOf(t.getHandlerFunction()) >= 0) ScriptApp.deleteTrigger(t);
   });
-  if (silencioso !== true) SpreadsheetApp.getUi().alert('Sincronización desactivada.');
+  if (silencioso !== true) SpreadsheetApp.getUi().alert('Actualización diaria desactivada.');
+}
+
+function actualizarAhora() {
+  SpreadsheetApp.getUi().alert(sincronizarDiario());
 }
 
 function verEstado() {
   const p = PropertiesService.getScriptProperties();
-  const ult = p.getProperty('ULTIMA_SYNC');
-  const err = p.getProperty('ULTIMO_ERROR');
-  const triggers = ScriptApp.getProjectTriggers().length;
+  const activo = ScriptApp.getProjectTriggers().some(function (t) { return t.getHandlerFunction() === 'sincronizarDiario'; });
   SpreadsheetApp.getUi().alert(
-    'Sincronización: ' + (triggers ? 'ACTIVA' : 'apagada') + '\n' +
-    'Última sincronización: ' + (ult || 'nunca') + '\n' +
-    (err ? '\nÚltimo error: ' + err : 'Sin errores.'));
+    'Actualización diaria: ' + (activo ? '✅ activa (12:00)' : '⛔ apagada') + '\n' +
+    'Contraseña: ' + (p.getProperty('PASS') ? 'configurada' : 'FALTA') + '\n' +
+    'Última copia: ' + (p.getProperty('ULTIMA_SYNC') || 'nunca') + '\n' +
+    'Último error: ' + (p.getProperty('ULTIMO_ERROR') || 'ninguno'));
 }
 
 // ---------------------------------------------------------------------
-// Disparadores
+// Copia diaria
 // ---------------------------------------------------------------------
-function alEditar(e) {
-  // Solo la pestaña que se editó: es lo más rápido
-  try { sincronizarHojas_([e.range.getSheet()], false); } catch (err) { registrarError_(err); }
-}
-function alCambiar(e) {
-  // Agregar/borrar/renombrar pestañas, pegar grandes bloques, etc.
-  if (e && ['INSERT_GRID', 'REMOVE_GRID', 'OTHER', 'INSERT_ROW', 'REMOVE_ROW', 'INSERT_COLUMN', 'REMOVE_COLUMN'].indexOf(e.changeType) >= 0) sincronizarTodo();
-}
-function sincronizarTodo() {
-  try { return sincronizarHojas_(SpreadsheetApp.getActive().getSheets(), false, true); } catch (err) { registrarError_(err); }
-}
-function sincronizarTodoForzado(silencioso) {
-  const res = sincronizarHojas_(SpreadsheetApp.getActive().getSheets(), true, true);
-  if (silencioso !== true) SpreadsheetApp.getUi().alert('✅ ' + res);
-  return res;
-}
+function normal_(s) { return String(s).normalize('NFD').replace(/[\u0300-\u036f]/g, '').toUpperCase().trim(); }
 
-// ---------------------------------------------------------------------
-// Núcleo
-// ---------------------------------------------------------------------
-function sincronizarHojas_(hojas, forzar, actualizarIndice) {
+function sincronizarDiario() {
   const lock = LockService.getScriptLock();
-  if (!lock.tryLock(20000)) return 'Otra sincronización estaba en curso.';
+  if (!lock.tryLock(30000)) return 'Ya había una copia en curso.';
   try {
-    const props = PropertiesService.getScriptProperties();
-    const hashes = JSON.parse(props.getProperty('HASHES') || '{}');
-    let escritas = 0;
-
-    hojas.forEach(function (hoja) {
-      const datos = leerHoja_(hoja);
-      const json = JSON.stringify(datos.filas);
-      const hash = Utilities.base64Encode(Utilities.computeDigest(Utilities.DigestAlgorithm.MD5, json + '|' + hoja.getName()));
-      const id = String(hoja.getSheetId());
-      if (!forzar && hashes[id] === hash) return;
-
-      let filasJson = json, recortada = false;
-      if (filasJson.length > CONFIG.maxCaracteres) {
-        // Pestaña demasiado grande: se envían las primeras filas que quepan
-        let filas = datos.filas.slice();
-        while (filasJson.length > CONFIG.maxCaracteres && filas.length > 1) { filas = filas.slice(0, Math.floor(filas.length * 0.9)); filasJson = JSON.stringify(filas); }
-        recortada = true;
-      }
-      escribirDoc_(id, {
+    const hojas = SpreadsheetApp.getActive().getSheets();
+    const ahora = new Date().toISOString();
+    const hechas = [], faltan = [];
+    Object.keys(CONFIG.pestanas).forEach(function (nombre) {
+      const hoja = hojas.filter(function (h) { return normal_(h.getName()) === nombre; })[0];
+      if (!hoja) { faltan.push(nombre); return; }
+      const d = leerHoja_(hoja);
+      escribirDoc_(CONFIG.pestanas[nombre], {
         titulo: hoja.getName(),
-        orden: hoja.getIndex(),
-        filas: filasJson,                 // texto JSON (Firestore no permite listas de listas)
+        filas: JSON.stringify(d.filas),
         filasCongeladas: hoja.getFrozenRows(),
-        totalFilas: datos.filas.length,
-        recortada: recortada,
-        oculta: hoja.isSheetHidden(),
-        actualizado: Date.now()
+        actualizado: ahora
       });
-      hashes[id] = hash;
-      escritas++;
+      hechas.push(hoja.getName() + ' (' + d.filas.length + ' filas)');
     });
-
-    if (actualizarIndice) {
-      const todas = SpreadsheetApp.getActive().getSheets();
-      const indice = todas.map(function (h) { return { id: String(h.getSheetId()), titulo: h.getName(), orden: h.getIndex(), oculta: h.isSheetHidden() }; });
-      const ids = indice.map(function (x) { return x.id; });
-      // Olvida las pestañas que ya no existen
-      Object.keys(hashes).forEach(function (k) { if (ids.indexOf(k) < 0) { delete hashes[k]; borrarDoc_(k); } });
-      const idxJson = JSON.stringify(indice);
-      if (forzar || props.getProperty('INDICE') !== idxJson) {
-        escribirDoc_('_indice', { pestanas: idxJson, documento: SpreadsheetApp.getActive().getName(), actualizado: Date.now() });
-        props.setProperty('INDICE', idxJson);
-        escritas++;
-      }
-    }
-
-    props.setProperty('HASHES', JSON.stringify(hashes));
-    props.setProperty('ULTIMA_SYNC', new Date().toLocaleString('es-MX'));
-    props.deleteProperty('ULTIMO_ERROR');
-    return escritas + ' documento(s) actualizados en la página.';
+    const res = 'Copiadas: ' + (hechas.join(', ') || 'ninguna') + (faltan.length ? '\nNo encontré la pestaña: ' + faltan.join(', ') : '');
+    PropertiesService.getScriptProperties().setProperty('ULTIMA_SYNC', new Date().toLocaleString('es-MX', { timeZone: CONFIG.zona }) + ' · ' + res);
+    if (!faltan.length) PropertiesService.getScriptProperties().deleteProperty('ULTIMO_ERROR');
+    else registrarError_('Faltan pestañas: ' + faltan.join(', '));
+    return res;
+  } catch (e) {
+    registrarError_(e);
+    return '❌ Error: ' + e.message;
   } finally {
     lock.releaseLock();
   }
@@ -218,11 +177,6 @@ function escribirDoc_(id, datos) {
     payload: JSON.stringify({ fields: fields })
   });
   if (r.getResponseCode() >= 300) throw new Error('Firebase ' + r.getResponseCode() + ': ' + r.getContentText().slice(0, 300));
-}
-
-function borrarDoc_(id) {
-  const url = 'https://firestore.googleapis.com/v1/projects/' + CONFIG.projectId + '/databases/(default)/documents/' + CONFIG.coleccion + '/' + encodeURIComponent(id);
-  UrlFetchApp.fetch(url, { method: 'delete', muteHttpExceptions: true, headers: { Authorization: 'Bearer ' + obtenerToken_() } });
 }
 
 function registrarError_(err) {
