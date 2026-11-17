@@ -164,6 +164,9 @@ chrome.alarms.onAlarm.addListener(async (alarm) => {
         const id = alarm.name.replace(ALARMA, "");
         const configSnap = await getDoc("config", "global");
         if (configSnap.exists && configSnap.data().autoExpulsion === false) return;
+        // Si el supervisor ya terminó la pausa (o ya está fuera), no expulsar
+        const ses = await getDoc("sesiones_activas", id);
+        if (ses.exists && (!ses.data().estadoActivo || ses.data().desconectadoEn)) return;
         expulsarAgente(id);
     }
 });

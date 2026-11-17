@@ -10,6 +10,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="../assets/theme.js"></script>
+    <script>document.documentElement.classList.add("dark", "super");</script>
     <script src="https://unpkg.com/@phosphor-icons/web"></script>
     <link rel="stylesheet" href="../assets/ui.css">
     <style>.auth-pending .app-shell, .auth-pending .mobile-nav { visibility: hidden; }</style>
@@ -78,7 +79,7 @@
         <aside class="sidebar" id="sidebar-admin">
             <div class="sidebar-brand">
                 <div class="logo"><i class="ph-bold ph-timer text-lg"></i></div>
-                <div class="leading-tight"><p class="font-semibold text-1 text-[15px]">Adherencia</p><p class="text-[12px] subtle">Panel de supervisor</p></div>
+                <div class="leading-tight"><p class="font-semibold text-1 text-[15px]">Adherencia</p><p class="text-[12px] subtle">Supervisor · Luis Ortiz</p></div>
             </div>
             <nav class="nav-section flex-1 flex flex-col gap-1">
                 <p class="eyebrow px-3 mb-1.5">Operación</p>
@@ -88,7 +89,6 @@
                 <a href="logs.html" class="nav-item"><i class="ph-bold ph-scroll"></i> Auditoría</a>
             </nav>
             <div class="p-3 border-t divider flex flex-col gap-1">
-                <button onclick="toggleTheme()" class="nav-item"><i data-theme-icon class="ph-bold ph-moon"></i> Cambiar tema</button>
                 <button onclick="cerrarSesionSuper()" class="nav-item"><i class="ph-bold ph-sign-out"></i> Cerrar sesión</button>
             </div>
         </aside>
@@ -103,7 +103,6 @@
                 <div class="flex items-center gap-2">
                     <button onclick="App.Modals.abrirReset()" class="btn btn-secondary btn-sm hidden sm:inline-flex"><i class="ph-bold ph-arrow-counter-clockwise"></i> Reiniciar día</button>
                     <button onclick="App.Modals.abrirConfig()" class="btn btn-ghost btn-icon btn-sm" title="Límites globales"><i class="ph-bold ph-sliders-horizontal"></i></button>
-                    <button onclick="toggleTheme()" class="btn btn-ghost btn-icon btn-sm md:hidden"><i data-theme-icon class="ph-bold ph-moon"></i></button>
                 </div>
             </header>
 
@@ -162,6 +161,7 @@
                                     <input type="text" id="filtro-agente-historial" onkeyup="App.UI.renderHistorialLocal()" placeholder="Filtrar asesor" class="input !h-9 !text-[13px]">
                                 </div>
                                 <input type="date" id="filtro-fecha-historial" onchange="App.UI.renderHistorialLocal()" class="input !h-9 !text-[13px] sm:!w-auto">
+                                <button onclick="App.Editor.nuevo()" class="btn btn-primary btn-sm !h-9"><i class="ph-bold ph-plus"></i> Agregar pausa</button>
                             </div>
                         </div>
                         <div class="grid grid-cols-3 border-b divider">
@@ -171,7 +171,7 @@
                         </div>
                         <div class="overflow-auto max-h-[480px]">
                             <table class="table min-w-[640px]">
-                                <thead><tr><th>Hora (fin)</th><th>Asesor</th><th>Pausa</th><th class="!text-right">Duración</th></tr></thead>
+                                <thead><tr><th>Hora (fin)</th><th>Asesor</th><th>Pausa</th><th class="!text-right">Duración</th><th class="w-12"></th></tr></thead>
                                 <tbody id="tabla-registros-global"></tbody>
                             </table>
                         </div>
@@ -193,6 +193,7 @@
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         import { getFirestore, collection, onSnapshot, doc, setDoc, query, orderBy, limit } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
         import { getAuth, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { instalarEditor } from "../assets/editor.js";
 
         const META = {
             bath:    { icon: 'ph-toilet',     label: 'Sanitario', chip: 'chip-bath',    c: 'c-bath',    bg: 'bg-bath' },
@@ -207,6 +208,7 @@
                 operadores: {},
                 sesiones: {},
                 registrosHistorial: [],
+                registrosPorId: {},
                 extension: {},
                 fechaFiltro: new Date().toLocaleDateString('en-CA')
             },
@@ -231,7 +233,7 @@
         App.db = window.db;
 
         // Versión vigente de la extensión (la que está en la carpeta de red). Súbela cuando publiques una nueva.
-        const VERSION_EXTENSION = '1.3';
+        const VERSION_EXTENSION = '1.4';
 
         const Utils = {
             formatSeg: (total) => {
@@ -289,7 +291,16 @@
             if (!u || u.email !== SUPERVISOR_EMAIL) { location.replace('../index.html'); return; }
             document.body.classList.remove('auth-pending');
             document.getElementById('fecha-admin-display').innerText = new Date().toLocaleDateString('es-MX', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
-            if (!App.iniciado) { App.iniciado = true; App.Firebase.init(); }
+            if (!App.iniciado) {
+                App.iniciado = true;
+                const ed = instalarEditor({ db: window.db, toast: Utils.toast, operadores: () => App.state.operadores });
+                App.Editor = {
+                    registro: (id) => ed.editarRegistro(App.state.registrosPorId[id]),
+                    nuevo: () => ed.nuevoRegistro(),
+                    sesion: (id) => ed.editarSesion(App.state.operadores[id], App.state.sesiones[id])
+                };
+                App.Firebase.init();
+            }
         });
         window.cerrarSesionSuper = async () => { await signOut(auth); location.replace('../index.html'); };
 
@@ -417,7 +428,8 @@
                         </div>`;
 
                     tarjetas.push({ orden, nombre, html: `
-                    <div class="card agent-card p-4 flex flex-col gap-3 ${orden === 2 ? 'offline' : ''}">
+                    <div class="card agent-card relative p-4 flex flex-col gap-3 ${orden === 2 ? 'offline' : ''}">
+                        <button class="edit-btn btn btn-primary btn-icon btn-sm !rounded-full absolute -top-2.5 -right-2.5 z-10 !w-8 !h-8" title="Editar el día de este asesor" onclick="App.Editor.sesion('${ag.id}')"><i class="ph-bold ph-pencil-simple"></i></button>
                         <div class="flex items-center gap-3">
                             <div class="avatar">${Utils.esc(Utils.iniciales(nombre))}</div>
                             <div class="min-w-0 flex-1">
@@ -518,14 +530,15 @@
                             <td class="tnum muted w-28">${fStr}</td>
                             <td><div class="flex items-center gap-2.5"><div class="avatar avatar-sm">${Utils.esc(Utils.iniciales(nombre))}</div><div><p class="font-medium leading-tight">${Utils.esc(nombre)}</p><p class="text-[12px] subtle tnum">ID ${Utils.esc(data.asesor_id)}</p></div></div></td>
                             <td><span class="chip ${ui.chip}"><i class="ph-fill ${ui.icon}"></i> ${ui.label}</span>${kick}</td>
-                            <td class="!text-right tnum font-semibold">${Utils.formatSeg(data.duracion_segundos)}</td>
+                            <td class="!text-right tnum font-semibold">${Utils.formatSeg(data.duracion_segundos)}${data.editado_por_supervisor || data.agregado_por_supervisor || data.cerrado_por_supervisor ? ' <i class="ph-bold ph-pencil-simple-line subtle" title="Modificado por el supervisor"></i>' : ''}</td>
+                            <td class="!text-right"><button class="edit-btn btn btn-ghost btn-icon btn-sm" title="Editar o borrar" onclick="App.Editor.registro('${data.id}')"><i class="ph-bold ph-pencil-simple"></i></button></td>
                         </tr>`;
                 });
 
                 document.getElementById('super-hist-tot-bath').innerText = Utils.formatSeg(totB);
                 document.getElementById('super-hist-tot-food').innerText = Utils.formatSeg(totC);
                 document.getElementById('super-hist-tot-quality').innerText = Utils.formatSeg(totQ);
-                tbody.innerHTML = rCount ? html : `<tr><td colspan="4" class="empty"><i class="ph ph-clock"></i>No hay pausas para este filtro.</td></tr>`;
+                tbody.innerHTML = rCount ? html : `<tr><td colspan="5" class="empty"><i class="ph ph-clock"></i>No hay pausas para este filtro.</td></tr>`;
             }
         };
 
@@ -534,7 +547,8 @@
                 const q = query(collection(window.db, "registros_tiempos"), orderBy("fecha", "desc"), limit(2000));
                 onSnapshot(q, (snap) => {
                     App.state.registrosHistorial = [];
-                    snap.forEach(d => { const data = d.data(); if (data.fecha) App.state.registrosHistorial.push(data); });
+                    App.state.registrosPorId = {};
+                    snap.forEach(d => { const data = { id: d.id, ...d.data() }; if (data.fecha) { App.state.registrosHistorial.push(data); App.state.registrosPorId[d.id] = data; } });
                     App.UI.renderHistorialLocal();
                 }, (error) => console.error("Error escuchando reportes", error));
             },

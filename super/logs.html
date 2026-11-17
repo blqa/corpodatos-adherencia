@@ -10,6 +10,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="../assets/theme.js"></script>
+    <script>document.documentElement.classList.add("dark", "super");</script>
     <script src="https://unpkg.com/@phosphor-icons/web"></script>
     <link rel="stylesheet" href="../assets/ui.css">
     <style>.auth-pending .app-shell, .auth-pending .mobile-nav { visibility: hidden; }</style>
@@ -20,7 +21,7 @@
         <aside class="sidebar">
             <div class="sidebar-brand">
                 <div class="logo"><i class="ph-bold ph-timer text-lg"></i></div>
-                <div class="leading-tight"><p class="font-semibold text-1 text-[15px]">Adherencia</p><p class="text-[12px] subtle">Panel de supervisor</p></div>
+                <div class="leading-tight"><p class="font-semibold text-1 text-[15px]">Adherencia</p><p class="text-[12px] subtle">Supervisor · Luis Ortiz</p></div>
             </div>
             <nav class="nav-section flex-1 flex flex-col gap-1">
                 <p class="eyebrow px-3 mb-1.5">Operación</p>
@@ -30,7 +31,6 @@
                 <a href="logs.html" class="nav-item active"><i class="ph-bold ph-scroll"></i> Auditoría</a>
             </nav>
             <div class="p-3 border-t divider flex flex-col gap-1">
-                <button onclick="toggleTheme()" class="nav-item"><i data-theme-icon class="ph-bold ph-moon"></i> Cambiar tema</button>
                 <button onclick="cerrarSesionSuper()" class="nav-item"><i class="ph-bold ph-sign-out"></i> Cerrar sesión</button>
             </div>
         </aside>
@@ -42,8 +42,8 @@
                     <p class="text-[12.5px] subtle">Conexiones, pausas y desconexiones registradas por la extensión</p>
                 </div>
                 <div class="flex items-center gap-2">
+                    <button onclick="agregarLog()" class="btn btn-primary btn-sm"><i class="ph-bold ph-plus"></i> <span class="hidden sm:inline">Agregar pausa</span></button>
                     <button onclick="exportarCSV()" class="btn btn-secondary btn-sm"><i class="ph-bold ph-file-csv"></i> <span class="hidden sm:inline">Exportar CSV</span></button>
-                    <button onclick="toggleTheme()" class="btn btn-ghost btn-icon btn-sm md:hidden"><i data-theme-icon class="ph-bold ph-moon"></i></button>
                 </div>
             </header>
 
@@ -71,10 +71,10 @@
                         <div class="overflow-auto max-h-[calc(100vh-360px)] min-h-[260px]">
                             <table class="table min-w-[980px]">
                                 <thead>
-                                    <tr><th>Fecha</th><th>Asesor</th><th>Evento</th><th>Detalle</th><th>Inicio</th><th>Fin</th><th class="!text-right">Duración</th></tr>
+                                    <tr><th>Fecha</th><th>Asesor</th><th>Evento</th><th>Detalle</th><th>Inicio</th><th>Fin</th><th class="!text-right">Duración</th><th class="w-12"></th></tr>
                                 </thead>
                                 <tbody id="tabla-auditoria">
-                                    <tr><td colspan="7" class="empty"><i class="ph ph-magnifying-glass"></i>Elige un rango de fechas y presiona Consultar.</td></tr>
+                                    <tr><td colspan="8" class="empty"><i class="ph ph-magnifying-glass"></i>Elige un rango de fechas y presiona Consultar.</td></tr>
                                 </tbody>
                             </table>
                         </div>
@@ -93,8 +93,9 @@
 
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import { getFirestore, collection, getDocs, query, where, orderBy } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import { getFirestore, collection, getDocs, query, where, orderBy, onSnapshot } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
         import { getAuth, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { instalarEditor } from "../assets/editor.js";
 
         const app = initializeApp({ apiKey: "AIzaSyBKYconuZXn53Eb4EJFsHj4rYaO0eK6liQ", projectId: "tratocom-d38e7" });
         const db = getFirestore(app);
@@ -106,7 +107,14 @@
         onAuthStateChanged(auth, (u) => {
             if (!u || u.email !== SUPERVISOR_EMAIL) { location.replace('../index.html'); return; }
             document.body.classList.remove('auth-pending');
-            if (!__iniciado) { __iniciado = true; __arrancar(); }
+            if (!__iniciado) {
+                __iniciado = true;
+                const ed = instalarEditor({ db, toast: (m, t) => { const r = document.getElementById('resumen-resultados'); r.textContent = m; r.style.color = t === 'error' ? 'var(--danger)' : ''; },
+                    operadores: () => OPERADORES, alGuardar: () => buscarLogs() });
+                window.editarLog = (i) => ed.editarRegistro(datosActuales[i]);
+                window.agregarLog = () => ed.nuevoRegistro();
+                __arrancar();
+            }
         });
         window.cerrarSesionSuper = async () => { await signOut(auth); location.replace('../index.html'); };
 
@@ -115,6 +123,7 @@
         document.getElementById('fecha-fin').value = getFechaISO(new Date());
 
         let datosActuales = [];
+        let OPERADORES = {};
         const esc = (s) => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 
         const badges = {
@@ -148,7 +157,7 @@
 
             btn.innerHTML = `<span class="spinner"></span>`;
             btn.disabled = true;
-            tbody.innerHTML = `<tr><td colspan="7" class="empty"><span class="spinner spinner-lg"></span></td></tr>`;
+            tbody.innerHTML = `<tr><td colspan="8" class="empty"><span class="spinner spinner-lg"></span></td></tr>`;
 
             try {
                 const q = query(collection(db, "registros_tiempos"),
@@ -158,8 +167,8 @@
                 const snap = await getDocs(q);
 
                 const datosCrudos = [];
-                snap.forEach(doc => {
-                    const d = doc.data();
+                snap.forEach(docu => {
+                    const d = { id: docu.id, ...docu.data() };
                     if (agFiltro && !(d.asesor_nombre || '').toLowerCase().includes(agFiltro) && !String(d.asesor_id || '').toLowerCase().includes(agFiltro)) return;
                     datosCrudos.push(d);
                 });
@@ -180,12 +189,12 @@
                 document.getElementById('cnt-kick').innerText = cuenta('EXPULSION_SISTEMA');
 
                 if (datosActuales.length === 0) {
-                    tbody.innerHTML = `<tr><td colspan="7" class="empty"><i class="ph ph-tray"></i>No hay registros para estos filtros.</td></tr>`;
+                    tbody.innerHTML = `<tr><td colspan="8" class="empty"><i class="ph ph-tray"></i>No hay registros para estos filtros.</td></tr>`;
                     document.getElementById('resumen-resultados').innerText = '0 resultados';
                     return;
                 }
 
-                tbody.innerHTML = datosActuales.map(d => {
+                tbody.innerHTML = datosActuales.map((d, i) => {
                     const fechaObj = d.fecha.toDate();
                     const badge = badges[d.tipo_evento] || '<span class="chip chip-neutral"><i class="ph-bold ph-globe"></i> Registro web</span>';
                     let detalle = ESTADOS[d.estado] || `<span class="muted">${esc(d.estado === 'null' || !d.estado ? 'Trabajando' : d.estado)}</span>`;
@@ -201,13 +210,14 @@
                         <td class="tnum muted text-[13px]">${formatearHora(d.inicio)}</td>
                         <td class="tnum muted text-[13px]">${formatearHora(d.fin || fechaObj.getTime())}</td>
                         <td class="!text-right tnum font-semibold ${d.duracion_segundos > 0 ? 'text-1' : 'subtle'}">${formatearTiempo(d.duracion_segundos)}</td>
+                        <td class="!text-right"><button class="edit-btn btn btn-ghost btn-icon btn-sm" title="Editar o borrar" onclick="editarLog(${i})"><i class="ph-bold ph-pencil-simple"></i></button></td>
                     </tr>`;
                 }).join('');
                 document.getElementById('resumen-resultados').innerText = `${datosActuales.length} registros en el rango seleccionado`;
 
             } catch (error) {
                 console.error(error);
-                tbody.innerHTML = `<tr><td colspan="7" class="empty c-danger"><i class="ph ph-warning-circle"></i>Error al consultar la base de datos.</td></tr>`;
+                tbody.innerHTML = `<tr><td colspan="8" class="empty c-danger"><i class="ph ph-warning-circle"></i>Error al consultar la base de datos.</td></tr>`;
             } finally {
                 btn.innerHTML = `<i class="ph-bold ph-magnifying-glass"></i> Consultar`;
                 btn.disabled = false;
@@ -232,7 +242,10 @@
         };
 
         // Consulta automática del día al abrir (cuando ya hay sesión)
-        function __arrancar() { buscarLogs(); }
+        function __arrancar() {
+            onSnapshot(collection(db, 'operadores'), (snap) => { OPERADORES = {}; snap.forEach(d => OPERADORES[d.id] = { id: d.id, ...d.data() }); });
+            buscarLogs();
+        }
     </script>
 </body>
 </html>

@@ -10,6 +10,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="../assets/theme.js"></script>
+    <script>document.documentElement.classList.add("dark", "super");</script>
     <script src="https://unpkg.com/@phosphor-icons/web"></script>
     <link rel="stylesheet" href="../assets/ui.css">
     <style>.auth-pending .app-shell, .auth-pending .mobile-nav { visibility: hidden; }</style>
@@ -27,7 +28,7 @@
         <aside class="sidebar">
             <div class="sidebar-brand">
                 <div class="logo"><i class="ph-bold ph-timer text-lg"></i></div>
-                <div class="leading-tight"><p class="font-semibold text-1 text-[15px]">Adherencia</p><p class="text-[12px] subtle">Panel de supervisor</p></div>
+                <div class="leading-tight"><p class="font-semibold text-1 text-[15px]">Adherencia</p><p class="text-[12px] subtle">Supervisor · Luis Ortiz</p></div>
             </div>
             <nav class="nav-section flex-1 flex flex-col gap-1">
                 <p class="eyebrow px-3 mb-1.5">Operación</p>
@@ -37,7 +38,6 @@
                 <a href="logs.html" class="nav-item"><i class="ph-bold ph-scroll"></i> Auditoría</a>
             </nav>
             <div class="p-3 border-t divider flex flex-col gap-1">
-                <button onclick="toggleTheme()" class="nav-item"><i data-theme-icon class="ph-bold ph-moon"></i> Cambiar tema</button>
                 <button onclick="cerrarSesionSuper()" class="nav-item"><i class="ph-bold ph-sign-out"></i> Cerrar sesión</button>
             </div>
         </aside>
@@ -53,7 +53,6 @@
                     </div>
                     <div class="flex items-center gap-2">
                         <button onclick="App.UI.mostrarFormularioNuevo()" class="btn btn-primary btn-sm"><i class="ph-bold ph-plus"></i> Nuevo asesor</button>
-                        <button onclick="toggleTheme()" class="btn btn-ghost btn-icon btn-sm md:hidden"><i data-theme-icon class="ph-bold ph-moon"></i></button>
                     </div>
                 </header>
 
