@@ -72,6 +72,7 @@
         body.txt-lg #dashboard-view > main { zoom: 1.14; }
         .swatch { width: 30px; height: 30px; border-radius: 99px; border: 2px solid var(--surface); box-shadow: 0 0 0 1px var(--border-strong); cursor: pointer; }
         .swatch.active { box-shadow: 0 0 0 2px var(--surface), 0 0 0 4px var(--text); }
+        .auth-pending #login-view, .auth-pending #dashboard-view { visibility: hidden; }
         .pref-row { padding: 14px 0; border-top: 1px solid var(--border); }
         .pref-row:first-child { border-top: 0; padding-top: 0; }
         .segmented.w-full { display: flex; } .segmented.w-full button { flex: 1; }
@@ -90,28 +91,29 @@
         }
     </style>
 </head>
-<body class="min-h-screen">
+<body class="min-h-screen auth-pending">
 
     <!-- ==================== LOGIN ==================== -->
     <div id="login-view" class="auth-wrap">
         <div id="panel-login" class="card auth-card fade-in" style="box-shadow: var(--shadow-lg)">
             <div class="logo logo-lg mb-5"><i class="ph-bold ph-timer"></i></div>
             <h1 class="text-[26px] font-bold tracking-tight text-1">Mi adherencia</h1>
-            <p class="muted text-[15px] mt-1 mb-7">Consulta tus tiempos de pausa del día.</p>
+            <p class="muted text-[15px] mt-1 mb-7">Tus tiempos de pausa y el documento OMT.</p>
 
             <form onsubmit="iniciarDashboard(event)" class="flex flex-col gap-3">
                 <label for="input-id" class="label !mb-0">Tu ID de asesor</label>
                 <input type="text" id="input-id" required autocomplete="off" inputmode="numeric" placeholder="Ej. 17884"
                        class="input tnum !h-12 !text-lg font-semibold tracking-wider uppercase placeholder:normal-case placeholder:tracking-normal placeholder:font-normal">
-                <div id="super-pass-box" class="hidden flex-col gap-2 mt-1">
-                    <label for="input-pass" class="label !mb-0 flex items-center gap-1.5"><i class="ph-bold ph-shield-check c-brand"></i> Contraseña de supervisor</label>
-                    <input type="password" id="input-pass" autocomplete="current-password" class="input !h-12" placeholder="Tu contraseña">
+                <div id="super-pass-box" class="flex flex-col gap-2 mt-1">
+                    <label for="input-pass" class="label !mb-0 flex items-center gap-1.5"><i class="ph-bold ph-lock-key c-brand"></i> <span id="pass-label">Contraseña</span></label>
+                    <input type="password" id="input-pass" required autocomplete="current-password" class="input !h-12" placeholder="Tu contraseña">
                 </div>
                 <button type="submit" id="btn-login" class="btn btn-primary btn-lg w-full mt-1">
                     Entrar <i class="ph-bold ph-arrow-right"></i>
                 </button>
             </form>
-            <p id="login-error" class="hidden chip chip-danger !h-auto !py-2.5 !px-3 !rounded-[10px] w-full mt-4 !text-[13px]"></p>
+            <p id="login-error" class="hidden chip chip-danger !h-auto !py-2.5 !px-3 !rounded-[10px] w-full mt-4 !text-[13px] !whitespace-normal"></p>
+            <p class="hint text-center mt-5">¿No tienes contraseña o la olvidaste? Pídela a tu supervisor.</p>
         </div>
     </div>
 
@@ -135,6 +137,7 @@
                     </div>
                 </div>
                 <span id="ext-chip" class="chip chip-neutral hidden sm:inline-flex mr-1" title="Estado de la extensión de Chrome"><i class="ph-bold ph-plugs"></i><span>Extensión</span></span>
+                <a href="documento.html" class="btn btn-secondary btn-sm !h-9 mr-1"><i class="ph-bold ph-table"></i><span class="hidden sm:inline">Documento OMT</span></a>
                 <button onclick="abrirPersonalizar()" class="btn btn-ghost btn-icon" title="Personalizar mi pantalla"><i class="ph-bold ph-sliders-horizontal"></i></button>
                 <button onclick="toggleTheme()" class="btn btn-ghost btn-icon" title="Cambiar tema"><i data-theme-icon class="ph-bold ph-moon"></i></button>
                 <button onclick="cerrarSesion()" class="btn btn-ghost btn-icon" title="Cerrar sesión"><i class="ph-bold ph-sign-out"></i></button>
@@ -370,7 +373,7 @@
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         import { getFirestore, collection, onSnapshot, doc, getDoc, updateDoc, setDoc, addDoc, query, where } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
-        import { getAuth, signInWithEmailAndPassword, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getAuth, signInWithEmailAndPassword, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
 
         const firebaseConfig = {
             apiKey: "AIzaSyBKYconuZXn53Eb4EJFsHj4rYaO0eK6liQ",
@@ -385,46 +388,60 @@
         const db = getFirestore(app);
         const auth = getAuth(app);
 
-        // ===== Supervisor: el ID 17620 entra al panel (con su contraseña de Firebase) =====
+        // ===== Inicio de sesión: ID + contraseña (Firebase Authentication) =====
+        // Cada persona es el usuario <ID>@omt.godsplan.site. El 17620 (supervisor) va al panel.
         const SUPERVISOR_ID = '17620';
         const SUPERVISOR_EMAIL = '17620@omt.godsplan.site';
-        const passBox = document.getElementById('super-pass-box');
+        const correoDe = (id) => String(id).trim().toLowerCase() + '@omt.godsplan.site';
+        const idDeCorreo = (email) => String(email || '').split('@')[0].toUpperCase();
         const esSuper = () => document.getElementById('input-id').value.trim() === SUPERVISOR_ID;
         document.getElementById('input-id').addEventListener('input', () => {
-            passBox.classList.toggle('hidden', !esSuper());
-            passBox.classList.toggle('flex', esSuper());
+            document.getElementById('pass-label').textContent = esSuper() ? 'Contraseña de supervisor' : 'Contraseña';
             document.getElementById('btn-login').innerHTML = esSuper() ? 'Entrar al panel <i class="ph-bold ph-arrow-right"></i>' : 'Entrar <i class="ph-bold ph-arrow-right"></i>';
             document.getElementById('login-error').classList.add('hidden');
         });
-        // Si el supervisor ya tiene sesión, directo al panel
-        onAuthStateChanged(auth, (u) => { if (u && u.email === SUPERVISOR_EMAIL && !localStorage.getItem('asesorDashboard')) location.replace('super/dash.html'); });
 
-        async function entrarSupervisor() {
-            const btn = document.getElementById('btn-login');
+        function mostrarErrorLogin(html) {
             const errorMsg = document.getElementById('login-error');
-            const pass = document.getElementById('input-pass').value;
-            if (!pass) { document.getElementById('input-pass').focus(); return; }
-            btn.innerHTML = '<span class="spinner"></span>'; btn.disabled = true; errorMsg.classList.add('hidden');
+            errorMsg.innerHTML = '<i class="ph-bold ph-warning-circle"></i> ' + html;
+            errorMsg.classList.remove('hidden');
+        }
+
+        onAuthStateChanged(auth, (u) => {
+            document.body.classList.remove('auth-pending');
+            if (!u) { localStorage.removeItem('asesorDashboard'); return; }
+            if (u.email === SUPERVISOR_EMAIL) { location.replace('super/dash.html'); return; }
+            abrirSesionAsesor(idDeCorreo(u.email));
+        });
+
+        let escuchandoPerfil = false;
+        async function abrirSesionAsesor(id) {
             try {
-                await signInWithEmailAndPassword(auth, SUPERVISOR_EMAIL, pass);
-                location.replace('super/dash.html');
+                const snap = await getDoc(doc(db, "operadores", id));
+                if (!snap.exists()) {
+                    await signOut(auth);
+                    mostrarErrorLogin('Tu contraseña es correcta, pero el ID ' + id + ' no está dado de alta en Personal. Avísale a tu supervisor.');
+                    return;
+                }
+                asesorDatos = { id, ...snap.data() };
+                localStorage.setItem('asesorDashboard', JSON.stringify({ id }));
+                if (!escuchandoPerfil) {
+                    escuchandoPerfil = true;
+                    onSnapshot(doc(db, "operadores", id), (s2) => {
+                        if (!s2.exists()) return;
+                        asesorDatos = { id, ...s2.data() };
+                        actualizarTextosLimitesUI();
+                        if (asesorDatos.preferencias) aplicarPrefsRemotas(asesorDatos.preferencias);
+                    });
+                }
+                cargarInterfazDashboard();
             } catch (e) {
-                const msgs = {
-                    'auth/invalid-credential': 'Contraseña incorrecta.',
-                    'auth/wrong-password': 'Contraseña incorrecta.',
-                    'auth/user-not-found': 'El usuario de supervisor no existe en Firebase.',
-                    'auth/too-many-requests': 'Demasiados intentos. Espera unos minutos.',
-                    'auth/operation-not-allowed': 'Activa "Correo electrónico/contraseña" en Firebase Authentication.',
-                    'auth/network-request-failed': 'Sin conexión a internet.'
-                };
-                errorMsg.innerHTML = '<i class="ph-bold ph-warning-circle"></i> ' + (msgs[e.code] || 'No se pudo entrar (' + (e.code || 'error') + ').');
-                errorMsg.classList.remove('hidden');
-                btn.innerHTML = 'Entrar al panel <i class="ph-bold ph-arrow-right"></i>'; btn.disabled = false;
+                mostrarErrorLogin('Error de conexión. Intenta de nuevo.');
             }
         }
 
         // -- VARIABLES GLOBALES --
-        let asesorDatos = JSON.parse(localStorage.getItem('asesorDashboard')) || null;
+        let asesorDatos = null;
         let configGlobal = { limites: { bano: 15, comida: 30 } };
         let sesionFirebase = { tiemposAcumulados: { bath: 0, food: 0, quality: 0 }, estadoActivo: null, tiempoInicioEstado: null };
         let timerRelojes = null;
@@ -455,41 +472,35 @@
 
         window.iniciarDashboard = async function(e) {
             e.preventDefault();
-            const inputId = document.getElementById('input-id').value.trim().toUpperCase();
+            const id = document.getElementById('input-id').value.trim().toUpperCase();
+            const pass = document.getElementById('input-pass').value;
             const btn = document.getElementById('btn-login');
-            const errorMsg = document.getElementById('login-error');
-            if (!inputId) return;
-            if (inputId === SUPERVISOR_ID) return entrarSupervisor();
+            if (!id) return;
+            if (!pass) { document.getElementById('input-pass').focus(); return; }
 
-            btn.innerHTML = `<span class="spinner"></span>`;
-            btn.disabled = true; errorMsg.classList.add('hidden');
-
+            const textoBtn = btn.innerHTML;
+            btn.innerHTML = '<span class="spinner"></span>'; btn.disabled = true;
+            document.getElementById('login-error').classList.add('hidden');
             try {
-                onSnapshot(doc(db, "operadores", inputId), (docSnap) => {
-                    if (docSnap.exists()) {
-                        asesorDatos = { id: inputId, ...docSnap.data() };
-                        localStorage.setItem('asesorDashboard', JSON.stringify(asesorDatos));
-                        cargarInterfazDashboard();
-                    } else {
-                        errorMsg.innerHTML = '<i class="ph-bold ph-warning-circle"></i> No encontramos ese ID. Revísalo con tu supervisor.';
-                        errorMsg.classList.remove('hidden');
-                        localStorage.removeItem('asesorDashboard');
-                    }
-                });
-            } catch (error) {
-                errorMsg.innerHTML = '<i class="ph-bold ph-wifi-x"></i> Error de conexión.';
-                errorMsg.classList.remove('hidden');
-            } finally {
-                setTimeout(() => {
-                    if (document.getElementById('login-view').style.display !== 'none') {
-                        btn.innerHTML = `Entrar <i class="ph-bold ph-arrow-right"></i>`;
-                        btn.disabled = false;
-                    }
-                }, 1000);
+                await signInWithEmailAndPassword(auth, correoDe(id), pass);
+                // onAuthStateChanged se encarga de abrir la página (o el panel si es supervisor)
+            } catch (err) {
+                const msgs = {
+                    'auth/invalid-credential': 'ID o contraseña incorrectos.',
+                    'auth/wrong-password': 'ID o contraseña incorrectos.',
+                    'auth/user-not-found': 'Ese ID todavía no tiene contraseña. Pídela a tu supervisor.',
+                    'auth/invalid-email': 'Revisa tu ID.',
+                    'auth/too-many-requests': 'Demasiados intentos. Espera unos minutos.',
+                    'auth/operation-not-allowed': 'Falta activar "Correo electrónico/contraseña" en Firebase Authentication.',
+                    'auth/network-request-failed': 'Sin conexión a internet.'
+                };
+                mostrarErrorLogin(msgs[err.code] || 'No se pudo entrar (' + (err.code || 'error') + ').');
+                btn.innerHTML = textoBtn; btn.disabled = false;
             }
         };
 
-        window.cerrarSesion = function() {
+        window.cerrarSesion = async function() {
+            try { await signOut(auth); } catch (e) {}
             localStorage.removeItem('asesorDashboard'); location.reload();
         };
 
@@ -851,24 +862,6 @@
         };
         aplicarPrefs();
 
-        // Auto-login silencioso
-        if (asesorDatos && asesorDatos.id) {
-            getDoc(doc(db, "operadores", asesorDatos.id)).then(docSnap => {
-                if (docSnap.exists()) {
-                    asesorDatos = { id: asesorDatos.id, ...docSnap.data() };
-                    onSnapshot(doc(db, "operadores", asesorDatos.id), (snap) => {
-                        if (snap.exists()) {
-                            asesorDatos = { id: asesorDatos.id, ...snap.data() };
-                            actualizarTextosLimitesUI();
-                            if (asesorDatos.preferencias) aplicarPrefsRemotas(asesorDatos.preferencias);
-                        }
-                    });
-                    cargarInterfazDashboard();
-                } else {
-                    localStorage.removeItem('asesorDashboard');
-                }
-            }).catch(() => localStorage.removeItem('asesorDashboard'));
-        }
     </script>
 </body>
 </html>

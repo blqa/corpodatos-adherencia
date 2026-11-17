@@ -1,0 +1,303 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Documento OMT</title>
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="assets/theme.js"></script>
+    <script>
+        // Color y tema que el asesor eligió en "Personalizar" (o tema del supervisor)
+        (function () {
+            var A = { indigo: ['#4f46e5', '#6366f1'], azul: ['#2563eb', '#3b82f6'], verde: ['#059669', '#10b981'], rosa: ['#db2777', '#ec4899'], naranja: ['#ea580c', '#f97316'], grafito: ['#334155', '#64748b'] };
+            try {
+                var p = JSON.parse(localStorage.getItem('prefsAsesor') || '{}');
+                if (p.acento && A[p.acento]) {
+                    var c = A[p.acento];
+                    document.write('<style>:root{--brand:' + c[0] + ';--brand-600:' + c[0] + ';--brand-text:' + c[0] + ';--brand-soft:color-mix(in srgb,' + c[0] + ' 11%,white)}html.dark{--brand:' + c[1] + ';--brand-text:' + c[1] + ';--brand-soft:color-mix(in srgb,' + c[1] + ' 18%,transparent)}.logo{background:linear-gradient(135deg,' + c[1] + ',' + c[0] + ')}</style>');
+                }
+                if (p.intensidad === 'marcada') document.addEventListener('DOMContentLoaded', function () { document.body.classList.add('tint-strong'); });
+            } catch (e) {}
+        })();
+    </script>
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+    <link rel="stylesheet" href="assets/ui.css">
+    <style>
+        .auth-pending .app-shell, .auth-pending .mobile-nav { visibility: hidden; }
+        .tab-link { display: flex; align-items: center; gap: 9px; width: 100%; height: 34px; padding: 0 10px; border-radius: 8px; font-size: 13.5px; color: var(--text-2); text-align: left; }
+        .tab-link:hover { background: var(--surface-3); color: var(--text); }
+        .tab-link.active { background: var(--brand-soft); color: var(--brand-text); font-weight: 600; }
+        .tab-link i { font-size: 16px; flex-shrink: 0; }
+        .tab-link .lbl { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .grupo { font-size: 11px; font-weight: 600; letter-spacing: .07em; text-transform: uppercase; color: var(--text-3); padding: 14px 10px 6px; }
+
+        .hoja { border-collapse: separate; border-spacing: 0; font-size: 13.5px; min-width: 100%; }
+        .hoja th, .hoja td { padding: 9px 12px; border-bottom: 1px solid var(--border); border-right: 1px solid color-mix(in srgb, var(--border) 55%, transparent); vertical-align: top; text-align: left; }
+        .hoja th { position: sticky; top: 0; z-index: 2; background: var(--surface-2); color: var(--text-2); font-size: 12px; font-weight: 600; white-space: nowrap; }
+        .hoja td { color: var(--text); max-width: 460px; white-space: pre-wrap; word-break: break-word; }
+        .hoja td.corta { white-space: nowrap; }
+        .hoja .c0 { position: sticky; left: 0; z-index: 1; background: var(--surface); font-weight: 500; }
+        .hoja th.c0 { z-index: 3; background: var(--surface-2); }
+        .hoja tbody tr:hover td { background: color-mix(in srgb, var(--brand) 6%, var(--surface)); }
+        .hoja tr.mia td { background: color-mix(in srgb, var(--brand) 12%, var(--surface)) !important; }
+        .hoja tr.mia td.c0 { box-shadow: inset 3px 0 0 var(--brand); }
+        .hoja tr.titulo td { background: var(--surface-3) !important; font-weight: 700; color: var(--text); font-size: 13px; letter-spacing: .02em; }
+        .hoja a { color: var(--brand-text); text-decoration: underline; text-underline-offset: 2px; word-break: break-all; }
+        .hoja .num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+        .cod { display: inline-grid; place-items: center; min-width: 24px; height: 22px; padding: 0 5px; border-radius: 6px; font-size: 11.5px; font-weight: 700; }
+        .cod-A { background: var(--ok-soft); color: var(--ok); }
+        .cod-R { background: var(--warn-soft); color: var(--warn); }
+        .cod-F { background: var(--danger-soft); color: var(--danger); }
+        .cod-D { background: var(--surface-3); color: var(--text-3); }
+        .cod-V { background: var(--quality-soft); color: var(--quality); }
+        .cod-J { background: var(--bath-soft); color: var(--bath); }
+        .flash { animation: flash 1.4s ease; }
+        @keyframes flash { 0% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--brand) 60%, transparent); } 100% { box-shadow: 0 0 0 14px transparent; } }
+        .nowrap { white-space: nowrap; }
+    </style>
+</head>
+<body class="auth-pending">
+
+    <div class="app-shell">
+        <!-- Pestañas -->
+        <aside class="sidebar">
+            <div class="sidebar-brand">
+                <div class="logo"><i class="ph-bold ph-table text-lg"></i></div>
+                <div class="leading-tight min-w-0"><p class="font-semibold text-1 text-[15px] truncate" id="doc-titulo">Documento OMT</p><p class="text-[12px] subtle flex items-center gap-1.5"><span class="dot dot-live c-ok"></span> En vivo desde Sheets</p></div>
+            </div>
+            <div class="px-3 pt-3">
+                <div class="field"><i class="ph-bold ph-magnifying-glass"></i><input id="buscar-pestana" class="input !h-9 !text-[13px]" placeholder="Buscar pestaña"></div>
+            </div>
+            <nav class="flex-1 overflow-y-auto px-2 pb-3" id="lista-pestanas">
+                <div class="empty !py-8"><span class="spinner spinner-lg"></span></div>
+            </nav>
+            <div class="p-3 border-t divider flex flex-col gap-1">
+                <a id="link-volver" href="index.html" class="nav-item"><i class="ph-bold ph-arrow-left"></i> <span id="txt-volver">Mi adherencia</span></a>
+            </div>
+        </aside>
+
+        <main class="flex-1 flex flex-col min-w-0">
+            <header class="topbar">
+                <div class="flex items-center gap-3 min-w-0">
+                    <a href="index.html" id="volver-movil" class="btn btn-ghost btn-icon btn-sm md:hidden"><i class="ph-bold ph-arrow-left"></i></a>
+                    <div class="min-w-0">
+                        <h1 class="text-[17px] font-semibold text-1 leading-tight truncate" id="pestana-titulo">Cargando…</h1>
+                        <p class="text-[12.5px] subtle truncate" id="pestana-sub">Conectando con la hoja</p>
+                    </div>
+                </div>
+                <div class="flex items-center gap-2">
+                    <select id="selector-movil" class="input !h-9 !w-44 !text-[13px] md:hidden"></select>
+                    <div class="field hidden sm:block w-56"><i class="ph-bold ph-magnifying-glass"></i><input id="buscar-fila" class="input !h-9 !text-[13px]" placeholder="Buscar en esta pestaña"></div>
+                    <label class="btn btn-secondary btn-sm cursor-pointer" id="lbl-mio" title="Muestra solo las filas donde apareces"><input type="checkbox" id="solo-mio" class="checkbox"> Solo lo mío</label>
+                </div>
+            </header>
+
+            <div class="page !pt-4">
+                <div class="sm:hidden mb-3"><div class="field"><i class="ph-bold ph-magnifying-glass"></i><input id="buscar-fila-m" class="input" placeholder="Buscar en esta pestaña"></div></div>
+                <div id="contenido" class="card overflow-auto" style="max-height: calc(100vh - 120px)">
+                    <div class="empty"><span class="spinner spinner-lg"></span></div>
+                </div>
+                <p class="text-[12px] subtle mt-3 text-center" id="pie">Los cambios que se hacen en Google Sheets aparecen aquí solos.</p>
+            </div>
+        </main>
+    </div>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getFirestore, doc, onSnapshot, getDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+
+        const app = initializeApp({
+            apiKey: "AIzaSyBKYconuZXn53Eb4EJFsHj4rYaO0eK6liQ",
+            authDomain: "tratocom-d38e7.firebaseapp.com",
+            projectId: "tratocom-d38e7",
+            storageBucket: "tratocom-d38e7.firebasestorage.app",
+            messagingSenderId: "205037546432",
+            appId: "1:205037546432:web:b5bce8294aba3fa8cfb625"
+        });
+        const db = getFirestore(app);
+        const auth = getAuth(app);
+        const SUPERVISOR_EMAIL = '17620@omt.godsplan.site';
+
+        const $ = (id) => document.getElementById(id);
+        const esc = (s) => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+        const norm = (s) => String(s || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toUpperCase().trim();
+        const hace = (ms) => { const s = Math.round((Date.now() - ms) / 1000); if (s < 60) return 'hace unos segundos'; const m = Math.round(s / 60); if (m < 60) return `hace ${m} min`; const h = Math.round(m / 60); return h < 24 ? `hace ${h} h` : new Date(ms).toLocaleDateString('es-MX'); };
+
+        // Grupos e íconos como en la pestaña MENÚ de la hoja
+        const GRUPOS = [
+            { nombre: 'Operación y procesos', tabs: ['AUTENTICACIÓN', 'SCRIPT', 'CASOS', 'H_CASOS', 'CASOS_ANTIGUOS', 'TD_CASOS', 'TRANSFERENCIAS', 'ASIGN'] },
+            { nombre: 'Herramientas', tabs: ['AVISOS', 'APLICATIVOS', 'DIRECTORIO'] },
+            { nombre: 'Personal y métricas', tabs: ['ADHERENCIA', 'ROL', 'VACACIONES', 'GUARDIA', 'CUMPLEAÑOS', 'PRODUCTIVIDAD', 'CALIDAD', 'CALIDAD_PROMEDIOS', 'H_CALIDAD'] }
+        ];
+        const ICONOS = { 'MENÚ': 'ph-house', 'AUTENTICACIÓN': 'ph-shield-check', 'SCRIPT': 'ph-chat-text', 'CASOS': 'ph-ticket', 'H_CASOS': 'ph-clock-counter-clockwise', 'CASOS_ANTIGUOS': 'ph-archive',
+            'TD_CASOS': 'ph-chart-bar', 'TRANSFERENCIAS': 'ph-arrows-left-right', 'ASIGN': 'ph-user-switch', 'AVISOS': 'ph-megaphone', 'APLICATIVOS': 'ph-app-window', 'DIRECTORIO': 'ph-address-book',
+            'ADHERENCIA': 'ph-calendar-check', 'ROL': 'ph-calendar-dots', 'VACACIONES': 'ph-airplane-tilt', 'GUARDIA': 'ph-shield-star', 'CUMPLEAÑOS': 'ph-cake', 'PRODUCTIVIDAD': 'ph-trophy',
+            'CALIDAD': 'ph-star', 'CALIDAD_PROMEDIOS': 'ph-chart-line-up', 'H_CALIDAD': 'ph-list-checks', 'SYNC': 'ph-arrows-clockwise' };
+
+        let yo = { id: null, nombre: '', claves: [] };
+        let indice = [], actualId = null, cancelarHoja = null, datosHoja = null, ultimoAct = 0;
+
+        // ---------- Sesión ----------
+        onAuthStateChanged(auth, async (u) => {
+            if (!u) { location.replace('index.html'); return; }
+            const esSup = u.email === SUPERVISOR_EMAIL;
+            yo.id = u.email.split('@')[0].toUpperCase();
+            if (esSup) {
+                document.documentElement.classList.add('dark', 'super');
+                $('link-volver').href = 'super/dash.html'; $('volver-movil').href = 'super/dash.html';
+                $('txt-volver').textContent = 'Panel de supervisor';
+            }
+            try {
+                const op = await getDoc(doc(db, 'operadores', yo.id));
+                const d = op.exists() ? op.data() : {};
+                yo.nombre = d.nombre || (esSup ? 'LUIS ORTIZ' : '');
+                // Palabras para reconocer "lo mío": ID, nombre completo, nombre corto, usuario tipo DVILLAMAR
+                const partes = norm(yo.nombre).split(/\s+/).filter(Boolean);
+                yo.claves = [yo.id, norm(yo.nombre), norm(d.nombreCorto)].filter(Boolean);
+                if (partes.length >= 2) yo.claves.push(partes.slice(0, 2).join(' '));
+                if (d.nombreCorto) { const nc = norm(d.nombreCorto).split(/\s+/); if (nc.length >= 2) yo.claves.push(nc[0][0] + nc[1]); }
+            } catch (e) {}
+            document.body.classList.remove('auth-pending');
+            iniciar();
+        });
+
+        function iniciar() {
+            onSnapshot(doc(db, 'hoja', '_indice'), (snap) => {
+                if (!snap.exists()) {
+                    $('lista-pestanas').innerHTML = '';
+                    $('pestana-titulo').textContent = 'Documento OMT';
+                    $('pestana-sub').textContent = 'Todavía no se ha sincronizado';
+                    $('contenido').innerHTML = `<div class="empty"><i class="ph ph-cloud-slash"></i>La hoja todavía no se ha conectado.<br><span class="text-[13px]">En Google Sheets: menú <b>🌐 Página OMT</b> → <b>Activar sincronización automática</b>.</span></div>`;
+                    return;
+                }
+                const d = snap.data();
+                $('doc-titulo').textContent = 'Documento ' + (d.documento || 'OMT');
+                indice = JSON.parse(d.pestanas || '[]').filter(p => !p.oculta).sort((a, b) => a.orden - b.orden);
+                pintarIndice();
+                const pedido = decodeURIComponent(location.hash.slice(1));
+                const destino = indice.find(p => p.id === pedido || p.titulo === pedido) ||
+                                indice.find(p => p.id === actualId) ||
+                                indice.find(p => p.titulo === 'ROL') || indice.find(p => p.titulo !== 'MENÚ') || indice[0];
+                if (destino && destino.id !== actualId) abrir(destino.id);
+            }, (err) => {
+                $('contenido').innerHTML = `<div class="empty c-danger"><i class="ph ph-lock"></i>No tienes permiso para ver el documento (${esc(err.code || 'error')}).<br><span class="text-[13px] muted">Revisa que las reglas de Firestore incluyan la colección "hoja".</span></div>`;
+            });
+        }
+
+        function pintarIndice() {
+            const filtro = norm($('buscar-pestana').value);
+            const usados = new Set();
+            let html = '';
+            const item = (p) => `<button class="tab-link ${p.id === actualId ? 'active' : ''}" onclick="abrir('${p.id}')"><i class="ph-bold ${ICONOS[p.titulo] || 'ph-file-text'}"></i><span class="lbl">${esc(p.titulo)}</span></button>`;
+            GRUPOS.forEach(g => {
+                const ps = indice.filter(p => g.tabs.includes(p.titulo) && (!filtro || norm(p.titulo).includes(filtro)));
+                ps.forEach(p => usados.add(p.id));
+                if (ps.length) html += `<p class="grupo">${g.nombre}</p>` + ps.map(item).join('');
+            });
+            const resto = indice.filter(p => !usados.has(p.id) && (!filtro || norm(p.titulo).includes(filtro)));
+            if (resto.length) html += `<p class="grupo">Otras</p>` + resto.map(item).join('');
+            $('lista-pestanas').innerHTML = html || `<p class="text-[13px] subtle px-3 py-4">Sin resultados.</p>`;
+            $('selector-movil').innerHTML = indice.map(p => `<option value="${p.id}" ${p.id === actualId ? 'selected' : ''}>${esc(p.titulo)}</option>`).join('');
+        }
+        $('buscar-pestana').addEventListener('input', pintarIndice);
+        $('selector-movil').addEventListener('change', (e) => abrir(e.target.value));
+
+        // ---------- Pestaña ----------
+        window.abrir = function (id) {
+            if (cancelarHoja) cancelarHoja();
+            actualId = id; datosHoja = null;
+            history.replaceState(null, '', '#' + id);
+            const p = indice.find(x => x.id === id);
+            $('pestana-titulo').textContent = p ? p.titulo : 'Pestaña';
+            $('pestana-sub').textContent = 'Cargando…';
+            $('contenido').innerHTML = `<div class="empty"><span class="spinner spinner-lg"></span></div>`;
+            pintarIndice();
+            cancelarHoja = onSnapshot(doc(db, 'hoja', id), (snap) => {
+                if (!snap.exists()) { $('contenido').innerHTML = `<div class="empty"><i class="ph ph-file-dashed"></i>Esta pestaña aún no se sincroniza.</div>`; return; }
+                const d = snap.data();
+                const cambio = datosHoja && d.actualizado !== ultimoAct;
+                datosHoja = d; ultimoAct = d.actualizado;
+                pintarTabla();
+                if (cambio) { $('contenido').classList.remove('flash'); void $('contenido').offsetWidth; $('contenido').classList.add('flash'); }
+            });
+        };
+
+        const ESTADOS = { 'APROBADO': 'chip-ok', 'APROBADA': 'chip-ok', 'PENDIENTE': 'chip-warn', 'RECHAZADO': 'chip-danger', 'RECHAZADA': 'chip-danger',
+            'EN PROCESO': 'chip-brand', 'CERRADO': 'chip-neutral', 'RESUELTO': 'chip-ok', 'DESCANSO': 'chip-neutral', 'SÍ': 'chip-ok', 'SI': 'chip-ok', 'NO': 'chip-neutral' };
+
+        function celda(v, tituloHoja, esCodigo) {
+            const t = String(v ?? '');
+            if (!t) return '';
+            if (esCodigo && /^[ARFDVJ]$/.test(t)) return `<span class="cod cod-${t}">${t}</span>`;
+            const up = norm(t);
+            if (ESTADOS[up] && t.length < 14) return `<span class="chip ${ESTADOS[up]}">${esc(t)}</span>`;
+            let h = esc(t);
+            h = h.replace(/(https?:\/\/[^\s<]+)/g, '<a href="$1" target="_blank" rel="noopener">$1</a>');
+            return h;
+        }
+
+        function pintarTabla() {
+            const d = datosHoja; if (!d) return;
+            let filas = [];
+            try { filas = JSON.parse(d.filas || '[]'); } catch (e) {}
+            // Quitar la fila "🏠 VOLVER AL ÍNDICE" de las pestañas que la traen
+            while (filas.length && /VOLVER AL ÍNDICE|VOLVER AL INDICE/i.test(filas[0][0] || '') && filas[0].filter(Boolean).length <= 1) filas.shift();
+            const ncols = Math.max(1, ...filas.map(f => f.length));
+            const nonEmpty = (f) => f.filter(c => c !== '').length;
+
+            // Encabezado: primera fila con 2+ celdas si la hoja tiene filas congeladas
+            let cab = null;
+            // o, si no tiene, cuando la primera fila está casi completa (típico de tablas como APLICATIVOS)
+            if (filas.length > 1 && nonEmpty(filas[0]) >= 2 && ((d.filasCongeladas || 0) >= 1 || nonEmpty(filas[0]) >= Math.ceil(ncols * 0.6))) cab = filas.shift();
+            const tituloHoja = d.titulo || '';
+            const esCodigo = /ADHERENCIA/i.test(tituloHoja);
+
+            const q = norm($('buscar-fila').value || $('buscar-fila-m').value);
+            const soloMio = $('solo-mio').checked;
+            const esMia = (f) => { const txt = norm(f.join(' | ')); return yo.claves.some(k => k && k.length >= 4 && txt.includes(k)); };
+            const numerica = Array.from({ length: ncols }, (_, c) => {
+                const vals = filas.map(f => f[c]).filter(v => v !== undefined && v !== '');
+                return vals.length > 0 && vals.filter(v => /^-?[\d.,:%$ ]+$/.test(v)).length / vals.length > 0.8;
+            });
+
+            let mostradas = 0, mias = 0;
+            const cuerpo = filas.map(f => {
+                const n = nonEmpty(f);
+                if (n === 0) return '';
+                const mia = esMia(f); if (mia) mias++;
+                if (q && !norm(f.join(' ')).includes(q)) return '';
+                if (soloMio && !mia) return '';
+                if (n === 1 && f[0] && ncols > 1 && !cab) {
+                    // Fila título (ej. "GUARDIA 16 DE NOVIEMBRE")
+                    mostradas++;
+                    return `<tr class="titulo"><td class="c0" colspan="${ncols}">${esc(f[0])}</td></tr>`;
+                }
+                mostradas++;
+                let tds = '';
+                for (let c = 0; c < ncols; c++) {
+                    const v = f[c] ?? '';
+                    const corta = String(v).length < 22 && !String(v).includes('\n');
+                    tds += `<td class="${c === 0 ? 'c0 ' : ''}${numerica[c] ? 'num ' : ''}${corta ? 'corta' : ''}">${celda(v, tituloHoja, esCodigo)}</td>`;
+                }
+                return `<tr class="${mia ? 'mia' : ''}">${tds}</tr>`;
+            }).join('');
+
+            const thead = cab ? `<thead><tr>${Array.from({ length: ncols }, (_, c) => `<th class="${c === 0 ? 'c0 ' : ''}${numerica[c] ? 'num' : ''}">${esc(cab[c] || '')}</th>`).join('')}</tr></thead>` : '';
+            $('contenido').innerHTML = mostradas
+                ? `<table class="hoja">${thead}<tbody>${cuerpo}</tbody></table>`
+                : `<div class="empty"><i class="ph ph-magnifying-glass"></i>${soloMio ? 'No apareces en esta pestaña.' : (q ? 'Nada coincide con tu búsqueda.' : 'Esta pestaña está vacía.')}</div>`;
+
+            $('pestana-sub').textContent = `${filas.length} filas · actualizado ${hace(d.actualizado)}${d.recortada ? ' · muy grande: se muestran las primeras filas' : ''}`;
+            $('lbl-mio').title = mias ? `Apareces en ${mias} fila(s)` : 'No apareces en esta pestaña';
+        }
+        ['buscar-fila', 'buscar-fila-m'].forEach(id => $(id).addEventListener('input', pintarTabla));
+        $('solo-mio').addEventListener('change', pintarTabla);
+        setInterval(() => { if (datosHoja) $('pestana-sub').textContent = $('pestana-sub').textContent.replace(/actualizado .*?( ·|$)/, `actualizado ${hace(datosHoja.actualizado)}$1`); }, 30000);
+    </script>
+</body>
+</html>

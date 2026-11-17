@@ -36,6 +36,8 @@
                 <p class="eyebrow px-3 mt-4 mb-1.5">Administración</p>
                 <a href="agentes.html" class="nav-item active"><i class="ph-bold ph-users"></i> Personal</a>
                 <a href="logs.html" class="nav-item"><i class="ph-bold ph-scroll"></i> Auditoría</a>
+                <p class="eyebrow px-3 mt-4 mb-1.5">Equipo</p>
+                <a href="../documento.html" class="nav-item"><i class="ph-bold ph-table"></i> Documento OMT</a>
             </nav>
             <div class="p-3 border-t divider flex flex-col gap-1">
                 <button onclick="cerrarSesionSuper()" class="nav-item"><i class="ph-bold ph-sign-out"></i> Cerrar sesión</button>
@@ -70,10 +72,10 @@
                             <div class="overflow-x-auto">
                                 <table class="table min-w-[760px]">
                                     <thead>
-                                        <tr><th>Asesor</th><th>ID</th><th>Turno</th><th>Descanso</th><th class="!text-right"></th></tr>
+                                        <tr><th>Asesor</th><th>ID</th><th>Turno</th><th>Descanso</th><th>Acceso</th><th class="!text-right"></th></tr>
                                     </thead>
                                     <tbody id="tabla-asesores">
-                                        <tr><td colspan="5" class="empty"><span class="spinner spinner-lg"></span></td></tr>
+                                        <tr><td colspan="6" class="empty"><span class="spinner spinner-lg"></span></td></tr>
                                     </tbody>
                                 </table>
                             </div>
@@ -118,6 +120,27 @@
                                     <label class="label">Nombre corto (el que se muestra en pantalla)</label>
                                     <input type="text" id="f-nombre-corto" class="input" placeholder="Ej. Alejandra Torres">
                                 </div>
+                            </div>
+                        </section>
+
+                        <!-- Acceso -->
+                        <section class="card" id="sec-acceso">
+                            <div class="card-header">
+                                <div class="flex items-center gap-2.5"><div class="icon-tile soft-brand c-brand !w-8 !h-8 !text-base"><i class="ph-bold ph-lock-key"></i></div><div><h3 class="h-card leading-tight">Acceso a la página</h3><p class="text-[12px] subtle">El asesor entra con su ID y esta contraseña</p></div></div>
+                                <span id="acceso-estado" class="chip chip-neutral">Sin contraseña</span>
+                            </div>
+                            <div class="card-pad">
+                                <div class="flex flex-col sm:flex-row gap-3 sm:items-end">
+                                    <div class="flex-1">
+                                        <label class="label">Contraseña inicial (mínimo 6 caracteres)</label>
+                                        <div class="flex gap-2">
+                                            <input type="text" id="f-pass" class="input tnum" autocomplete="off" placeholder="Ej. omt4821">
+                                            <button type="button" onclick="App.Logic.generarPass()" class="btn btn-secondary shrink-0" title="Generar una al azar"><i class="ph-bold ph-dice-five"></i></button>
+                                        </div>
+                                    </div>
+                                    <button type="button" id="btn-acceso" onclick="App.Logic.crearAcceso()" class="btn btn-primary shrink-0"><i class="ph-bold ph-key"></i> Crear acceso</button>
+                                </div>
+                                <p class="hint" id="acceso-nota">Anótala y dásela al asesor. Por seguridad no se vuelve a mostrar.</p>
                             </div>
                         </section>
 
@@ -174,12 +197,13 @@
         <a href="dash.html"><i class="ph-bold ph-broadcast"></i>Monitor</a>
         <a href="agentes.html" class="active"><i class="ph-bold ph-users"></i>Personal</a>
         <a href="logs.html"><i class="ph-bold ph-scroll"></i>Auditoría</a>
+        <a href="../documento.html"><i class="ph-bold ph-table"></i>Documento</a>
     </nav>
 
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         import { getFirestore, collection, onSnapshot, doc, getDoc, setDoc, deleteDoc, updateDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
-        import { getAuth, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getAuth, onAuthStateChanged, signOut, createUserWithEmailAndPassword } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
 
         const firebaseConfig = {
             apiKey: "AIzaSyBKYconuZXn53Eb4EJFsHj4rYaO0eK6liQ",
@@ -195,6 +219,8 @@
         // Solo el supervisor (sesión de Firebase) puede ver esta página
         const SUPERVISOR_EMAIL = '17620@omt.godsplan.site';
         const auth = getAuth(app);
+        // App secundaria solo para dar de alta contraseñas sin cerrar la sesión del supervisor
+        const authAltas = getAuth(initializeApp(firebaseConfig, 'altas'));
         let __iniciado = false;
         onAuthStateChanged(auth, (u) => {
             if (!u || u.email !== SUPERVISOR_EMAIL) { location.replace('../index.html'); return; }
@@ -256,6 +282,7 @@
                 App.state.editandoId = null;
                 document.getElementById('f-is-new').value = "true";
                 document.getElementById('form-title').innerText = "Nuevo asesor";
+                App.UI.pintarAcceso(null);
                 document.getElementById('form-subtitle').innerText = "Completa los datos y guarda";
                 document.getElementById('danger-zone').classList.add('hidden');
 
@@ -284,6 +311,7 @@
                 if (!ag) return;
 
                 document.getElementById('form-title').innerText = ag.nombreCorto || ag.nombre;
+                App.UI.pintarAcceso(ag);
                 document.getElementById('form-subtitle').innerText = `ID ${ag.id} · los cambios se aplican al guardar`;
                 document.getElementById('danger-zone').classList.remove('hidden');
 
@@ -314,6 +342,17 @@
                 document.getElementById('view-list').classList.add('hidden');
                 document.getElementById('view-form').classList.remove('hidden');
             },
+            pintarAcceso: (ag) => {
+                const est = document.getElementById('acceso-estado');
+                const tiene = !!ag?.accesoCreado;
+                est.className = 'chip ' + (tiene ? 'chip-ok' : 'chip-warn');
+                est.innerHTML = tiene ? '<i class="ph-bold ph-check"></i>Ya tiene contraseña' : 'Sin contraseña';
+                document.getElementById('f-pass').value = '';
+                document.getElementById('btn-acceso').innerHTML = '<i class="ph-bold ph-key"></i> Crear acceso';
+                document.getElementById('acceso-nota').textContent = tiene
+                    ? 'Para cambiar su contraseña: Firebase → Authentication → Users, borra ' + ag.id.toLowerCase() + '@omt.godsplan.site y vuelve a crear el acceso aquí.'
+                    : (ag ? 'Anótala y dásela al asesor. Por seguridad no se vuelve a mostrar.' : 'Guarda primero al asesor; luego crea su acceso.');
+            },
             volverListado: () => {
                 document.getElementById('view-form').classList.add('hidden');
                 document.getElementById('view-list').classList.remove('hidden');
@@ -339,9 +378,10 @@
                             <td class="tnum font-medium">${Utils.esc(ag.id)}</td>
                             <td>${ag.horarios?.turno ? `<span class="chip chip-neutral tnum">${Utils.esc(ag.horarios.turno)}</span>` : '<span class="subtle">Sin turno</span>'}</td>
                             <td class="muted">${descanso || '<span class="subtle">—</span>'}</td>
+                            <td>${ag.accesoCreado ? '<span class="chip chip-ok"><i class="ph-bold ph-lock-key"></i>Con contraseña</span>' : '<span class="chip chip-warn"><i class="ph-bold ph-lock-key-open"></i>Sin contraseña</span>'}</td>
                             <td class="!text-right"><span class="btn btn-ghost btn-sm"><i class="ph-bold ph-pencil-simple"></i> Editar</span></td>
                         </tr>`;
-                }).join('') || `<tr><td colspan="5" class="empty"><i class="ph ph-magnifying-glass"></i>No se encontraron asesores.</td></tr>`;
+                }).join('') || `<tr><td colspan="6" class="empty"><i class="ph ph-magnifying-glass"></i>No se encontraron asesores.</td></tr>`;
                 document.getElementById('count-total').innerText = lista.length;
             }
         };
@@ -405,6 +445,40 @@
                     console.error(error);
                 } finally {
                     btn.disabled = false; btn.innerHTML = '<i class="ph-bold ph-floppy-disk"></i> Guardar';
+                }
+            },
+            generarPass: () => {
+                const sil = ['sol', 'mar', 'luz', 'rio', 'pan', 'sal', 'red', 'voz', 'omt', 'ola'];
+                document.getElementById('f-pass').value = sil[Math.floor(Math.random() * sil.length)] + Math.floor(1000 + Math.random() * 9000);
+            },
+            crearAcceso: async () => {
+                const id = App.state.editandoId;
+                if (!id) { Utils.toast("Guarda primero al asesor.", "error"); return; }
+                const pass = document.getElementById('f-pass').value.trim();
+                if (pass.length < 6) { Utils.toast("La contraseña debe tener al menos 6 caracteres.", "error"); return; }
+                const btn = document.getElementById('btn-acceso');
+                btn.disabled = true; btn.innerHTML = '<span class="spinner"></span>';
+                const correo = id.toLowerCase() + '@omt.godsplan.site';
+                const marcar = () => setDoc(doc(db, "operadores", id), { accesoCreado: Date.now() }, { merge: true });
+                try {
+                    await createUserWithEmailAndPassword(authAltas, correo, pass);
+                    await signOut(authAltas);
+                    await marcar();
+                    Utils.toast(`Acceso creado. ID ${id} · contraseña: ${pass}`);
+                    App.UI.pintarAcceso({ ...(App.state.operadores[id] || { id }), accesoCreado: Date.now() });
+                    document.getElementById('acceso-nota').innerHTML = `Listo. Dale al asesor: <b class="text-1">ID ${id}</b> y contraseña <b class="text-1 tnum">${pass}</b>`;
+                } catch (e) {
+                    if (e.code === 'auth/email-already-in-use') {
+                        await marcar();
+                        App.UI.pintarAcceso({ ...(App.state.operadores[id] || { id }), accesoCreado: Date.now() });
+                        Utils.toast("Ese ID ya tenía contraseña. Para cambiarla, bórralo en Firebase → Authentication.", "error");
+                    } else if (e.code === 'auth/weak-password') {
+                        Utils.toast("Contraseña muy débil: usa al menos 6 caracteres.", "error");
+                    } else {
+                        Utils.toast("No se pudo crear el acceso (" + (e.code || 'error') + ").", "error");
+                    }
+                } finally {
+                    btn.disabled = false; btn.innerHTML = '<i class="ph-bold ph-key"></i> Crear acceso';
                 }
             },
             eliminarAsesor: async () => {
