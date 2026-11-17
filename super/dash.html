@@ -81,6 +81,10 @@
                 </label>
                 <h3 class="font-semibold text-1 pt-4 border-t divider">Personas fuera a la vez</h3>
                 <p class="muted text-[13px] mt-1 mb-4">Cuántos asesores pueden estar en cada pausa al mismo tiempo. Si ya hay alguien (sin llegar al máximo) se le pregunta "¿aún así deseas ir?". Al llegar al máximo, no lo deja. Pon 0 para no limitar.</p>
+                <label class="flex items-start gap-3 mb-4 cursor-pointer surface-2 border divider rounded-xl p-3">
+                    <input type="checkbox" id="cfg-turnos-activo" class="checkbox mt-0.5">
+                    <span><span class="text-sm font-semibold text-1 block">Control de turnos activado</span><span class="text-[12.5px] muted">Si lo apagas, los asesores pueden ponerse en cualquier pausa sin revisión.</span></span>
+                </label>
                 <div class="grid grid-cols-3 gap-3 mb-4">
                     <div>
                         <label class="label">Baño</label>
@@ -289,7 +293,7 @@
         App.db = window.db;
 
         // Versión vigente de la extensión (la que está en la carpeta de red). Súbela cuando publiques una nueva.
-        const VERSION_EXTENSION = '1.5';
+        const VERSION_EXTENSION = '1.6';
 
         const Utils = {
             formatSeg: (total) => {
@@ -369,6 +373,7 @@
                 document.getElementById('cfg-auto-expulsion').checked = App.config.autoExpulsion !== false;
                 ['bano', 'comida', 'calidad'].forEach(k => document.getElementById('cfg-turno-' + k).value = App.config.turnos[k] ?? 0);
                 document.getElementById('cfg-turno-margen').value = App.config.turnos.margenComida ?? 5;
+                document.getElementById('cfg-turnos-activo').checked = App.config.turnos.activo !== false;
                 o.classList.remove('hidden');
                 setTimeout(() => { o.classList.remove('opacity-0'); p.classList.remove('translate-x-full'); }, 10);
             },
@@ -402,7 +407,7 @@
                 const tol = parseInt(document.getElementById('cfg-global-tolerancia').value);
                 const toleranciaEntrada = isNaN(tol) ? 5 : Math.max(0, tol);
                 const num = (id, def) => { const n = parseInt(document.getElementById(id).value); return isNaN(n) ? def : Math.max(0, n); };
-                const turnos = { bano: num('cfg-turno-bano', 2), comida: num('cfg-turno-comida', 1), calidad: num('cfg-turno-calidad', 0), margenComida: num('cfg-turno-margen', 5) };
+                const turnos = { bano: num('cfg-turno-bano', 2), comida: num('cfg-turno-comida', 1), calidad: num('cfg-turno-calidad', 0), margenComida: num('cfg-turno-margen', 5), activo: document.getElementById('cfg-turnos-activo').checked };
                 try {
                     const autoExpulsion = document.getElementById('cfg-auto-expulsion').checked;
                     await setDoc(doc(App.db, "config", "global"), { limites: { bano, comida }, toleranciaEntrada, autoExpulsion, turnos }, { merge: true });

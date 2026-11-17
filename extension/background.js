@@ -195,7 +195,7 @@ function botarFallback() {
 // comida o baño en Touchpoint, para no gastar lecturas).
 // =====================================================================
 // Valores por defecto; el supervisor los cambia en el panel (Ajustes → Personas fuera a la vez)
-const TURNOS_DEF = { bano: 2, comida: 1, calidad: 0, margenComida: 5 };
+const TURNOS_DEF = { activo: true, bano: 2, comida: 1, calidad: 0, margenComida: 5 };
 const VIGENTE_MIN = { bath: 30, quality: 90 }; // una pausa más larga que esto se considera dato viejo
 
 async function listar(coleccion) {
@@ -243,7 +243,7 @@ async function ocupacion(yo) {
         }
     });
     Object.values(fuera).forEach(l => l.sort((a, b) => a.inicio - b.inicio));
-    return { fuera, max: { food: t.comida, bath: t.bano, quality: t.calidad }, margenComidaMin: t.margenComida };
+    return { activo: t.activo !== false, fuera, max: { food: t.comida, bath: t.bano, quality: t.calidad }, margenComidaMin: t.margenComida };
 }
 
 async function registrarNoPermitida(agenteId, estado) {

@@ -200,23 +200,27 @@ const PALABRAS = {
     bath: ['REPOSO', 'BAÑO', 'BANO', 'SANITARIO', 'PERSONAL'],
     quality: ['CALIDAD', 'QUALITY', 'FEEDBACK', 'COACHING']
 };
-let clicPermitido = null;     // el elemento al que ya se le dio permiso
+let permitidoHasta = 0;       // durante este tiempo los clics pasan sin revisar (es el clic que ya autorizamos)
 let ultimoPermiso = { cat: null, ts: 0 };
+let turnosActivo = true;      // el supervisor lo puede apagar en Ajustes
+chrome.storage.local.get(['turnosActivo'], (r) => { if (r.turnosActivo === false) turnosActivo = false; });
 
 function categoriaDeTexto(txt) {
-    const t = (txt || '').toUpperCase().replace(/\s+/g, ' ').trim();
-    if (!t || t.length > 40 || /\d:\d\d/.test(t)) return null; // texto largo o con cronómetro: no es una opción del menú
-    for (const cat of Object.keys(PALABRAS)) if (PALABRAS[cat].some(p => t.includes(p))) return cat;
-    return null;
+    const t = (txt || '').toUpperCase().trim();
+    // Solo una opción suelta: sin saltos de línea, corta y sin cronómetro
+    if (!t || t.includes('\n') || t.length > 30 || /\d:\d\d/.test(t)) return null;
+    const cats = Object.keys(PALABRAS).filter(cat => PALABRAS[cat].some(p => t.includes(p)));
+    return cats.length === 1 ? cats[0] : null;
 }
 
 function opcionClicada(target) {
     let el = target;
-    for (let i = 0; el && i < 6; i++, el = el.parentElement) {
+    for (let i = 0; el && el !== document.body && i < 4; i++, el = el.parentElement) {
         if (el.id === 'tracker-turnos') return null;
-        const cat = categoriaDeTexto(el.innerText || el.textContent);
+        const txt = el.innerText || el.textContent || '';
+        if (txt.trim().includes('\n')) return null; // ya es un contenedor con varias opciones
+        const cat = categoriaDeTexto(txt);
         if (cat) return { el, cat };
-        if (el.matches && el.matches('li, a, button, [ng-click], [role="menuitem"], [role="option"]')) break;
     }
     return null;
 }
@@ -230,7 +234,10 @@ function pedirOcupacion() {
         chrome.storage.local.get(['agenteId'], (r) => {
             try {
                 chrome.runtime.sendMessage({ action: 'OCUPACION', agenteId: r.agenteId || null }, (resp) => {
-                    if (chrome.runtime.lastError || !resp) resolve(null); else resolve(resp);
+                    if (chrome.runtime.lastError || !resp) return resolve(null);
+                    turnosActivo = resp.activo !== false;
+                    chrome.storage.local.set({ turnosActivo });
+                    resolve(resp);
                 });
             } catch (e) { resolve(null); }
             setTimeout(() => resolve(null), 6000); // sin respuesta: no bloquear
@@ -292,32 +299,41 @@ function mostrarAviso({ icono, titulo, texto, preguntar, ir }) {
     });
 }
 
+// Repite el clic completo (como si fuera del mouse) sobre lo que el asesor tocó
+function repetirClic(target, x, y) {
+    permitidoHasta = Date.now() + 1500;
+    const o = { bubbles: true, cancelable: true, composed: true, view: window, clientX: x, clientY: y, button: 0 };
+    try { target.dispatchEvent(new PointerEvent('pointerdown', { ...o, pointerType: 'mouse', isPrimary: true })); } catch (e) {}
+    target.dispatchEvent(new MouseEvent('mousedown', o));
+    try { target.dispatchEvent(new PointerEvent('pointerup', { ...o, pointerType: 'mouse', isPrimary: true })); } catch (e) {}
+    target.dispatchEvent(new MouseEvent('mouseup', o));
+    target.dispatchEvent(new MouseEvent('click', o));
+}
+
+let revisando = false;
 function interceptar(e) {
-    if (!chrome.runtime?.id || isLoggingOut) return;
+    if (!turnosActivo || !chrome.runtime?.id || isLoggingOut) return;
+    if (Date.now() < permitidoHasta) return;               // es el clic que ya autorizamos
     const op = opcionClicada(e.target);
-    if (!op) return;
-    if (clicPermitido === op.el) { clicPermitido = null; return; } // es el clic que ya autorizamos
-    if (op.cat === lastSentState) return;                          // ya está en esa pausa
+    if (!op || op.cat === lastSentState) return;            // no es comida/baño/calidad, o ya está en esa pausa
     e.preventDefault(); e.stopPropagation(); e.stopImmediatePropagation();
-    if (e.type !== 'click') return;                                // solo el clic decide (mousedown/pointerdown solo se frenan)
-    console.log('🛑 Tracker: revisando si puede salir a', op.cat);
+    if (e.type !== 'pointerdown') return;                   // el resto del clic solo se frena
+    if (revisando) return;
+    revisando = true;
+    const target = e.target, x = e.clientX, y = e.clientY;
+    console.log('🛑 Tracker: revisando si puede salir a', op.cat, op.el);
     pedirOcupacion().then(async (oc) => {
-        const d = evaluar(op.cat, oc);
+        const d = (oc && oc.activo === false) ? { permitir: true } : evaluar(op.cat, oc);
         let seguir = !!d.permitir;
         if (d.bloquear) await mostrarAviso(d);
         if (d.preguntar) seguir = await mostrarAviso(d);
+        revisando = false;
         if (!seguir) return;
         ultimoPermiso = { cat: op.cat, ts: Date.now() };
-        clicPermitido = op.el;
-        op.el.click();
-        setTimeout(() => { if (clicPermitido === op.el) clicPermitido = null; }, 1000);
-    });
+        repetirClic(target, x, y);
+    }).catch(() => { revisando = false; repetirClic(target, x, y); });
 }
-['pointerdown', 'mousedown', 'click'].forEach(t => window.addEventListener(t, (e) => {
-    // El pointerdown/mousedown del clic ya autorizado debe pasar también
-    if (e.type !== 'click' && clicPermitido) return;
-    interceptar(e);
-}, true));
+['pointerdown', 'mousedown', 'pointerup', 'mouseup', 'click'].forEach(t => window.addEventListener(t, interceptar, true));
 
 // Red de seguridad: si Touchpoint cambió a comida/baño sin pasar por la revisión
 // (por ejemplo con otro botón), se revisa y se avisa, y queda registrado para el supervisor.
