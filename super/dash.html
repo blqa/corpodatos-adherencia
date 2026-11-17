@@ -382,10 +382,16 @@
                     if (isReceso) {
                         const m = META[ses.estadoActivo] || { icon: 'ph-question', label: ses.estadoActivo, chip: 'chip-neutral', c: 'muted', bg: 'bg-ok' };
                         orden = 0;
-                        statusHtml = `<span class="chip ${m.chip}"><span class="dot dot-live"></span>${m.label}</span>`;
+                        const fuera = !!ses.desconectadoEn;
+                        statusHtml = fuera
+                            ? `<span class="chip chip-danger" title="Sigue contando hasta que vuelva a entrar a Touchpoint"><span class="dot dot-live"></span>${m.label} · fuera</span>`
+                            : `<span class="chip ${m.chip}"><span class="dot dot-live"></span>${m.label}</span>`;
+                        const etiqueta = fuera
+                            ? `<span class="text-[12.5px] font-medium c-danger leading-tight">${ses.motivoDesconexion === 'expulsion' ? 'Desconectado por exceder' : 'Salió de Touchpoint'} a las ${Utils.hora(ses.desconectadoEn)}<br><span class="muted font-normal">El tiempo sigue contando</span></span>`
+                            : `<span class="text-[13px] font-medium muted">En curso</span>`;
                         centro = `
-                            <div class="rounded-xl surface-2 border divider px-4 py-3 flex items-center justify-between gap-3">
-                                <div class="flex items-center gap-2.5 ${m.c}"><i class="ph-fill ${m.icon} text-xl"></i><span class="text-[13px] font-medium muted">En curso</span></div>
+                            <div class="rounded-xl ${fuera ? 'soft-danger' : 'surface-2'} border divider px-4 py-3 flex items-center justify-between gap-3" ${fuera ? 'style="border-color:var(--danger-border)"' : ''}>
+                                <div class="flex items-center gap-2.5 ${fuera ? 'c-danger' : m.c}"><i class="ph-fill ${fuera ? 'ph-sign-out' : m.icon} text-xl shrink-0"></i>${etiqueta}</div>
                                 <span id="t-${ag.id}" class="tnum text-[26px] font-bold tracking-tight ${m.c}">00:00</span>
                             </div>
                             <div class="progress !h-1.5 mt-2"><div id="p-${ag.id}" class="${m.bg}"></div></div>`;
@@ -486,6 +492,7 @@
 
                     const ui = META[data.estado];
                     if (!ui) return; // solo pausas; los eventos de conexión están en Auditoría
+                    if (data.pausa_sigue) return; // marcador de desconexión: la pausa completa llega al regresar
 
                     const op = App.state.operadores[data.asesor_id];
                     const nombreLargo = data.asesor_nombre || op?.nombre || '';
@@ -498,7 +505,9 @@
                     if (data.estado === 'quality' || data.estado === 'Calidad') totQ += data.duracion_segundos;
 
                     const fStr = dateObj.toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit', hour12: false });
-                    const kick = data.tipo_evento === 'EXPULSION_SISTEMA' ? ` <span class="chip chip-danger !h-5 !text-[11px]" title="La extensión lo desconectó por exceder el tiempo">Desconectado</span>` : '';
+                    const kick = data.tras_desconexion
+                        ? ` <span class="chip chip-danger !h-5 !text-[11px]" title="Estuvo ${Utils.formatSeg(data.seg_fuera_touchpoint || 0)} fuera de Touchpoint antes de regresar">${data.tras_desconexion === 'expulsion' ? 'Desconectado por exceder' : 'Salió de Touchpoint'} · ${Utils.formatSeg(data.seg_fuera_touchpoint || 0)} fuera</span>`
+                        : (data.tipo_evento === 'EXPULSION_SISTEMA' ? ` <span class="chip chip-danger !h-5 !text-[11px]">Desconectado</span>` : '');
                     html += `
                         <tr>
                             <td class="tnum muted w-28">${fStr}</td>

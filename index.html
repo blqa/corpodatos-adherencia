@@ -548,6 +548,12 @@
             if (window.innerWidth < 768) { mostrarToastMovil(); return; }
 
             if (!asesorDatos) return;
+            if (sesionFirebase.desconectadoEn) {
+                const t = document.getElementById('mobile-toast');
+                t.innerHTML = '<i class="ph-fill ph-sign-out text-rose-400"></i> Vuelve a entrar a Touchpoint para terminar tu pausa.';
+                t.classList.remove('hidden'); setTimeout(() => t.classList.add('hidden'), 3500);
+                return;
+            }
             const ahora = Date.now();
             let updateData = { ...sesionFirebase };
             if (!updateData.tiemposAcumulados) updateData.tiemposAcumulados = { bath: 0, food: 0, quality: 0 };
@@ -620,6 +626,18 @@
                 sub.classList.remove('hidden');
             } else sub.classList.add('hidden');
 
+            const fuera = meta && sesionFirebase.desconectadoEn;
+            banner.style.borderColor = fuera ? 'var(--danger-border)' : '';
+            banner.style.background = fuera ? 'var(--danger-soft)' : '';
+            if (fuera) {
+                const tipo = { bath: 'baño', food: 'comida', quality: 'calidad' }[estado];
+                sub.textContent = (sesionFirebase.motivoDesconexion === 'expulsion'
+                    ? `Te desconectamos de Touchpoint por exceder tu tiempo de ${tipo}.`
+                    : `Saliste de Touchpoint durante tu ${tipo}.`) + ' El tiempo sigue contando hasta que vuelvas a entrar.';
+                sub.classList.remove('hidden');
+                sub.style.color = 'var(--danger)';
+            } else sub.style.color = '';
+
             if (!meta) {
                 banner.dataset.state = 'work';
                 icon.className = 'ph-fill ph-check-circle text-[28px]';
@@ -627,8 +645,8 @@
                 timerCont.classList.add('hidden');
             } else {
                 banner.dataset.state = estado;
-                icon.className = `ph-fill ${meta.icon} text-[28px]`;
-                title.innerText = meta.hero;
+                icon.className = `ph-fill ${fuera ? 'ph-sign-out' : meta.icon} text-[28px]`;
+                title.innerText = fuera ? 'Fuera de Touchpoint' : meta.hero;
                 timerCont.classList.remove('hidden');
             }
         }
@@ -728,7 +746,7 @@
 
             // Solo pausas (baño, comida, calidad); los eventos de conexión no se muestran aquí
             const registrosDelDia = misRegistrosTotales.filter(log =>
-                getFechaISO(log.fechaObj) === fechaInput && (metaEstado[log.estado] || metaEstadoReverse[log.estado]));
+                getFechaISO(log.fechaObj) === fechaInput && !log.pausa_sigue && (metaEstado[log.estado] || metaEstadoReverse[log.estado]));
 
             let totalB = 0, totalC = 0, totalQ = 0;
             let html = '';
@@ -744,7 +762,7 @@
                 html += `
                     <tr class="group">
                         <td class="tnum muted">${horaStr}</td>
-                        <td><span class="chip ${meta.chip}"><i class="ph-fill ${meta.icon}"></i> ${meta.label}</span></td>
+                        <td><span class="chip ${meta.chip}"><i class="ph-fill ${meta.icon}"></i> ${meta.label}</span>${log.tras_desconexion ? ` <span class="chip chip-danger !h-5 !text-[11px]">${formatTiempo(log.seg_fuera_touchpoint || 0)} fuera de Touchpoint</span>` : ''}</td>
                         <td class="!text-right tnum font-semibold">${formatTiempo(log.duracion_segundos)}</td>
                     </tr>`;
             });

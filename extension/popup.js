@@ -139,13 +139,17 @@ function dibujar() {
     const status = $('status');
     if (ESTADOS[activo]) {
         status.dataset.state = activo;
-        $('status-label').textContent = 'En pausa';
-        $('status-title').textContent = ESTADOS[activo].titulo;
+        const fuera = !!sesionActual.desconectadoEn;
+        $('status-label').textContent = fuera ? 'Fuera de Touchpoint · sigue contando' : 'En pausa';
+        $('status-title').textContent = fuera ? (sesionActual.motivoDesconexion === 'expulsion' ? 'Desconectado por exceder' : 'Saliste de Touchpoint') : ESTADOS[activo].titulo;
+        status.style.background = fuera ? 'var(--danger-soft)' : '';
+        status.style.color = fuera ? 'var(--danger)' : '';
         $('status-timer').classList.remove('hidden');
         const enCurso = sesionActual.tiempoInicioEstado ? Math.floor((ahora - sesionActual.tiempoInicioEstado) / 1000) : 0;
         $('status-timer').textContent = fmt(enCurso);
     } else {
         status.dataset.state = 'work';
+        status.style.background = ''; status.style.color = '';
         $('status-label').textContent = 'Estado';
         $('status-title').textContent = 'Trabajando';
         $('status-timer').classList.add('hidden');

@@ -5,6 +5,7 @@ console.log("🛡️ Tracker v" + VERSION + " inyectado en TouchPoint.");
 // y queda registrada la primera conexión del día.
 let lastSentState;
 let isLoggingOut = false;
+let logoutForzado = false; // la extensión lo está sacando: no registrar como salida manual
 let observerReference = null;
 let observedElement = null;
 
@@ -47,6 +48,7 @@ function confirmarModal() {
 // --- FUNCIÓN DE LOGOUT FORZADO ---
 function performRemoteLogout() {
     isLoggingOut = true;
+    logoutForzado = true;
     let logoutBtn = findLogoutButton();
 
     if (!logoutBtn) {
@@ -142,6 +144,7 @@ function analyzeState(element) {
 // --- DETECTOR DE LOGOUT MANUAL (el agente se sale por su cuenta) ---
 document.addEventListener('click', (e) => {
     if (e.target.closest(LOGOUT_SELECTOR)) {
+        if (logoutForzado) return;
         isLoggingOut = true;
         lastSentState = null;
         updateStatus('SALIR');

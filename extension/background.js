@@ -223,6 +223,10 @@ async function actualizarBD(agenteId, nuevoEstado, razon) {
 
         const ahora = Date.now();
         const anterior = data.estadoActivo;
+        const esDesconexion = razon === 'LOGOUT_MANUAL' || razon === 'EXPULSION_SISTEMA';
+
+        // Ya estaba fuera de Touchpoint (ej. la "salida" que llega justo después de una expulsión): nada que hacer
+        if (esDesconexion && data.desconectadoEn) return;
         chrome.alarms.clear(ALARMA + agenteId);
 
         let opNombre = "Desconocido";
@@ -240,6 +244,31 @@ async function actualizarBD(agenteId, nuevoEstado, razon) {
             });
         }
 
+        // ---- Se desconecta DURANTE una pausa (expulsión por tiempo o salida manual) ----
+        // La pausa NO se cierra: el cronómetro sigue corriendo hasta que vuelva a entrar a Touchpoint.
+        if (esDesconexion && anterior) {
+            const segPausa = Math.floor((ahora - (data.tiempoInicioEstado || ahora)) / 1000);
+            data.desconectadoEn = ahora;
+            data.motivoDesconexion = razon === 'EXPULSION_SISTEMA' ? 'expulsion' : 'manual';
+            data.ultimaDesconexion = ahora;
+            await setDoc("sesiones_activas", agenteId, data);
+            await addDoc("registros_tiempos", {
+                asesor_id: agenteId, asesor_nombre: opNombre,
+                tipo_evento: razon, estado: anterior,
+                duracion_segundos: segPausa, inicio: data.tiempoInicioEstado || ahora, fin: ahora,
+                pausa_sigue: true, // marcador: no suma a los totales, la pausa completa se registra al regresar
+                fecha: { _isTimestamp: true }
+            });
+            return;
+        }
+
+        // ---- Regresa a Touchpoint después de haber estado fuera ----
+        const veniaDeFuera = !!data.desconectadoEn;
+        const segFuera = veniaDeFuera ? Math.floor((ahora - data.desconectadoEn) / 1000) : 0;
+        const motivoFuera = data.motivoDesconexion || null;
+        data.desconectadoEn = null;
+        data.motivoDesconexion = null;
+
         let seg = 0;
         const inicioCalc = data.tiempoInicioEstado || ahora;
         if (anterior) {
@@ -251,7 +280,7 @@ async function actualizarBD(agenteId, nuevoEstado, razon) {
 
         data.estadoActivo = nuevoEstado || null;
         data.tiempoInicioEstado = nuevoEstado ? ahora : (razon === 'LOGOUT_MANUAL' || razon === 'EXPULSION_SISTEMA' ? null : ahora);
-        if (razon === 'LOGOUT_MANUAL' || razon === 'EXPULSION_SISTEMA') data.ultimaDesconexion = ahora;
+        if (esDesconexion) data.ultimaDesconexion = ahora;
         await setDoc("sesiones_activas", agenteId, data);
 
         // LOG 2: evento detallado (pausas > 5 s, salidas y expulsiones)
@@ -265,6 +294,7 @@ async function actualizarBD(agenteId, nuevoEstado, razon) {
                 tipo_evento: tipoEvt,
                 estado: anterior || 'Trabajando (Disponible)',
                 duracion_segundos: seg, inicio: inicioCalc, fin: ahora,
+                ...(veniaDeFuera && anterior ? { tras_desconexion: motivoFuera, seg_fuera_touchpoint: segFuera } : {}),
                 fecha: { _isTimestamp: true }
             });
         }

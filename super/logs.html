@@ -189,9 +189,11 @@
                     const fechaObj = d.fecha.toDate();
                     const badge = badges[d.tipo_evento] || '<span class="chip chip-neutral"><i class="ph-bold ph-globe"></i> Registro web</span>';
                     let detalle = ESTADOS[d.estado] || `<span class="muted">${esc(d.estado === 'null' || !d.estado ? 'Trabajando' : d.estado)}</span>`;
+                    if (d.pausa_sigue) detalle += `<span class="text-[11.5px] c-danger block mt-0.5">El tiempo siguió contando</span>`;
+                    if (d.tras_desconexion) detalle += `<span class="text-[11.5px] c-danger block mt-0.5">Regresó tras ${formatearTiempo(d.seg_fuera_touchpoint)} fuera de Touchpoint</span>`;
                     const nombre = d.asesor_nombre || 'Sin nombre';
                     return `
-                    <tr>
+                    <tr${d.pausa_sigue ? ' style="opacity:.75"' : ''}>
                         <td class="muted whitespace-nowrap tnum">${fechaObj.toLocaleDateString('es-MX', { day: '2-digit', month: 'short' })}</td>
                         <td><p class="font-medium leading-tight">${esc(nombre)}</p><p class="text-[12px] subtle tnum">ID ${esc(d.asesor_id)}</p></td>
                         <td>${badge}</td>
