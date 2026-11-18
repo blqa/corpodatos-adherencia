@@ -1,0 +1,341 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Resumen diario · Adherencia</title>
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="../assets/theme.js"></script>
+    <script>document.documentElement.classList.add("dark", "super");</script>
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+    <link rel="stylesheet" href="../assets/ui.css">
+    <style>
+        .auth-pending .app-shell, .auth-pending .mobile-nav { visibility: hidden; }
+
+        .linea { position: relative; padding-left: 30px; }
+        .linea::before { content: ''; position: absolute; left: 8px; top: 6px; bottom: 6px; width: 2px; background: var(--border); }
+        .ev { position: relative; padding: 11px 0; }
+        .ev::before { content: ''; position: absolute; left: -30px; top: 17px; width: 11px; height: 11px; border-radius: 99px; background: var(--surface-3); border: 2px solid var(--border-strong, var(--border)); }
+        .ev.ev-ok::before { background: var(--ok); border-color: var(--ok); }
+        .ev.ev-danger::before { background: var(--danger); border-color: var(--danger); }
+        .ev.ev-warn::before { background: var(--warn); border-color: var(--warn); }
+        .ev.ev-bath::before { background: var(--bath); border-color: var(--bath); }
+        .ev.ev-food::before { background: var(--food); border-color: var(--food); }
+        .ev.ev-quality::before { background: var(--quality); border-color: var(--quality); }
+        .ev.ev-neutral::before { background: var(--text-3); border-color: var(--text-3); }
+        .ev + .ev { border-top: 1px solid color-mix(in srgb, var(--border) 60%, transparent); }
+        .hora-col { width: 54px; flex-shrink: 0; }
+        .dia-sep { position: sticky; top: 0; z-index: 2; background: var(--surface); padding: 8px 0 8px 0; margin-left: -30px; padding-left: 30px; font-size: 12px; font-weight: 700; letter-spacing: .03em; color: var(--text-2); text-transform: uppercase; border-bottom: 1px solid var(--border); }
+
+        .resumen-fila { cursor: pointer; }
+        .resumen-fila.sel { background: color-mix(in srgb, var(--brand) 9%, transparent); }
+        .resumen-fila:hover td { background: color-mix(in srgb, var(--brand) 5%, var(--surface)); }
+        .barra-mini { height: 6px; border-radius: 99px; background: var(--surface-3); overflow: hidden; display: flex; min-width: 70px; }
+        .barra-mini span { height: 100%; }
+    </style>
+</head>
+<body class="auth-pending">
+    <div class="app-shell">
+        <!-- SIDEBAR -->
+        <aside class="sidebar">
+            <div class="sidebar-brand">
+                <div class="logo"><i class="ph-bold ph-timer text-lg"></i></div>
+                <div class="leading-tight"><p class="font-semibold text-1 text-[15px]">Adherencia</p><p class="text-[12px] subtle">Supervisor · Luis Ortiz</p></div>
+            </div>
+            <nav class="nav-section flex-1 flex flex-col gap-1">
+                <p class="eyebrow px-3 mb-1.5">Operación</p>
+                <a href="dash.html" class="nav-item"><i class="ph-bold ph-broadcast"></i> Monitor en vivo</a>
+                <a href="resumen.html" class="nav-item active"><i class="ph-bold ph-calendar-check"></i> Resumen diario</a>
+                <p class="eyebrow px-3 mt-4 mb-1.5">Administración</p>
+                <a href="agentes.html" class="nav-item"><i class="ph-bold ph-users"></i> Personal</a>
+                <a href="logs.html" class="nav-item"><i class="ph-bold ph-scroll"></i> Auditoría</a>
+                <p class="eyebrow px-3 mt-4 mb-1.5">Equipo</p>
+                <a href="../documento.html?panel=1" class="nav-item"><i class="ph-bold ph-book-open-text"></i> Documento OMT</a>
+            </nav>
+            <div class="p-3 border-t divider flex flex-col gap-1">
+                <button onclick="cerrarSesionSuper()" class="nav-item"><i class="ph-bold ph-sign-out"></i> Cerrar sesión</button>
+            </div>
+        </aside>
+
+        <main class="flex-1 flex flex-col min-w-0">
+            <header class="topbar">
+                <div class="min-w-0">
+                    <h1 class="text-[17px] font-semibold text-1 leading-tight" id="titulo-pagina">Resumen diario</h1>
+                    <p class="text-[12.5px] subtle" id="subtitulo-pagina">Cargando…</p>
+                </div>
+            </header>
+
+            <div class="page">
+                <div class="page-inner flex flex-col gap-5" id="contenido">
+
+                    <!-- Navegación de fecha -->
+                    <div class="flex items-center gap-2 flex-wrap">
+                        <button id="btn-ant" class="btn btn-ghost btn-icon btn-sm" title="Día anterior"><i class="ph-bold ph-caret-left"></i></button>
+                        <input type="date" id="fecha" class="input !h-9 !w-40">
+                        <button id="btn-sig" class="btn btn-ghost btn-icon btn-sm" title="Día siguiente"><i class="ph-bold ph-caret-right"></i></button>
+                        <button id="btn-hoy" class="btn btn-secondary btn-sm">Hoy</button>
+                    </div>
+
+                    <!-- Totales del día -->
+                    <div class="grid grid-cols-2 md:grid-cols-4 gap-3" id="totales-dia">
+                        <div class="card px-4 py-3"><p class="text-[12px] subtle flex items-center gap-1.5"><i class="ph-bold ph-users c-brand"></i> Se conectaron</p><p class="tnum text-xl font-semibold text-1" id="td-conectados">—</p></div>
+                        <div class="card px-4 py-3"><p class="text-[12px] subtle flex items-center gap-1.5"><i class="ph-bold ph-warning c-danger"></i> Expulsiones por tiempo</p><p class="tnum text-xl font-semibold c-danger" id="td-expulsiones">—</p></div>
+                        <div class="card px-4 py-3"><p class="text-[12px] subtle flex items-center gap-1.5"><i class="ph-bold ph-prohibit c-warn" style="color:var(--warn)"></i> Pausas sin turno</p><p class="tnum text-xl font-semibold text-1" id="td-sinturno" style="color:var(--warn)">—</p></div>
+                        <div class="card px-4 py-3"><p class="text-[12px] subtle flex items-center gap-1.5"><i class="ph-bold ph-hourglass-medium muted"></i> Tiempo "No listo" total</p><p class="tnum text-xl font-semibold text-1" id="td-nolisto">—</p></div>
+                    </div>
+
+                    <div class="grid grid-cols-1 xl:grid-cols-[1.3fr_1fr] gap-5 items-start">
+                        <!-- Timeline -->
+                        <div class="card flex flex-col min-w-0">
+                            <div class="card-header !py-3.5">
+                                <div class="flex items-center gap-2.5"><i class="ph-bold ph-clock-countdown text-lg c-brand"></i><h2 class="h-card">Cronología del día</h2></div>
+                                <select id="filtro-agente" class="input !h-8 !w-48 !text-[12.5px]"><option value="">Todos los asesores</option></select>
+                            </div>
+                            <div class="overflow-y-auto px-5" style="max-height: calc(100vh - 300px)" id="timeline-wrap">
+                                <div class="linea" id="timeline"></div>
+                            </div>
+                        </div>
+
+                        <!-- Totales por asesor -->
+                        <div class="card overflow-hidden flex flex-col">
+                            <div class="card-header !py-3.5">
+                                <div class="flex items-center gap-2.5"><i class="ph-bold ph-chart-bar text-lg c-brand"></i><h2 class="h-card">Totales por asesor</h2></div>
+                            </div>
+                            <div class="overflow-auto" style="max-height: calc(100vh - 300px)">
+                                <table class="table min-w-[560px]">
+                                    <thead><tr><th>Asesor</th><th class="!text-right">Baño</th><th class="!text-right">Comida</th><th class="!text-right">Calidad</th><th class="!text-right">Excesos</th></tr></thead>
+                                    <tbody id="tabla-totales"></tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <nav class="mobile-nav">
+        <a href="dash.html"><i class="ph-bold ph-broadcast"></i>Monitor</a>
+        <a href="resumen.html" class="active"><i class="ph-bold ph-calendar-check"></i>Resumen</a>
+        <a href="agentes.html"><i class="ph-bold ph-users"></i>Personal</a>
+        <a href="logs.html"><i class="ph-bold ph-scroll"></i>Auditoría</a>
+    </nav>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getFirestore, collection, getDocs, query, where, orderBy, onSnapshot } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import { getAuth, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+
+        const app = initializeApp({ apiKey: "AIzaSyBKYconuZXn53Eb4EJFsHj4rYaO0eK6liQ", projectId: "tratocom-d38e7" });
+        const db = getFirestore(app);
+
+        const SUPERVISOR_EMAIL = '17620@omt.godsplan.site';
+        const auth = getAuth(app);
+        let __iniciado = false;
+        onAuthStateChanged(auth, (u) => {
+            if (!u || u.email !== SUPERVISOR_EMAIL) { location.replace('../index.html'); return; }
+            document.body.classList.remove('auth-pending');
+            if (!__iniciado) { __iniciado = true; __arrancar(); }
+        });
+        window.cerrarSesionSuper = async () => { await signOut(auth); location.replace('../index.html'); };
+
+        const $ = (id) => document.getElementById(id);
+        const esc = (s) => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+        const getFechaISO = (date) => new Date(date.getTime() - (date.getTimezoneOffset() * 60000)).toISOString().split('T')[0];
+        const iniciales = (txt) => (txt || '').trim().split(/\s+/).slice(0, 2).map(p => p[0] || '').join('').toUpperCase() || '?';
+        const formatearTiempo = (seg) => {
+            if (!seg || seg <= 0) return "0 min";
+            const h = Math.floor(seg / 3600), m = Math.round((seg % 3600) / 60);
+            return (h ? h + ' h ' : '') + m + ' min';
+        };
+        const formatearHora = (ms) => ms ? new Date(ms).toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit', hour12: false }) : '—';
+
+        const CAT_LABEL = { bath: 'Baño', food: 'Comida', quality: 'Calidad' };
+        const CAT_CLASS = { bath: 'bath', food: 'food', quality: 'quality' };
+        const ESTADO_NORM = { bath: 'bath', 'Baño': 'bath', food: 'food', 'Comida': 'food', quality: 'quality', 'Calidad': 'quality' };
+
+        const badges = {
+            'LOGIN':              '<span class="chip chip-ok"><i class="ph-bold ph-sign-in"></i> Primera conexión</span>',
+            'LOGOUT_MANUAL':      '<span class="chip chip-neutral"><i class="ph-bold ph-sign-out"></i> Salida manual</span>',
+            'EXPULSION_SISTEMA':  '<span class="chip chip-danger"><i class="ph-bold ph-warning"></i> Desconectado por tiempo</span>',
+            'FIN_BREAK':          '<span class="chip chip-brand"><i class="ph-bold ph-coffee"></i> Fin de pausa</span>',
+            'FIN_TRABAJO':        '<span class="chip chip-quality"><i class="ph-bold ph-desktop"></i> Cambio de estado</span>',
+            'PAUSA_NO_PERMITIDA': '<span class="chip chip-warn"><i class="ph-bold ph-prohibit"></i> Pausa sin turno</span>'
+        };
+        const evClase = (d) => {
+            if (d.tipo_evento === 'EXPULSION_SISTEMA') return 'ev-danger';
+            if (d.tipo_evento === 'PAUSA_NO_PERMITIDA') return 'ev-warn';
+            if (d.tipo_evento === 'LOGIN') return 'ev-ok';
+            const cat = ESTADO_NORM[d.estado];
+            return cat ? 'ev-' + CAT_CLASS[cat] : 'ev-neutral';
+        };
+
+        let OPERADORES = {};
+        let datosDia = [];
+
+        async function cargarOperadores() {
+            const snap = await getDocs(collection(db, 'operadores'));
+            OPERADORES = {};
+            snap.forEach(d => OPERADORES[d.id] = { id: d.id, ...d.data() });
+        }
+
+        function nombreDe(d) {
+            if (d.asesor_nombre) return d.asesor_nombre;
+            const op = OPERADORES[d.asesor_id];
+            return (op && (op.nombreCorto || op.nombre)) || d.asesor_id || 'Sin nombre';
+        }
+
+        async function cargarDia(fechaStr) {
+            const timeline = $('timeline'), tbody = $('tabla-totales');
+            timeline.innerHTML = `<div class="py-10 flex justify-center"><span class="spinner spinner-lg"></span></div>`;
+            tbody.innerHTML = `<tr><td colspan="5" class="empty"><span class="spinner"></span></td></tr>`;
+            $('subtitulo-pagina').textContent = 'Cargando…';
+
+            const q = query(collection(db, "registros_tiempos"),
+                where("fecha", ">=", new Date(fechaStr + "T00:00:00")),
+                where("fecha", "<=", new Date(fechaStr + "T23:59:59")),
+                orderBy("fecha", "asc"));
+            const snap = await getDocs(q);
+            const crudos = [];
+            snap.forEach(docu => crudos.push({ id: docu.id, ...docu.data() }));
+
+            // Filtro anti-ecos (mismo criterio que Auditoría): salidas de 0-2 s pegadas al evento anterior
+            datosDia = crudos.filter((d, i) => {
+                if ((d.tipo_evento === 'LOGOUT_MANUAL' || d.tipo_evento === 'FIN_TRABAJO') && (!d.duracion_segundos || d.duracion_segundos < 3)) {
+                    const anterior = crudos[i - 1];
+                    if (anterior && anterior.asesor_id === d.asesor_id && Math.abs(d.fin - anterior.fin) < 15000) return false;
+                }
+                return true;
+            });
+
+            pintarTitulo(fechaStr);
+            pintarFiltroAgentes();
+            pintarTimeline();
+            pintarTotales();
+        }
+
+        function pintarTitulo(fechaStr) {
+            const hoyStr = getFechaISO(new Date());
+            const ayerStr = getFechaISO(new Date(Date.now() - 86400000));
+            const f = new Date(fechaStr + 'T00:00:00');
+            const texto = f.toLocaleDateString('es-MX', { weekday: 'long', day: 'numeric', month: 'long' });
+            $('titulo-pagina').textContent = fechaStr === hoyStr ? 'Resumen de hoy' : (fechaStr === ayerStr ? 'Resumen de ayer' : 'Resumen diario');
+            $('subtitulo-pagina').textContent = texto.charAt(0).toUpperCase() + texto.slice(1) + (datosDia.length ? ` · ${datosDia.length} eventos` : '');
+            $('btn-sig').disabled = fechaStr >= hoyStr;
+        }
+
+        function pintarFiltroAgentes() {
+            const sel = $('filtro-agente');
+            const previo = sel.value;
+            const vistos = new Map();
+            datosDia.forEach(d => { if (d.asesor_id) vistos.set(d.asesor_id, nombreDe(d)); });
+            sel.innerHTML = '<option value="">Todos los asesores</option>' +
+                [...vistos.entries()].sort((a, b) => a[1].localeCompare(b[1])).map(([id, n]) => `<option value="${esc(id)}">${esc(n)}</option>`).join('');
+            if ([...vistos.keys()].includes(previo)) sel.value = previo;
+        }
+
+        function pintarTimeline() {
+            const timeline = $('timeline');
+            const filtro = $('filtro-agente').value;
+            const filas = datosDia.filter(d => !filtro || d.asesor_id === filtro);
+            if (!filas.length) {
+                timeline.innerHTML = `<div class="empty"><i class="ph ph-moon-stars"></i>${datosDia.length ? 'Ese asesor no tuvo eventos ese día.' : 'No hubo actividad registrada ese día.'}</div>`;
+                return;
+            }
+            timeline.innerHTML = filas.map(d => {
+                const fechaObj = d.fecha.toDate();
+                const badge = badges[d.tipo_evento] || '<span class="chip chip-neutral"><i class="ph-bold ph-globe"></i> Registro</span>';
+                const cat = ESTADO_NORM[d.estado];
+                let detalle = cat ? `<span class="flex items-center gap-1.5"><span class="dot c-${CAT_CLASS[cat]}"></span>${CAT_LABEL[cat]}</span>` : '';
+                let notas = '';
+                if (d.pausa_sigue) notas += `<p class="text-[11.5px] c-danger mt-0.5">El cronómetro siguió corriendo tras la expulsión</p>`;
+                if (d.tras_desconexion) notas += `<p class="text-[11.5px] c-danger mt-0.5">Regresó tras ${formatearTiempo(d.seg_fuera_touchpoint)} fuera de Touchpoint</p>`;
+                return `
+                <div class="ev ${evClase(d)}">
+                    <div class="flex items-start gap-3">
+                        <div class="hora-col tnum text-[12.5px] muted pt-0.5">${formatearHora(d.fin || fechaObj.getTime())}</div>
+                        <div class="flex-1 min-w-0">
+                            <div class="flex items-center flex-wrap gap-x-2 gap-y-1">
+                                <span class="font-medium text-1 text-[13.5px]">${esc(nombreDe(d))}</span>
+                                ${badge}
+                                ${detalle}
+                                ${d.duracion_segundos > 0 ? `<span class="tnum text-[12px] subtle">${formatearTiempo(d.duracion_segundos)}${d.inicio ? ' · salió ' + formatearHora(d.inicio) : ''}</span>` : ''}
+                            </div>
+                            ${notas}
+                        </div>
+                    </div>
+                </div>`;
+            }).join('');
+        }
+
+        function pintarTotales() {
+            const tbody = $('tabla-totales');
+            const porAsesor = {};
+            const orden = [];
+            datosDia.forEach(d => {
+                if (!d.asesor_id) return;
+                if (!porAsesor[d.asesor_id]) { porAsesor[d.asesor_id] = { nombre: nombreDe(d), bath: 0, food: 0, quality: 0, excesos: 0 }; orden.push(d.asesor_id); }
+                const a = porAsesor[d.asesor_id];
+                const cat = ESTADO_NORM[d.estado];
+                if (cat && d.duracion_segundos > 0) a[cat] += d.duracion_segundos;
+                if (d.tipo_evento === 'EXPULSION_SISTEMA' || d.tipo_evento === 'PAUSA_NO_PERMITIDA') a.excesos++;
+            });
+
+            let tConectados = orden.length, tExpulsiones = 0, tSinTurno = 0, tNoListo = 0;
+            datosDia.forEach(d => {
+                if (d.tipo_evento === 'EXPULSION_SISTEMA') tExpulsiones++;
+                if (d.tipo_evento === 'PAUSA_NO_PERMITIDA') tSinTurno++;
+                const cat = ESTADO_NORM[d.estado];
+                if (cat && d.duracion_segundos > 0) tNoListo += d.duracion_segundos;
+            });
+            $('td-conectados').textContent = tConectados;
+            $('td-expulsiones').textContent = tExpulsiones;
+            $('td-sinturno').textContent = tSinTurno;
+            $('td-nolisto').textContent = formatearTiempo(tNoListo);
+
+            if (!orden.length) {
+                tbody.innerHTML = `<tr><td colspan="5" class="empty"><i class="ph ph-tray"></i>Sin datos para este día.</td></tr>`;
+                return;
+            }
+            orden.sort((a, b) => (porAsesor[b].bath + porAsesor[b].food + porAsesor[b].quality) - (porAsesor[a].bath + porAsesor[a].food + porAsesor[a].quality));
+            const celda = (seg) => `<td class="!text-right tnum ${seg > 0 ? 'text-1 font-medium' : 'subtle'}">${seg > 0 ? formatearTiempo(seg) : '—'}</td>`;
+            tbody.innerHTML = orden.map(id => {
+                const a = porAsesor[id];
+                return `
+                <tr class="resumen-fila" data-id="${esc(id)}">
+                    <td><div class="flex items-center gap-2.5"><div class="avatar avatar-sm">${esc(iniciales(a.nombre))}</div><div><p class="font-medium leading-tight text-[13px]">${esc(a.nombre)}</p></div></div></td>
+                    ${celda(a.bath)}${celda(a.food)}${celda(a.quality)}
+                    <td class="!text-right tnum ${a.excesos ? 'font-semibold c-danger' : 'subtle'}">${a.excesos || '—'}</td>
+                </tr>`;
+            }).join('');
+            tbody.querySelectorAll('.resumen-fila').forEach(tr => tr.addEventListener('click', () => {
+                $('filtro-agente').value = $('filtro-agente').value === tr.dataset.id ? '' : tr.dataset.id;
+                tbody.querySelectorAll('.resumen-fila').forEach(x => x.classList.toggle('sel', x === tr && $('filtro-agente').value));
+                pintarTimeline();
+            }));
+        }
+
+        function irA(fechaStr) {
+            $('fecha').value = fechaStr;
+            cargarDia(fechaStr);
+        }
+        $('fecha').addEventListener('change', () => irA($('fecha').value));
+        $('btn-ant').addEventListener('click', () => { const d = new Date($('fecha').value + 'T12:00:00'); d.setDate(d.getDate() - 1); irA(getFechaISO(d)); });
+        $('btn-sig').addEventListener('click', () => { const d = new Date($('fecha').value + 'T12:00:00'); d.setDate(d.getDate() + 1); if (getFechaISO(d) <= getFechaISO(new Date())) irA(getFechaISO(d)); });
+        $('btn-hoy').addEventListener('click', () => irA(getFechaISO(new Date())));
+        $('filtro-agente').addEventListener('change', pintarTimeline);
+
+        async function __arrancar() {
+            await cargarOperadores();
+            // Abre directo en el resumen de AYER, que es para lo que se pidió esta página
+            const ayer = getFechaISO(new Date(Date.now() - 86400000));
+            $('fecha').max = getFechaISO(new Date());
+            irA(ayer);
+        }
+    </script>
+</body>
+</html>
