@@ -181,24 +181,6 @@ async function expulsarAgente(agenteId) {
     const tabId = await obtenerTab(agenteId);
     if (tabId) chrome.tabs.sendMessage(tabId, { action: 'FORZAR_LOGOUT' }).catch(() => botarFallback());
     else botarFallback();
-    setTimeout(abrirAvisoOMT, 2500); // le abre la página con la advertencia que tiene que aceptar
-}
-
-// Abre (o trae al frente) la página del asesor para que vea la advertencia
-async function abrirAvisoOMT() {
-    const url = 'https://omt.godsplan.site/';
-    try {
-        const { tabAviso } = await chrome.storage.session.get('tabAviso');
-        if (tabAviso) {
-            try {
-                const t = await chrome.tabs.update(tabAviso, { active: true, url });
-                if (t) { chrome.windows.update(t.windowId, { focused: true }).catch(() => {}); return; }
-            } catch (e) { /* esa pestaña ya se cerró */ }
-        }
-        const t = await chrome.tabs.create({ url, active: true });
-        await chrome.storage.session.set({ tabAviso: t.id });
-        chrome.windows.update(t.windowId, { focused: true }).catch(() => {});
-    } catch (e) { console.warn('No se pudo abrir la página de aviso', e); }
 }
 
 function botarFallback() {
