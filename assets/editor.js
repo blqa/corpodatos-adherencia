@@ -107,13 +107,16 @@ export function instalarEditor({ db, toast, operadores, alGuardar }) {
         const r = reg || { estado: 'bath', duracion_segundos: 0, fin: Date.now() };
         const finMs = r.fin || msDe(r.fecha) || Date.now();
         const tipo = ALIAS[r.estado];
+        const esLogin = !nuevo && r.tipo_evento === 'LOGIN';
         const opsAsesores = Object.values(operadores()).sort((a, b) => (a.nombreCorto || a.nombre || '').localeCompare(b.nombreCorto || b.nombre || ''))
             .map(o => `<option value="${esc(o.id)}">${esc(o.nombreCorto || o.nombre)} · ${esc(o.id)}</option>`).join('');
 
-        $('ed-icon').className = nuevo ? 'ph-bold ph-plus' : 'ph-bold ph-pencil-simple';
-        $('ed-title').textContent = nuevo ? 'Agregar pausa' : 'Editar registro';
-        $('ed-sub').textContent = nuevo ? 'Se suma a la bitácora y a los tiempos del día' : `${nombreDe(r.asesor_id, r.asesor_nombre)} · ${r.tipo_evento ? r.tipo_evento.replace('_', ' ').toLowerCase() : 'registro web'}`;
-        $('ed-body').innerHTML = `
+        $('ed-icon').className = nuevo ? 'ph-bold ph-plus' : (esLogin ? 'ph-bold ph-sign-in' : 'ph-bold ph-pencil-simple');
+        $('ed-title').textContent = nuevo ? 'Agregar pausa' : (esLogin ? 'Primera conexión' : 'Editar registro');
+        $('ed-sub').textContent = nuevo ? 'Se suma a la bitácora y a los tiempos del día' : `${nombreDe(r.asesor_id, r.asesor_nombre)} · ${esLogin ? 'primera conexión del día' : (r.tipo_evento ? r.tipo_evento.replace('_', ' ').toLowerCase() : 'registro web')}`;
+        $('ed-body').innerHTML = esLogin
+            ? `<div><label class="label">Se conectó a las</label><input id="ed-fin" type="datetime-local" class="input" value="${isoLocal(finMs)}"></div>`
+            : `
             ${nuevo ? `<div><label class="label">Asesor</label><select id="ed-asesor" class="input">${opsAsesores}</select></div>` : ''}
             <div class="grid grid-cols-2 gap-3">
                 <div><label class="label">Tipo</label>
@@ -122,8 +125,8 @@ export function instalarEditor({ db, toast, operadores, alGuardar }) {
             </div>
             <div><label class="label">Terminó</label><input id="ed-fin" type="datetime-local" class="input" value="${isoLocal(finMs)}"></div>
             ${r.pausa_sigue ? '<p class="chip chip-warn !h-auto !py-2 !rounded-[10px] !whitespace-normal">Este es el marcador de una desconexión; no suma a los totales.</p>' : ''}`;
-        mascaraMMSS($('ed-dur'));
-        $('ed-nota').textContent = 'Si la pausa es de hoy, el tiempo del asesor en el monitor se ajusta solo.';
+        if (!esLogin) mascaraMMSS($('ed-dur'));
+        $('ed-nota').textContent = esLogin ? 'Es la primera conexión del día: solo tiene hora, no duración ni tipo.' : 'Si la pausa es de hoy, el tiempo del asesor en el monitor se ajusta solo.';
 
         botones({
             borrar: nuevo ? null : () => ocupado($('ed-borrar'), async () => {
@@ -135,12 +138,16 @@ export function instalarEditor({ db, toast, operadores, alGuardar }) {
                 } catch (e) { console.error(e); toast('No se pudo borrar (¿iniciaste sesión de supervisor?).', 'error'); }
             }),
             guardar: () => ocupado($('ed-guardar'), async () => {
-                const seg = parseMMSS($('ed-dur').value);
                 const finNuevo = new Date($('ed-fin').value).getTime();
                 if (!finNuevo) { toast('Revisa la fecha y hora.', 'error'); return; }
-                const tipoNuevo = $('ed-tipo').disabled ? r.estado : $('ed-tipo').value;
                 try {
-                    if (nuevo) {
+                    if (esLogin) {
+                        const cambios = { inicio: finNuevo, fin: finNuevo, duracion_segundos: 0, fecha: new Date(finNuevo), editado_por_supervisor: true, editado_en: Date.now() };
+                        await updateDoc(doc(db, 'registros_tiempos', r.id), cambios);
+                        toast('Hora de conexión actualizada.');
+                    } else if (nuevo) {
+                        const seg = parseMMSS($('ed-dur').value);
+                        const tipoNuevo = $('ed-tipo').value;
                         const id = $('ed-asesor').value;
                         const op = operadores()[id] || {};
                         const data = { asesor_id: id, asesor_nombre: op.nombre || '', estado: tipoNuevo, duracion_segundos: seg,
@@ -150,6 +157,8 @@ export function instalarEditor({ db, toast, operadores, alGuardar }) {
                         await aplicarDiferencia(id, null, aporte(data));
                         toast('Pausa agregada.');
                     } else {
+                        const seg = parseMMSS($('ed-dur').value);
+                        const tipoNuevo = $('ed-tipo').disabled ? r.estado : $('ed-tipo').value;
                         const cambios = { estado: tipoNuevo, duracion_segundos: seg, fin: finNuevo, inicio: finNuevo - seg * 1000,
                             fecha: new Date(finNuevo), editado_por_supervisor: true, editado_en: Date.now() };
                         await updateDoc(doc(db, 'registros_tiempos', r.id), cambios);
@@ -161,7 +170,7 @@ export function instalarEditor({ db, toast, operadores, alGuardar }) {
             })
         });
         abrir();
-        setTimeout(() => (nuevo ? $('ed-asesor') : $('ed-dur')).focus(), 60);
+        setTimeout(() => (nuevo ? $('ed-asesor') : (esLogin ? $('ed-fin') : $('ed-dur'))).focus(), 60);
     }
 
     // =================================================================

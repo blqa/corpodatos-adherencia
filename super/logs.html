@@ -57,7 +57,7 @@
                     <form onsubmit="buscarLogs(event)" class="card card-pad grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-[1fr_1fr_1.4fr_auto] gap-3 items-end">
                         <div><label class="label">Desde</label><input type="date" id="fecha-inicio" required class="input"></div>
                         <div><label class="label">Hasta</label><input type="date" id="fecha-fin" required class="input"></div>
-                        <div><label class="label">Asesor (opcional)</label><div class="field"><i class="ph-bold ph-magnifying-glass"></i><input type="text" id="filtro-agente" placeholder="ID o nombre" class="input"></div></div>
+                        <div><label class="label">Buscar (opcional)</label><div class="field"><i class="ph-bold ph-magnifying-glass"></i><input type="text" id="filtro-agente" placeholder="Cualquier valor: nombre, ID, evento, baño, hora…" class="input"></div></div>
                         <button type="submit" id="btn-buscar" class="btn btn-primary"><i class="ph-bold ph-magnifying-glass"></i> Consultar</button>
                     </form>
 
@@ -128,6 +128,8 @@
         document.getElementById('fecha-fin').value = getFechaISO(new Date());
 
         let datosActuales = [];
+        let datosRango = []; // resultado del rango de fechas, antes de aplicar la búsqueda de texto
+        const normTxt = (s) => String(s || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
         let OPERADORES = {};
         const esc = (s) => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 
@@ -153,13 +155,72 @@
         };
         const formatearHora = (ms) => ms ? new Date(ms).toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false }) : '—';
 
+        // Texto completo de la fila para la búsqueda: fecha, asesor, evento, detalle, horas y duración, todo junto
+        function textoBuscable(d, fechaObj, nombre, esLogin) {
+            const evTxt = (d.tipo_evento || 'registro web').replace(/_/g, ' ');
+            const detTxt = esLogin ? '' : (d.estado === 'null' || !d.estado ? 'trabajando' : d.estado);
+            return normTxt([
+                fechaObj.toLocaleDateString('es-MX', { day: '2-digit', month: 'short' }), nombre, d.asesor_id, evTxt, detTxt,
+                esLogin ? '' : formatearHora(d.inicio), formatearHora(d.fin || fechaObj.getTime()), esLogin ? '' : formatearTiempo(d.duracion_segundos),
+                d.pausa_sigue ? 'siguio contando' : '', d.tras_desconexion ? 'regreso fuera de touchpoint' : ''
+            ].join(' | '));
+        }
+
+        // Pinta la tabla + contadores a partir de datosRango, aplicando la búsqueda de texto libre
+        function aplicarBusqueda() {
+            const tbody = document.getElementById('tabla-auditoria');
+            const termino = normTxt(document.getElementById('filtro-agente').value.trim());
+
+            datosActuales = termino ? datosRango.filter(d => {
+                const fechaObj = d.fecha.toDate();
+                const nombre = d.asesor_nombre || 'Sin nombre';
+                return textoBuscable(d, fechaObj, nombre, d.tipo_evento === 'LOGIN').includes(termino);
+            }) : datosRango;
+
+            const cuenta = (t) => datosActuales.filter(d => d.tipo_evento === t).length;
+            document.getElementById('cnt-login').innerText = cuenta('LOGIN');
+            document.getElementById('cnt-break').innerText = datosActuales.filter(d => d.tipo_evento === 'FIN_BREAK' || (!d.tipo_evento && ESTADOS[d.estado])).length;
+            document.getElementById('cnt-logout').innerText = cuenta('LOGOUT_MANUAL');
+            document.getElementById('cnt-kick').innerText = cuenta('EXPULSION_SISTEMA');
+
+            if (datosActuales.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="8" class="empty"><i class="ph ph-tray"></i>${termino ? 'Nada coincide con tu búsqueda.' : 'No hay registros para estos filtros.'}</td></tr>`;
+                document.getElementById('resumen-resultados').innerText = '0 resultados';
+                return;
+            }
+
+            tbody.innerHTML = datosActuales.map((d, i) => {
+                const fechaObj = d.fecha.toDate();
+                const esLogin = d.tipo_evento === 'LOGIN';
+                const badge = badges[d.tipo_evento] || '<span class="chip chip-neutral"><i class="ph-bold ph-globe"></i> Registro web</span>';
+                let detalle = esLogin ? '<span class="muted">—</span>' : (ESTADOS[d.estado] || `<span class="muted">${esc(d.estado === 'null' || !d.estado ? 'Trabajando' : d.estado)}</span>`);
+                if (d.pausa_sigue) detalle += `<span class="text-[11.5px] c-danger block mt-0.5">El tiempo siguió contando</span>`;
+                if (d.tras_desconexion) detalle += `<span class="text-[11.5px] c-danger block mt-0.5">Regresó tras ${formatearTiempo(d.seg_fuera_touchpoint)} fuera de Touchpoint</span>`;
+                const nombre = d.asesor_nombre || 'Sin nombre';
+                return `
+                <tr${d.pausa_sigue ? ' style="opacity:.75"' : ''}>
+                    <td class="muted whitespace-nowrap tnum">${fechaObj.toLocaleDateString('es-MX', { day: '2-digit', month: 'short' })}</td>
+                    <td><p class="font-medium leading-tight">${esc(nombre)}</p><p class="text-[12px] subtle tnum">ID ${esc(d.asesor_id)}</p></td>
+                    <td>${badge}</td>
+                    <td class="text-[13px]">${detalle}</td>
+                    <td class="tnum muted text-[13px]">${esLogin ? '—' : formatearHora(d.inicio)}</td>
+                    <td class="tnum muted text-[13px]">${formatearHora(d.fin || fechaObj.getTime())}</td>
+                    <td class="!text-right tnum font-semibold ${!esLogin && d.duracion_segundos > 0 ? 'text-1' : 'subtle'}">${esLogin ? '—' : formatearTiempo(d.duracion_segundos)}</td>
+                    <td class="!text-right"><button class="edit-btn btn btn-ghost btn-icon btn-sm" title="Editar o borrar" onclick="editarLog(${i})"><i class="ph-bold ph-pencil-simple"></i></button></td>
+                </tr>`;
+            }).join('');
+            document.getElementById('resumen-resultados').innerText = termino
+                ? `${datosActuales.length} de ${datosRango.length} registros coinciden con "${document.getElementById('filtro-agente').value.trim()}"`
+                : `${datosActuales.length} registros en el rango seleccionado`;
+        }
+        document.getElementById('filtro-agente').addEventListener('input', () => { if (datosRango.length || document.getElementById('filtro-agente').value === '') aplicarBusqueda(); });
+
         window.buscarLogs = async function(e) {
             if (e) e.preventDefault();
             const btn = document.getElementById('btn-buscar');
             const tbody = document.getElementById('tabla-auditoria');
             const fInicioStr = document.getElementById('fecha-inicio').value;
             const fFinStr = document.getElementById('fecha-fin').value;
-            const agFiltro = document.getElementById('filtro-agente').value.trim().toLowerCase();
 
             btn.innerHTML = `<span class="spinner"></span>`;
             btn.disabled = true;
@@ -173,14 +234,10 @@
                 const snap = await getDocs(q);
 
                 const datosCrudos = [];
-                snap.forEach(docu => {
-                    const d = { id: docu.id, ...docu.data() };
-                    if (agFiltro && !(d.asesor_nombre || '').toLowerCase().includes(agFiltro) && !String(d.asesor_id || '').toLowerCase().includes(agFiltro)) return;
-                    datosCrudos.push(d);
-                });
+                snap.forEach(docu => datosCrudos.push({ id: docu.id, ...docu.data() }));
 
                 // Filtro anti-ecos: una salida de 0-2 s pegada al evento anterior (<15 s) es el rebote automático de la extensión
-                datosActuales = datosCrudos.filter((d, i) => {
+                datosRango = datosCrudos.filter((d, i) => {
                     if ((d.tipo_evento === 'LOGOUT_MANUAL' || d.tipo_evento === 'FIN_TRABAJO') && (!d.duracion_segundos || d.duracion_segundos < 3)) {
                         const anterior = datosCrudos[i + 1];
                         if (anterior && anterior.asesor_id === d.asesor_id && Math.abs(d.fin - anterior.fin) < 15000) return false;
@@ -188,38 +245,7 @@
                     return true;
                 });
 
-                const cuenta = (t) => datosActuales.filter(d => d.tipo_evento === t).length;
-                document.getElementById('cnt-login').innerText = cuenta('LOGIN');
-                document.getElementById('cnt-break').innerText = datosActuales.filter(d => d.tipo_evento === 'FIN_BREAK' || (!d.tipo_evento && ESTADOS[d.estado])).length;
-                document.getElementById('cnt-logout').innerText = cuenta('LOGOUT_MANUAL');
-                document.getElementById('cnt-kick').innerText = cuenta('EXPULSION_SISTEMA');
-
-                if (datosActuales.length === 0) {
-                    tbody.innerHTML = `<tr><td colspan="8" class="empty"><i class="ph ph-tray"></i>No hay registros para estos filtros.</td></tr>`;
-                    document.getElementById('resumen-resultados').innerText = '0 resultados';
-                    return;
-                }
-
-                tbody.innerHTML = datosActuales.map((d, i) => {
-                    const fechaObj = d.fecha.toDate();
-                    const badge = badges[d.tipo_evento] || '<span class="chip chip-neutral"><i class="ph-bold ph-globe"></i> Registro web</span>';
-                    let detalle = ESTADOS[d.estado] || `<span class="muted">${esc(d.estado === 'null' || !d.estado ? 'Trabajando' : d.estado)}</span>`;
-                    if (d.pausa_sigue) detalle += `<span class="text-[11.5px] c-danger block mt-0.5">El tiempo siguió contando</span>`;
-                    if (d.tras_desconexion) detalle += `<span class="text-[11.5px] c-danger block mt-0.5">Regresó tras ${formatearTiempo(d.seg_fuera_touchpoint)} fuera de Touchpoint</span>`;
-                    const nombre = d.asesor_nombre || 'Sin nombre';
-                    return `
-                    <tr${d.pausa_sigue ? ' style="opacity:.75"' : ''}>
-                        <td class="muted whitespace-nowrap tnum">${fechaObj.toLocaleDateString('es-MX', { day: '2-digit', month: 'short' })}</td>
-                        <td><p class="font-medium leading-tight">${esc(nombre)}</p><p class="text-[12px] subtle tnum">ID ${esc(d.asesor_id)}</p></td>
-                        <td>${badge}</td>
-                        <td class="text-[13px]">${detalle}</td>
-                        <td class="tnum muted text-[13px]">${formatearHora(d.inicio)}</td>
-                        <td class="tnum muted text-[13px]">${formatearHora(d.fin || fechaObj.getTime())}</td>
-                        <td class="!text-right tnum font-semibold ${d.duracion_segundos > 0 ? 'text-1' : 'subtle'}">${formatearTiempo(d.duracion_segundos)}</td>
-                        <td class="!text-right"><button class="edit-btn btn btn-ghost btn-icon btn-sm" title="Editar o borrar" onclick="editarLog(${i})"><i class="ph-bold ph-pencil-simple"></i></button></td>
-                    </tr>`;
-                }).join('');
-                document.getElementById('resumen-resultados').innerText = `${datosActuales.length} registros en el rango seleccionado`;
+                aplicarBusqueda();
 
             } catch (error) {
                 console.error(error);
