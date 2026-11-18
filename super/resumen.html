@@ -150,6 +150,7 @@
         const iniciales = (txt) => (txt || '').trim().split(/\s+/).slice(0, 2).map(p => p[0] || '').join('').toUpperCase() || '?';
         const formatearTiempo = (seg) => {
             if (!seg || seg <= 0) return "0 min";
+            if (seg < 60) return Math.round(seg) + " s";
             const h = Math.floor(seg / 3600), m = Math.round((seg % 3600) / 60);
             return (h ? h + ' h ' : '') + m + ' min';
         };
