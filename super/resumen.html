@@ -34,6 +34,7 @@
         .resumen-fila { cursor: pointer; }
         .resumen-fila.sel { background: color-mix(in srgb, var(--brand) 9%, transparent); }
         .resumen-fila:hover td { background: color-mix(in srgb, var(--brand) 5%, var(--surface)); }
+        .tabla-tot th, .tabla-tot td { padding-left: 10px !important; padding-right: 10px !important; }
         .barra-mini { height: 6px; border-radius: 99px; background: var(--surface-3); overflow: hidden; display: flex; min-width: 70px; }
         .barra-mini span { height: 100%; }
     </style>
@@ -88,7 +89,7 @@
                         <div class="card px-4 py-3"><p class="text-[12px] subtle flex items-center gap-1.5"><i class="ph-bold ph-hourglass-medium muted"></i> Tiempo "No listo" total</p><p class="tnum text-xl font-semibold text-1" id="td-nolisto">—</p></div>
                     </div>
 
-                    <div class="grid grid-cols-1 xl:grid-cols-[1.3fr_1fr] gap-5 items-start">
+                    <div class="grid grid-cols-1 xl:grid-cols-[1.15fr_1fr] gap-5 items-start">
                         <!-- Timeline -->
                         <div class="card flex flex-col min-w-0">
                             <div class="card-header !py-3.5">
@@ -106,8 +107,8 @@
                                 <div class="flex items-center gap-2.5"><i class="ph-bold ph-chart-bar text-lg c-brand"></i><h2 class="h-card">Totales por asesor</h2></div>
                             </div>
                             <div class="overflow-auto" style="max-height: calc(100vh - 300px)">
-                                <table class="table min-w-[560px]">
-                                    <thead><tr><th>Asesor</th><th class="!text-right">Baño</th><th class="!text-right">Comida</th><th class="!text-right">Calidad</th><th class="!text-right">Excesos</th></tr></thead>
+                                <table class="table w-full tabla-tot">
+                                    <thead><tr><th>Asesor</th><th class="!text-right">Baño</th><th class="!text-right">Comida</th><th class="!text-right">Calidad</th><th class="!text-right">Total</th></tr></thead>
                                     <tbody id="tabla-totales"></tbody>
                                 </table>
                             </div>
@@ -127,7 +128,7 @@
 
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import { getFirestore, collection, getDocs, query, where, orderBy, onSnapshot } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import { getFirestore, collection, getDocs, query, where, orderBy, onSnapshot, doc, getDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
         import { getAuth, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
 
         const app = initializeApp({ apiKey: "AIzaSyBKYconuZXn53Eb4EJFsHj4rYaO0eK6liQ", projectId: "tratocom-d38e7" });
@@ -177,10 +178,20 @@
         let OPERADORES = {};
         let datosDia = [];
 
+        let LIMITES = { bano: 15, comida: 30, calidad: null };
+        let sesionesHoy = [];
         async function cargarOperadores() {
             const snap = await getDocs(collection(db, 'operadores'));
             OPERADORES = {};
             snap.forEach(d => OPERADORES[d.id] = { id: d.id, ...d.data() });
+            try { const c = await getDoc(doc(db, 'config', 'global')); if (c.exists() && c.data().limites) LIMITES = { ...LIMITES, ...c.data().limites }; } catch (e) {}
+        }
+        const LIM_KEY = { bath: 'bano', food: 'comida', quality: 'calidad' };
+        // Límite del día (en segundos) de un asesor para una categoría; null si no tiene
+        function limiteSeg(id, cat) {
+            const op = OPERADORES[id] || {};
+            const min = (op.limites && op.limites[LIM_KEY[cat]]) || LIMITES[LIM_KEY[cat]];
+            return min ? min * 60 : null;
         }
 
         function nombreDe(d) {
@@ -212,10 +223,15 @@
                 return true;
             });
 
+            sesionesHoy = [];
+            if (fechaStr === getFechaISO(new Date())) {
+                try { const ss = await getDocs(collection(db, 'sesiones_activas')); ss.forEach(d => sesionesHoy.push({ id: d.id, ...d.data() })); } catch (e) {}
+            }
+
             pintarTitulo(fechaStr);
             pintarFiltroAgentes();
-            pintarTimeline();
             pintarTotales();
+            pintarTimeline();
         }
 
         function pintarTitulo(fechaStr) {
@@ -238,83 +254,156 @@
             if ([...vistos.keys()].includes(previo)) sel.value = previo;
         }
 
-        function pintarTimeline() {
-            const timeline = $('timeline');
-            const filtro = $('filtro-agente').value;
-            const filas = datosDia.filter(d => !filtro || d.asesor_id === filtro);
-            if (!filas.length) {
-                timeline.innerHTML = `<div class="empty"><i class="ph ph-moon-stars"></i>${datosDia.length ? 'Ese asesor no tuvo eventos ese día.' : 'No hubo actividad registrada ese día.'}</div>`;
-                return;
-            }
-            timeline.innerHTML = filas.map(d => {
-                const fechaObj = d.fecha.toDate();
-                const badge = badges[d.tipo_evento] || '<span class="chip chip-neutral"><i class="ph-bold ph-globe"></i> Registro</span>';
+        const minTxt = (seg) => formatearTiempo(seg);
+        const esHoyStr = (f) => { const d = new Date(); return f === d.toLocaleDateString() || f === getFechaISO(d); };
+
+        // Convierte los registros en momentos: cada pausa se vuelve "Salió a…" y "Regresó de…"
+        function construirMomentos() {
+            const m = [];
+            const salidas = []; // {id, cat, ms} para no repetir "Se puso en No listo" de la misma pausa
+            const yaSalio = (id, cat, ms) => salidas.some(x => x.id === id && x.cat === cat && Math.abs(x.ms - ms) < 90000);
+            const acumulado = {}; // asesor|cat -> segundos usados hasta ese regreso
+            const nombre = (d) => nombreDe(d);
+            // orden cronológico por fin (cuando se escribió el registro)
+            const regs = [...datosDia].sort((a, b) => (a.fin || a.fecha.toDate().getTime()) - (b.fin || b.fecha.toDate().getTime()));
+            regs.forEach(d => {
+                const fin = d.fin || d.fecha.toDate().getTime();
                 const cat = ESTADO_NORM[d.estado];
-                let detalle = cat ? `<span class="flex items-center gap-1.5"><span class="dot c-${CAT_CLASS[cat]}"></span>${CAT_LABEL[cat]}</span>` : '';
-                let notas = '';
-                if (d.pausa_sigue) notas += `<p class="text-[11.5px] c-danger mt-0.5">El cronómetro siguió corriendo tras la expulsión</p>`;
-                if (d.tras_desconexion) notas += `<p class="text-[11.5px] c-danger mt-0.5">Regresó tras ${formatearTiempo(d.seg_fuera_touchpoint)} fuera de Touchpoint</p>`;
-                return `
-                <div class="ev ${evClase(d)}">
+                const base = { id: d.asesor_id, nombre: nombre(d) };
+                const marcarSalida = () => {
+                    if (!cat || !d.inicio) return;
+                    if (yaSalio(d.asesor_id, cat, d.inicio)) return;
+                    salidas.push({ id: d.asesor_id, cat, ms: d.inicio });
+                    m.push({ ...base, ms: d.inicio, tipo: 'sale', cat });
+                };
+                if (d.tipo_evento === 'LOGIN') { m.push({ ...base, ms: fin, tipo: 'login' }); return; }
+                if (d.tipo_evento === 'PAUSA_NO_PERMITIDA') { m.push({ ...base, ms: fin, tipo: 'sinturno', cat: ESTADO_NORM[d.estado] }); return; }
+                if (d.pausa_sigue) { // lo sacaron (o se salió) de Touchpoint estando en pausa
+                    marcarSalida();
+                    m.push({ ...base, ms: fin, tipo: d.tipo_evento === 'EXPULSION_SISTEMA' ? 'expulsion' : 'salioTP', cat, dur: d.duracion_segundos });
+                    return;
+                }
+                if (cat) { // pausa completa
+                    marcarSalida();
+                    const k = d.asesor_id + '|' + cat;
+                    acumulado[k] = (acumulado[k] || 0) + (d.duracion_segundos || 0);
+                    m.push({ ...base, ms: fin, tipo: 'regresa', cat, dur: d.duracion_segundos, acum: acumulado[k], lim: limiteSeg(d.asesor_id, cat),
+                        fuera: d.tras_desconexion ? (d.seg_fuera_touchpoint || 0) : null, motivo: d.tras_desconexion });
+                    return;
+                }
+                if (d.tipo_evento === 'LOGOUT_MANUAL') { m.push({ ...base, ms: fin, tipo: 'logout' }); return; }
+                if (d.tipo_evento === 'EXPULSION_SISTEMA') { m.push({ ...base, ms: fin, tipo: 'expulsion' }); return; }
+            });
+            // Hoy: quien sigue en pausa ahorita
+            sesionesHoy.forEach(sx => {
+                const cat = ESTADO_NORM[sx.estadoActivo];
+                if (!cat || !sx.tiempoInicioEstado || !esHoyStr(sx.fecha)) return;
+                const op = OPERADORES[sx.id] || {};
+                const base = { id: sx.id, nombre: op.nombre || op.nombreCorto || sx.id };
+                if (!yaSalio(sx.id, cat, sx.tiempoInicioEstado)) { salidas.push({ id: sx.id, cat, ms: sx.tiempoInicioEstado }); m.push({ ...base, ms: sx.tiempoInicioEstado, tipo: 'sale', cat }); }
+                m.push({ ...base, ms: Date.now(), tipo: 'sigue', cat, dur: Math.floor((Date.now() - sx.tiempoInicioEstado) / 1000), fueraTP: !!sx.desconectadoEn });
+            });
+            return m.sort((a, b) => a.ms - b.ms);
+        }
+
+        function renderMomento(x) {
+            const c = x.cat ? CAT_CLASS[x.cat] : null, L = x.cat ? CAT_LABEL[x.cat] : '';
+            const chipCat = (t) => `<span class="chip chip-${c}">${t}</span>`;
+            let dot = 'ev-neutral', etiqueta = '', linea = '', nota = '';
+            switch (x.tipo) {
+                case 'login': dot = 'ev-ok'; etiqueta = '<span class="chip chip-ok"><i class="ph-bold ph-sign-in"></i> Primera conexión</span>'; break;
+                case 'sale': dot = 'ev-' + c; etiqueta = chipCat(`<i class="ph-bold ph-arrow-up-right"></i> Se puso en No listo · ${L}`); break;
+                case 'regresa': {
+                    dot = 'ev-' + c; etiqueta = chipCat(`<i class="ph-bold ph-arrow-down-left"></i> Regresó de ${L}`);
+                    linea = `Estuvo <b class="text-1">${minTxt(x.dur)}</b>`;
+                    if (x.lim) {
+                        const pasado = x.acum - x.lim;
+                        linea += ` · lleva ${minTxt(x.acum)} de ${Math.round(x.lim / 60)} min de ${L.toLowerCase()} hoy`;
+                        if (pasado >= 60) linea += ` <span class="chip chip-danger !h-5 !text-[11px]">se pasó ${minTxt(pasado)}</span>`;
+                    }
+                    if (x.fuera !== null) nota = x.motivo === 'expulsion'
+                        ? `Touchpoint lo sacó por pasarse de su tiempo y volvió a entrar ${minTxt(x.fuera)} después. Ese tiempo fuera cuenta dentro de los ${minTxt(x.dur)}.`
+                        : `Se salió de Touchpoint durante la pausa y volvió a entrar ${minTxt(x.fuera)} después. Ese tiempo fuera cuenta dentro de los ${minTxt(x.dur)}.`;
+                    break;
+                }
+                case 'expulsion': dot = 'ev-danger'; etiqueta = '<span class="chip chip-danger"><i class="ph-bold ph-warning"></i> Touchpoint lo sacó por pasarse de tiempo</span>';
+                    if (x.cat) nota = `Llevaba ${minTxt(x.dur)} en ${L.toLowerCase()}. Su tiempo de ${L.toLowerCase()} sigue contando hasta que vuelva a entrar a Touchpoint.`; break;
+                case 'salioTP': dot = 'ev-warn'; etiqueta = '<span class="chip chip-warn"><i class="ph-bold ph-sign-out"></i> Cerró Touchpoint estando en pausa</span>';
+                    nota = `Llevaba ${minTxt(x.dur)} en ${L.toLowerCase()}. Su tiempo sigue contando hasta que vuelva a entrar.`; break;
+                case 'logout': etiqueta = '<span class="chip chip-neutral"><i class="ph-bold ph-sign-out"></i> Cerró sesión en Touchpoint</span>'; break;
+                case 'sinturno': dot = 'ev-warn'; etiqueta = `<span class="chip chip-warn"><i class="ph-bold ph-prohibit"></i> Se puso en ${x.cat ? L : 'pausa'} sin que le tocara turno</span>`; break;
+                case 'sigue': dot = 'ev-' + c; etiqueta = chipCat(`<span class="dot dot-live"></span> Sigue en ${L}`);
+                    linea = `Lleva ${minTxt(x.dur)}${x.fueraTP ? ' · está fuera de Touchpoint' : ''}`; break;
+            }
+            return `
+                <div class="ev ${dot}">
                     <div class="flex items-start gap-3">
-                        <div class="hora-col tnum text-[12.5px] muted pt-0.5">${formatearHora(d.fin || fechaObj.getTime())}</div>
+                        <div class="hora-col tnum text-[12.5px] muted pt-0.5">${x.tipo === 'sigue' ? 'ahora' : formatearHora(x.ms)}</div>
                         <div class="flex-1 min-w-0">
                             <div class="flex items-center flex-wrap gap-x-2 gap-y-1">
-                                <span class="font-medium text-1 text-[13.5px]">${esc(nombreDe(d))}</span>
-                                ${badge}
-                                ${detalle}
-                                ${d.tipo_evento !== 'LOGIN' && d.duracion_segundos > 0 ? `<span class="tnum text-[12px] subtle">${formatearTiempo(d.duracion_segundos)}${d.inicio ? ' · salió ' + formatearHora(d.inicio) : ''}</span>` : ''}
+                                <span class="font-medium text-1 text-[13.5px]">${esc(x.nombre)}</span>${etiqueta}
                             </div>
-                            ${notas}
+                            ${linea ? `<p class="text-[12.5px] muted mt-1">${linea}</p>` : ''}
+                            ${nota ? `<p class="text-[12px] mt-1" style="color:var(--danger)">${nota}</p>` : ''}
                         </div>
                     </div>
                 </div>`;
-            }).join('');
+        }
+
+        let momentos = [];
+        function pintarTimeline() {
+            const timeline = $('timeline');
+            const filtro = $('filtro-agente').value;
+            const filas = momentos.filter(x => !filtro || x.id === filtro);
+            if (!filas.length) {
+                timeline.innerHTML = `<div class="empty"><i class="ph ph-moon-stars"></i>${momentos.length ? 'Ese asesor no tuvo eventos ese día.' : 'No hubo actividad registrada ese día.'}</div>`;
+                return;
+            }
+            timeline.innerHTML = filas.map(renderMomento).join('');
         }
 
         function pintarTotales() {
+            momentos = construirMomentos();
             const tbody = $('tabla-totales');
-            const porAsesor = {};
-            const orden = [];
-            datosDia.forEach(d => {
-                if (!d.asesor_id) return;
-                if (!porAsesor[d.asesor_id]) { porAsesor[d.asesor_id] = { nombre: nombreDe(d), bath: 0, food: 0, quality: 0, excesos: 0 }; orden.push(d.asesor_id); }
-                const a = porAsesor[d.asesor_id];
-                const cat = ESTADO_NORM[d.estado];
-                if (cat && d.duracion_segundos > 0) a[cat] += d.duracion_segundos;
-                if (d.tipo_evento === 'EXPULSION_SISTEMA' || d.tipo_evento === 'PAUSA_NO_PERMITIDA') a.excesos++;
+            const porAsesor = {}, orden = [];
+            const fila = (id, nombre) => {
+                if (!porAsesor[id]) { porAsesor[id] = { nombre: (OPERADORES[id] && OPERADORES[id].nombreCorto) || nombre, bath: 0, food: 0, quality: 0, expulsiones: 0, sinTurno: 0 }; orden.push(id); }
+                return porAsesor[id];
+            };
+            let tExp = 0, tSin = 0, tNoListo = 0;
+            momentos.forEach(x => {
+                const a = fila(x.id, x.nombre);
+                if (x.tipo === 'regresa' || x.tipo === 'sigue') { a[x.cat] += x.dur || 0; tNoListo += x.dur || 0; }
+                if (x.tipo === 'expulsion') { a.expulsiones++; tExp++; }
+                if (x.tipo === 'sinturno') { a.sinTurno++; tSin++; }
             });
-
-            let tConectados = orden.length, tExpulsiones = 0, tSinTurno = 0, tNoListo = 0;
-            datosDia.forEach(d => {
-                if (d.tipo_evento === 'EXPULSION_SISTEMA') tExpulsiones++;
-                if (d.tipo_evento === 'PAUSA_NO_PERMITIDA') tSinTurno++;
-                const cat = ESTADO_NORM[d.estado];
-                if (cat && d.duracion_segundos > 0) tNoListo += d.duracion_segundos;
-            });
-            $('td-conectados').textContent = tConectados;
-            $('td-expulsiones').textContent = tExpulsiones;
-            $('td-sinturno').textContent = tSinTurno;
+            $('td-conectados').textContent = orden.length;
+            $('td-expulsiones').textContent = tExp;
+            $('td-sinturno').textContent = tSin;
             $('td-nolisto').textContent = formatearTiempo(tNoListo);
 
-            if (!orden.length) {
-                tbody.innerHTML = `<tr><td colspan="5" class="empty"><i class="ph ph-tray"></i>Sin datos para este día.</td></tr>`;
-                return;
-            }
-            orden.sort((a, b) => (porAsesor[b].bath + porAsesor[b].food + porAsesor[b].quality) - (porAsesor[a].bath + porAsesor[a].food + porAsesor[a].quality));
-            const celda = (seg) => `<td class="!text-right tnum ${seg > 0 ? 'text-1 font-medium' : 'subtle'}">${seg > 0 ? formatearTiempo(seg) : '—'}</td>`;
+            if (!orden.length) { tbody.innerHTML = `<tr><td colspan="5" class="empty"><i class="ph ph-tray"></i>Sin datos para este día.</td></tr>`; return; }
+            const total = (a) => a.bath + a.food + a.quality;
+            orden.sort((x, y) => total(porAsesor[y]) - total(porAsesor[x]));
+            const celda = (id, cat, seg) => {
+                if (!seg) return `<td class="!text-right subtle">—</td>`;
+                const lim = limiteSeg(id, cat);
+                const pasado = lim && seg - lim >= 60 ? seg - lim : 0;
+                return `<td class="!text-right tnum whitespace-nowrap"><span class="font-medium ${pasado > 0 ? 'c-danger' : 'text-1'}">${formatearTiempo(seg)}</span>${pasado > 0 ? `<span class="block text-[11px] c-danger">+${formatearTiempo(pasado)}</span>` : ''}</td>`;
+            };
             tbody.innerHTML = orden.map(id => {
                 const a = porAsesor[id];
+                const marcas = [a.expulsiones ? `${a.expulsiones} expulsión${a.expulsiones > 1 ? 'es' : ''}` : '', a.sinTurno ? `${a.sinTurno} sin turno` : ''].filter(Boolean).join(' · ');
                 return `
                 <tr class="resumen-fila" data-id="${esc(id)}">
-                    <td><div class="flex items-center gap-2.5"><div class="avatar avatar-sm">${esc(iniciales(a.nombre))}</div><div><p class="font-medium leading-tight text-[13px]">${esc(a.nombre)}</p></div></div></td>
-                    ${celda(a.bath)}${celda(a.food)}${celda(a.quality)}
-                    <td class="!text-right tnum ${a.excesos ? 'font-semibold c-danger' : 'subtle'}">${a.excesos || '—'}</td>
+                    <td><div class="flex items-center gap-2.5"><div class="avatar avatar-sm">${esc(iniciales(a.nombre))}</div><div><p class="font-medium leading-tight text-[13px]">${esc(a.nombre)}</p>${marcas ? `<p class="text-[11.5px] c-danger">${marcas}</p>` : ''}</div></div></td>
+                    ${celda(id, 'bath', a.bath)}${celda(id, 'food', a.food)}${celda(id, 'quality', a.quality)}
+                    <td class="!text-right tnum font-semibold text-1 whitespace-nowrap">${formatearTiempo(total(a))}</td>
                 </tr>`;
             }).join('');
             tbody.querySelectorAll('.resumen-fila').forEach(tr => tr.addEventListener('click', () => {
                 $('filtro-agente').value = $('filtro-agente').value === tr.dataset.id ? '' : tr.dataset.id;
-                tbody.querySelectorAll('.resumen-fila').forEach(x => x.classList.toggle('sel', x === tr && $('filtro-agente').value));
+                tbody.querySelectorAll('.resumen-fila').forEach(x => x.classList.toggle('sel', x === tr && !!$('filtro-agente').value));
                 pintarTimeline();
             }));
         }
