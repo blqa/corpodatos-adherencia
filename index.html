@@ -516,6 +516,7 @@
             escucharSesionActivaHOY();
             escucharHistorialTiempos();
             escucharExtension();
+            escucharAdvertencias();
             if (asesorDatos.preferencias) aplicarPrefsRemotas(asesorDatos.preferencias);
 
             if (timerRelojes) clearInterval(timerRelojes);
@@ -869,6 +870,75 @@
                     localStorage.removeItem('asesorDashboard');
                 }
             }).catch(() => localStorage.removeItem('asesorDashboard'));
+        }
+
+        // =====================================================================
+        // ADVERTENCIA OBLIGATORIA: cuando la extensión lo saca por pasarse de tiempo,
+        // aquí le sale un aviso que no se puede cerrar hasta que lo acepte.
+        // La aceptación queda en registros_tiempos (ADVERTENCIA_ACEPTADA) para el supervisor.
+        // =====================================================================
+        const regsHoyAviso = new Map();
+        let avisoMostrando = null;
+        function escucharAdvertencias() {
+            const hoy = getFechaISO();
+            const q = query(collection(db, "registros_tiempos"), where("fecha", ">=", new Date(hoy + 'T00:00:00')));
+            onSnapshot(q, (snap) => {
+                snap.docChanges().forEach(ch => {
+                    const d = ch.doc.data();
+                    if (d.asesor_id !== asesorDatos.id) return;
+                    if (ch.type === 'removed') regsHoyAviso.delete(ch.doc.id); else regsHoyAviso.set(ch.doc.id, { id: ch.doc.id, ...d });
+                });
+                revisarAdvertencias();
+            }, () => {});
+        }
+        function revisarAdvertencias() {
+            if (avisoMostrando) return;
+            const regs = [...regsHoyAviso.values()];
+            const aceptadas = new Set(regs.filter(r => r.tipo_evento === 'ADVERTENCIA_ACEPTADA').map(r => r.ref));
+            const pendiente = regs.filter(r => r.tipo_evento === 'EXPULSION_SISTEMA' && !aceptadas.has(r.id)).sort((a, b) => (a.fin || 0) - (b.fin || 0))[0];
+            if (pendiente) mostrarAdvertencia(pendiente, regs);
+        }
+        function mostrarAdvertencia(exp, regs) {
+            avisoMostrando = exp.id;
+            const meta = metaEstado[exp.estado] || metaEstadoReverse[exp.estado];
+            const nombreCat = meta ? meta.label.toLowerCase() : 'pausa';
+            const keyLim = { bath: 'bano', food: 'comida', quality: 'calidad', 'Baño': 'bano', 'Comida': 'comida', 'Calidad': 'calidad' }[exp.estado];
+            const limMin = (asesorDatos.limites && asesorDatos.limites[keyLim]) || (configGlobal.limites && configGlobal.limites[keyLim]);
+            const hora = (ms) => new Date(ms).toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit', hour12: false });
+            const mins = (seg) => { const m = Math.round((seg || 0) / 60); return m === 1 ? '1 minuto' : m + ' minutos'; };
+            // ¿Ya regresó? Busca la pausa completa que empezó igual
+            const regreso = regs.find(r => r.tipo_evento === 'FIN_BREAK' && r.tras_desconexion && Math.abs((r.inicio || 0) - (exp.inicio || 0)) < 90000);
+            let texto = `A las <b>${hora(exp.fin)}</b> llevabas <b>${mins(exp.duracion_segundos)}</b> en ${nombreCat}${limMin ? ` y tu límite del día es de <b>${limMin} minutos</b>` : ''}, por eso el sistema te sacó de Touchpoint.`;
+            if (regreso) texto += `<br><br>Regresaste a las <b>${hora(regreso.fin)}</b>: en total fueron <b>${mins(regreso.duracion_segundos)}</b> de ${nombreCat}.`;
+            else texto += `<br><br>Tu tiempo de ${nombreCat} <b>sigue contando</b> hasta que vuelvas a entrar a Touchpoint.`;
+
+            const w = document.createElement('div');
+            w.id = 'aviso-expulsion';
+            w.innerHTML = `
+                <div style="position:fixed;inset:0;z-index:9999;background:rgba(8,10,20,.78);backdrop-filter:blur(6px);display:grid;place-items:center;padding:16px">
+                    <div class="card" style="max-width:480px;width:100%;padding:28px;border:2px solid var(--danger);box-shadow:0 0 0 6px var(--danger-soft),0 30px 80px rgba(0,0,0,.5)">
+                        <div style="width:56px;height:56px;border-radius:16px;display:grid;place-items:center;background:var(--danger-soft);color:var(--danger);font-size:30px;margin-bottom:16px"><i class="ph-fill ph-warning"></i></div>
+                        <h2 class="text-1" style="font-size:21px;font-weight:700;margin-bottom:10px">Te pasaste de tu tiempo de ${nombreCat}</h2>
+                        <p class="muted" style="font-size:15px;line-height:1.6">${texto}</p>
+                        <p style="font-size:13.5px;line-height:1.5;margin-top:14px;padding:10px 12px;border-radius:10px;background:var(--danger-soft);color:var(--danger)">Esto queda registrado y tu supervisor lo puede ver. Cuida tus tiempos para que no vuelva a pasar.</p>
+                        <button id="btn-aceptar-aviso" class="btn btn-primary" style="width:100%;margin-top:20px;height:46px;font-size:15px" disabled>Espera 5…</button>
+                    </div>
+                </div>`;
+            document.body.appendChild(w);
+            const btn = document.getElementById('btn-aceptar-aviso');
+            let n = 5;
+            const t = setInterval(() => { n--; if (n > 0) btn.textContent = `Espera ${n}…`; else { clearInterval(t); btn.disabled = false; btn.innerHTML = '<i class="ph-bold ph-check"></i> Entendido, acepto'; } }, 1000);
+            btn.addEventListener('click', async () => {
+                btn.disabled = true; btn.innerHTML = '<span class="spinner"></span>';
+                try {
+                    await addDoc(collection(db, 'registros_tiempos'), {
+                        asesor_id: asesorDatos.id, asesor_nombre: asesorDatos.nombre || '', tipo_evento: 'ADVERTENCIA_ACEPTADA',
+                        estado: 'Advertencia aceptada', pausa: exp.estado || '', ref: exp.id, duracion_segundos: 0, inicio: Date.now(), fin: Date.now(), fecha: new Date()
+                    });
+                    w.remove(); avisoMostrando = null;
+                    setTimeout(revisarAdvertencias, 300);
+                } catch (e) { btn.disabled = false; btn.innerHTML = 'No se pudo guardar, intenta de nuevo'; }
+            });
         }
     </script>
 </body>

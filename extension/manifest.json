@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Tracker Agentes",
-  "version": "1.6",
+  "version": "1.7",
   "description": "Sincroniza tiempos de TouchPoint con Firebase",
   "permissions": [
     "alarms",
