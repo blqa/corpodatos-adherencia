@@ -263,7 +263,7 @@
                                 <span class="font-medium text-1 text-[13.5px]">${esc(nombreDe(d))}</span>
                                 ${badge}
                                 ${detalle}
-                                ${d.duracion_segundos > 0 ? `<span class="tnum text-[12px] subtle">${formatearTiempo(d.duracion_segundos)}${d.inicio ? ' · salió ' + formatearHora(d.inicio) : ''}</span>` : ''}
+                                ${d.tipo_evento !== 'LOGIN' && d.duracion_segundos > 0 ? `<span class="tnum text-[12px] subtle">${formatearTiempo(d.duracion_segundos)}${d.inicio ? ' · salió ' + formatearHora(d.inicio) : ''}</span>` : ''}
                             </div>
                             ${notas}
                         </div>
