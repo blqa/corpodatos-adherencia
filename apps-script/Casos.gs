@@ -14,12 +14,18 @@
  *      (revisa cada minuto).
  *
  *  Necesita el archivo "Pagina" (usa su contraseña de Firebase).
+ *  Si está el archivo principal de OMT (el del menú "OMT"), la asignación de
+ *  asesor y folio la hace SU función asignarFilas_ (las mismas reglas de
+ *  siempre: ROL, VACACIONES, ¿RECIBE CASOS?, menos casos abiertos).
  *
  *  Cómo se instala (una sola vez):
  *    1. Extensiones → Apps Script → + → Secuencia de comandos → nómbralo
  *       Casos, pega este código y guarda.
- *    2. En el onOpen() del otro archivo (donde ya pusiste menuPagina_();)
- *       agrega abajo la línea   menuCasos_();   y recarga la hoja.
+ *    2. En el onOpen() del archivo principal, debajo de la línea
+ *         if (typeof menuPagina_ === 'function') menuPagina_();
+ *       agrega:
+ *         if (typeof menuCasos_ === 'function') menuCasos_();
+ *       y recarga la hoja.
  *    3. Menú 📋 Casos → "1. Activar casos automáticos". Google te pedirá
  *       permisos (para leer el archivo del nocturno): acéptalos.
  * =====================================================================
@@ -251,7 +257,7 @@ function leerAsign_() {
 }
 
 // Quién está de descanso / vacaciones / permiso hoy (según ROL)
-function fueraHoy_(asesores) {
+function casosFueraHoy_(asesores) {
   const out = {};
   const h = SpreadsheetApp.getActive().getSheetByName(CASOS.rol);
   if (!h || h.getLastRow() < 3) return out;
@@ -282,7 +288,7 @@ function listaDe_(hoja, fila, col, respaldo) {
   return respaldo;
 }
 
-function siguienteFolio_() {
+function casosSiguienteFolio_() {
   let max = 0;
   [CASOS.hoja].concat(CASOS.historial).forEach(function (n) {
     const d = leerHojaCasos_(n);
@@ -371,9 +377,10 @@ function importarNocturno_() {
   props.setProperty('CASOS_ULT_IMPORT', ahora_() + ' · ' + nuevos.length + ' nuevo(s)');
   if (!nuevos.length) return 'Nocturno: sin casos nuevos (desde ' + desde + ').' + (saltados ? ' ' + saltados + ' fila(s) sin número o fecha válidos.' : '');
 
-  // Asignación: el que tenga menos casos abiertos, recibe casos = SI y no está fuera hoy
+  // Asignación: si existe asignarFilas_ (archivo principal OMT) la hace él; si no, aquí mismo
+  const usarPrincipal = typeof asignarFilas_ === 'function';
   const asesores = leerAsign_();
-  const fuera = fueraHoy_(asesores);
+  const fuera = usarPrincipal ? {} : casosFueraHoy_(asesores);
   let cand = asesores.filter(function (a) { return a.recibe && !fuera[a.id]; });
   if (!cand.length) cand = asesores.filter(function (a) { return a.recibe; });
   if (!cand.length) cand = asesores;
@@ -385,16 +392,16 @@ function importarNocturno_() {
   });
   let turno = +(props.getProperty('CASOS_TURNO') || 0);
 
-  let folio = siguienteFolio_();
+  let folio = casosSiguienteFolio_();
   const hoja = casos.hoja;
   const ancho = Math.max(c.folio, c.observacion, c.notas) + 1;
   // Primera fila libre (A..FOLIO vacías) después del último caso
   let ultima = casos.filas.length ? casos.filas[casos.filas.length - 1].fila : 1;
   const libre = function (r) { return r > hoja.getLastRow() || hoja.getRange(r, 1, 1, ancho).getValues()[0].every(function (x) { return x === '' || x === null; }); };
-  const regFilas = [];
+  const escritas = [];
   nuevos.forEach(function (x) {
     let asesor = '';
-    if (cand.length) {
+    if (!usarPrincipal && cand.length) {
       let mejor = null;
       for (let k = 0; k < cand.length; k++) {
         const a = cand[(turno + k) % cand.length];
@@ -403,16 +410,18 @@ function importarNocturno_() {
       asesor = mejor.id; carga[asesor]++;
       turno = (cand.indexOf(mejor) + 1) % cand.length;
     }
-    folio++;
     const fila = new Array(ancho).fill('');
     fila[c.fecha] = x.fecha;
     fila[c.usuario] = x.nombre;
     fila[c.tipo] = tipoDeFalla_(x.falla, tipos);
     fila[c.afectada] = Number(x.linea);
     fila[c.contacto] = Number(x.contacto);
-    fila[c.asesor] = asesor;
-    fila[c.status] = CASOS.statusNuevo;
-    fila[c.folio] = folio_(folio);
+    if (!usarPrincipal) {
+      folio++;
+      fila[c.asesor] = asesor;
+      fila[c.status] = CASOS.statusNuevo;
+      fila[c.folio] = folio_(folio);
+    }
     ultima++;
     while (!libre(ultima)) ultima++;
     if (ultima > hoja.getMaxRows()) hoja.insertRowsAfter(hoja.getMaxRows(), 20);
@@ -424,9 +433,19 @@ function importarNocturno_() {
     rango.setValues([fila]);
     const nota = 'NOCTURNO ' + fmt_(x.fecha) + (x.asesorNoct ? ' · ' + x.asesorNoct : '') + (x.falla ? ' · Falla: ' + x.falla : '') + (x.pruebas ? '\n\n' + x.pruebas : '');
     hoja.getRange(ultima, c.usuario + 1).setNote(nota);
-    regFilas.push([x.clave, folio_(folio), new Date(), asesor]);
+    escritas.push({ fila: ultima, clave: x.clave });
   });
-  props.setProperty('CASOS_TURNO', String(turno));
+  SpreadsheetApp.flush();
+  if (usarPrincipal) {
+    const r1 = escritas[0].fila, r2 = escritas[escritas.length - 1].fila;
+    asignarFilas_(SpreadsheetApp.getActive(), r1, r2);
+    SpreadsheetApp.flush();
+  }
+  const regFilas = escritas.map(function (e) {
+    const v = hoja.getRange(e.fila, 1, 1, ancho).getValues()[0];
+    return [e.clave, String(v[c.folio]), new Date(), String(v[c.asesor])];
+  });
+  if (!usarPrincipal) props.setProperty('CASOS_TURNO', String(turno));
   reg.getRange(reg.getLastRow() + 1, 1, regFilas.length, 4).setValues(regFilas);
   SpreadsheetApp.flush();
   return 'Nocturno: ' + nuevos.length + ' caso(s) nuevo(s): ' + regFilas.map(function (r) { return r[1] + '→' + (r[3] || 'sin asesor'); }).join(', ') +
@@ -459,6 +478,9 @@ function casoDesdeFila_(x, c, porId, nota) {
 
 // Sin rango: toda la hoja (y borra de la página lo que ya no está en CASOS). Con rango: solo esas filas.
 function sincronizarCasos_(r1, r2) {
+  // Filas nuevas capturadas a mano: el archivo principal les pone asesor y folio (si está)
+  const principal = typeof asignarFilas_ === 'function';
+  if (principal) { asignarFilas_(SpreadsheetApp.getActive(), r1 || 2, r2 || 100000); SpreadsheetApp.flush(); }
   const casos = leerHojaCasos_(CASOS.hoja);
   if (!casos) return 'No encontré la pestaña ' + CASOS.hoja + '.';
   const c = casos.c;
@@ -466,10 +488,10 @@ function sincronizarCasos_(r1, r2) {
   let filas = casos.filas;
   if (r1) filas = filas.filter(function (x) { return x.fila >= r1 && x.fila <= r2; });
 
-  // Filas sin folio (capturadas a mano): se les pone el siguiente
-  const sinFolio = filas.filter(function (x) { return !String(x.v[c.folio]).trim() && String(x.v[c.usuario]).trim() && linea_(x.v[c.afectada]); });
+  // Sin archivo principal: aquí mismo se pone folio a las filas que no tienen
+  const sinFolio = principal ? [] : filas.filter(function (x) { return !String(x.v[c.folio]).trim() && String(x.v[c.usuario]).trim() && linea_(x.v[c.afectada]); });
   if (sinFolio.length) {
-    let n = siguienteFolio_();
+    let n = casosSiguienteFolio_();
     sinFolio.forEach(function (x) { n++; x.v[c.folio] = folio_(n); casos.hoja.getRange(x.fila, c.folio + 1).setValue(x.v[c.folio]); });
   }
 
@@ -532,6 +554,7 @@ function aplicarPendientesWeb_() {
       return;
     }
     const cam = p.cambios || {};
+    if (('status' in cam || 'ultimaAccion' in cam) && !('fechaUltima' in cam)) cam.fechaUltima = fmt_(new Date());
     Object.keys(cam).forEach(function (k) {
       if (!COL[k] || c[COL[k]] < 0) return;
       let v = cam[k];
