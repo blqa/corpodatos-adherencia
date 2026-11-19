@@ -281,7 +281,8 @@
                 if (d.tipo_evento === 'PAUSA_NO_PERMITIDA') { m.push({ ...base, ms: fin, tipo: 'sinturno', cat: ESTADO_NORM[d.estado] }); return; }
                 if (d.pausa_sigue) { // lo sacaron (o se salió) de Touchpoint estando en pausa
                     marcarSalida();
-                    m.push({ ...base, ms: fin, tipo: d.tipo_evento === 'EXPULSION_SISTEMA' ? 'expulsion' : 'salioTP', cat, dur: d.duracion_segundos });
+                    m.push({ ...base, ms: fin, tipo: d.tipo_evento === 'EXPULSION_SISTEMA' ? 'expulsion' : 'salioTP', cat, dur: d.duracion_segundos,
+                        acum: (acumulado[d.asesor_id + '|' + cat] || 0) + (d.duracion_segundos || 0), lim: cat ? limiteSeg(d.asesor_id, cat) : null });
                     return;
                 }
                 if (cat) { // pausa completa
@@ -328,9 +329,17 @@
                     break;
                 }
                 case 'expulsion': dot = 'ev-danger'; etiqueta = '<span class="chip chip-danger"><i class="ph-bold ph-warning"></i> Touchpoint lo sacó por pasarse de tiempo</span>';
-                    if (x.cat) nota = `Llevaba ${minTxt(x.dur)} en ${L.toLowerCase()}. Su tiempo de ${L.toLowerCase()} sigue contando hasta que vuelva a entrar a Touchpoint.`; break;
+                    if (x.cat) {
+                        const previo = x.acum - x.dur;
+                        linea = previo > 0
+                            ? `Llevaba ${minTxt(x.dur)} en esta pausa + ${minTxt(previo)} de antes = <b class="text-1">${minTxt(x.acum)}</b> de ${L.toLowerCase()} hoy${x.lim ? ` (límite ${Math.round(x.lim / 60)} min)` : ''}`
+                            : `Llevaba <b class="text-1">${minTxt(x.dur)}</b> de ${L.toLowerCase()}${x.lim ? ` (límite ${Math.round(x.lim / 60)} min)` : ''}`;
+                        nota = `Su tiempo de ${L.toLowerCase()} sigue contando hasta que vuelva a entrar a Touchpoint.`;
+                    }
+                    break;
                 case 'salioTP': dot = 'ev-warn'; etiqueta = '<span class="chip chip-warn"><i class="ph-bold ph-sign-out"></i> Cerró Touchpoint estando en pausa</span>';
-                    nota = `Llevaba ${minTxt(x.dur)} en ${L.toLowerCase()}. Su tiempo sigue contando hasta que vuelva a entrar.`; break;
+                    linea = `Llevaba ${minTxt(x.dur)} en esta pausa (${minTxt(x.acum)} de ${L.toLowerCase()} en el día)`;
+                    nota = `Su tiempo sigue contando hasta que vuelva a entrar.`; break;
                 case 'logout': etiqueta = '<span class="chip chip-neutral"><i class="ph-bold ph-sign-out"></i> Cerró sesión en Touchpoint</span>'; break;
                 case 'sinturno': dot = 'ev-warn'; etiqueta = `<span class="chip chip-warn"><i class="ph-bold ph-prohibit"></i> Se puso en ${x.cat ? L : 'pausa'} sin que le tocara turno</span>`; break;
                 case 'sigue': dot = 'ev-' + c; etiqueta = chipCat(`<span class="dot dot-live"></span> Sigue en ${L}`);
