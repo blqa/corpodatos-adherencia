@@ -1,0 +1,390 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <title>Casos · OMT</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="../assets/theme.js"></script>
+    <script>
+        // Mismo color que eligió el asesor en su página (o el del panel de supervisor)
+        (function () {
+            if (sessionStorage.getItem('docPanel') === '1') { document.documentElement.classList.add('dark', 'super'); return; }
+            var A = { indigo: ['#4f46e5', '#6366f1'], azul: ['#2563eb', '#3b82f6'], verde: ['#059669', '#10b981'], rosa: ['#db2777', '#ec4899'], naranja: ['#ea580c', '#f97316'], grafito: ['#334155', '#64748b'] };
+            try {
+                var p = JSON.parse(localStorage.getItem('prefsAsesor') || '{}');
+                if (p.acento && A[p.acento]) {
+                    var c = A[p.acento];
+                    document.write('<style>:root{--brand:' + c[0] + ';--brand-600:' + c[0] + ';--brand-text:' + c[0] + ';--brand-soft:color-mix(in srgb,' + c[0] + ' 11%,white)}html.dark{--brand:' + c[1] + ';--brand-text:' + c[1] + ';--brand-soft:color-mix(in srgb,' + c[1] + ' 16%,transparent)}</style>');
+                }
+            } catch (e) {}
+        })();
+    </script>
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+    <link rel="stylesheet" href="../assets/ui.css">
+    <style>
+        body { padding-bottom: env(safe-area-inset-bottom); }
+        .caso { transition: border-color .15s, box-shadow .15s; }
+        .caso.abierto { border-color: color-mix(in srgb, var(--brand) 45%, var(--border)); box-shadow: var(--shadow); }
+        .caso-cab { cursor: pointer; }
+        .caso-cab:hover { background: color-mix(in srgb, var(--brand) 4%, transparent); }
+        .linea { font-variant-numeric: tabular-nums; font-weight: 600; letter-spacing: .01em; }
+        .copiable { cursor: pointer; border-radius: 6px; padding: 1px 4px; margin: -1px -4px; }
+        .copiable:hover { background: var(--brand-soft); color: var(--brand-text); }
+        .detalle { white-space: pre-wrap; font-size: 13px; line-height: 1.55; color: var(--text-2); background: var(--surface-2); border: 1px solid var(--border); border-radius: 10px; padding: 10px 12px; max-height: 220px; overflow: auto; }
+        .tab-f { height: 34px; padding: 0 12px; border-radius: 9px; font-size: 13px; font-weight: 600; color: var(--text-2); display: inline-flex; align-items: center; gap: 6px; }
+        .tab-f.on { background: var(--brand-soft); color: var(--brand-text); }
+        .tab-f .n { font-size: 11px; background: var(--surface-3); color: var(--text-2); border-radius: 999px; padding: 0 6px; min-width: 20px; text-align: center; }
+        .tab-f.on .n { background: var(--brand); color: #fff; }
+        .acc { display: flex; flex-wrap: wrap; gap: 6px; }
+        .acc button { height: 30px; padding: 0 10px; border-radius: 8px; border: 1px solid var(--border-strong); font-size: 12.5px; color: var(--text-2); background: var(--surface); }
+        .acc button.on { border-color: var(--brand); background: var(--brand-soft); color: var(--brand-text); font-weight: 600; }
+        .dias-alto { color: var(--danger); font-weight: 700; }
+        .kpi-mini { padding: 10px 14px; border-radius: 12px; background: var(--surface); border: 1px solid var(--border); min-width: 110px; }
+        .kpi-mini b { display: block; font-size: 22px; line-height: 1.1; font-variant-numeric: tabular-nums; color: var(--text); }
+        .kpi-mini span { font-size: 12px; color: var(--text-3); }
+    </style>
+</head>
+<body>
+    <div class="min-h-screen flex flex-col">
+        <header class="topbar">
+            <div class="flex items-center gap-3 min-w-0">
+                <a id="volver" href="../index.html" class="btn btn-ghost btn-icon btn-sm" title="Volver"><i class="ph-bold ph-arrow-left"></i></a>
+                <div class="min-w-0">
+                    <h1 class="text-[17px] font-semibold text-1 leading-tight truncate" id="titulo">Mis casos</h1>
+                    <p class="text-[12.5px] subtle truncate" id="subtitulo">Cargando…</p>
+                </div>
+            </div>
+            <div class="flex items-center gap-2">
+                <span id="chip-sync" class="chip chip-neutral hidden sm:inline-flex" title="Conexión con la hoja CASOS"><i class="ph-bold ph-arrows-clockwise"></i><span>Sincronizado con la hoja</span></span>
+                <button onclick="toggleTheme()" class="btn btn-ghost btn-icon" title="Cambiar tema"><i data-theme-icon class="ph-bold ph-moon"></i></button>
+            </div>
+        </header>
+
+        <div class="page">
+            <div class="page-inner" style="max-width: 1100px">
+                <div id="sin-sesion" class="hidden card empty">
+                    <i class="ph ph-user-circle"></i>
+                    <p class="text-1 font-semibold mb-1">Entra con tu ID para ver tus casos</p>
+                    <p class="mb-4">Tus casos asignados aparecen aquí cuando inicias sesión en tu página.</p>
+                    <a href="../index.html" class="btn btn-primary btn-sm"><i class="ph-bold ph-sign-in"></i> Ir a iniciar sesión</a>
+                </div>
+
+                <div id="app" class="hidden">
+                    <div id="kpis" class="flex flex-wrap gap-2.5 mb-4"></div>
+
+                    <div class="flex flex-wrap items-center gap-2 mb-4">
+                        <div class="flex items-center gap-1 card !rounded-xl p-1" id="filtros">
+                            <button class="tab-f on" data-f="abiertos">Abiertos <span class="n" id="n-abiertos">0</span></button>
+                            <button class="tab-f" data-f="hoy">Sin intento hoy <span class="n" id="n-hoy">0</span></button>
+                            <button class="tab-f" data-f="todos">Todos <span class="n" id="n-todos">0</span></button>
+                        </div>
+                        <select id="f-asesor" class="input !h-10 !w-56 hidden"><option value="">Todos los asesores</option></select>
+                        <div class="field flex-1 min-w-[200px]"><i class="ph-bold ph-magnifying-glass"></i><input id="buscar" class="input" placeholder="Buscar por nombre, línea o folio"></div>
+                    </div>
+
+                    <div id="lista" class="flex flex-col gap-3"><div class="card empty"><span class="spinner spinner-lg"></span></div></div>
+                    <p class="text-[12px] subtle mt-6 text-center">Lo que guardas aquí se escribe en la hoja CASOS en menos de un minuto, y lo que se cambie en la hoja aparece aquí solo.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="toast" class="toast hidden"><i class="ph-fill ph-check-circle text-emerald-400"></i><span id="toast-txt">Listo</span></div>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getFirestore, collection, doc, query, where, onSnapshot, updateDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+
+        const SUPERVISOR_EMAIL = '17620@omt.godsplan.site';
+        const app = initializeApp({ apiKey: "AIzaSyBKYconuZXn53Eb4EJFsHj4rYaO0eK6liQ", authDomain: "tratocom-d38e7.firebaseapp.com", projectId: "tratocom-d38e7" });
+        const db = getFirestore(app);
+        const auth = getAuth(app);
+        const $ = (id) => document.getElementById(id);
+        const esc = (s) => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+        const norm = (s) => String(s || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toUpperCase().replace(/\s+/g, ' ').trim();
+        const claveNombre = (s) => norm(s).split(' ').filter(Boolean).sort().join(' ');
+        const pad = (n) => String(n).padStart(2, '0');
+        const hoy = () => { const d = new Date(); return `${pad(d.getDate())}/${pad(d.getMonth() + 1)}/${d.getFullYear()}`; };
+        const hoyYmd = () => { const d = new Date(); return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`; };
+        const ymdDe = (s) => { const m = String(s || '').match(/^(\d{1,2})\/(\d{1,2})\/(\d{2,4})/); if (!m) return ''; let a = +m[3]; if (a < 100) a += 2000; return `${a}-${pad(m[2])}-${pad(m[1])}`; };
+        const diasDesde = (ymd) => { if (!ymd) return null; const [a, m, d] = ymd.split('-').map(Number); const t = new Date(a, m - 1, d); const h = new Date(); h.setHours(0, 0, 0, 0); return Math.round((h - t) / 864e5); };
+        const cerrado = (c) => norm(c.status) === 'CERRADO';
+
+        let yo = null, esSup = false, casos = {}, meta = { status: ['Pendiente', 'En Proceso', 'Cerrado'], acciones: [], asesores: [] };
+        let filtro = 'abiertos', abierto = null, desub = null;
+        const borradores = {};   // cambios sin guardar por folio
+
+        try { yo = JSON.parse(localStorage.getItem('asesorDashboard') || 'null'); } catch (e) {}
+
+        let tToast;
+        function toast(msg, ms = 1800, error = false) {
+            const t = $('toast'); $('toast-txt').textContent = msg;
+            t.querySelector('i').className = error ? 'ph-fill ph-warning-circle text-rose-400' : 'ph-fill ph-check-circle text-emerald-400';
+            t.classList.remove('hidden'); t.classList.add('fade-in');
+            clearTimeout(tToast); tToast = setTimeout(() => t.classList.add('hidden'), ms);
+        }
+        window.copiar = async (txt) => {
+            try { await navigator.clipboard.writeText(txt); }
+            catch (e) { const ta = document.createElement('textarea'); ta.value = txt; document.body.appendChild(ta); ta.select(); document.execCommand('copy'); ta.remove(); }
+            toast('Copiado: ' + txt);
+        };
+
+        // ---------- Quién entra ----------
+        let decidido = false;
+        onAuthStateChanged(auth, (u) => {
+            esSup = !!u && String(u.email || '').toLowerCase() === SUPERVISOR_EMAIL;
+            if (esSup) {
+                sessionStorage.setItem('docPanel', '1');
+                document.documentElement.classList.add('dark', 'super');
+                $('volver').href = '../super/dash.html';
+            }
+            if (!decidido) { decidido = true; iniciar(); }
+        });
+        setTimeout(() => { if (!decidido) { decidido = true; iniciar(); } }, 2500);
+
+        function iniciar() {
+            if (!esSup && !(yo && yo.id)) {
+                $('sin-sesion').classList.remove('hidden');
+                $('subtitulo').textContent = 'Sin sesión';
+                return;
+            }
+            $('app').classList.remove('hidden');
+            if (esSup) {
+                $('titulo').textContent = 'Casos del equipo';
+                $('f-asesor').classList.remove('hidden');
+            } else {
+                $('titulo').textContent = 'Mis casos';
+            }
+            onSnapshot(doc(db, 'hoja', 'casos_meta'), (s) => {
+                if (s.exists()) meta = Object.assign(meta, s.data());
+                if (esSup) {
+                    const sel = $('f-asesor'), v = sel.value;
+                    sel.innerHTML = '<option value="">Todos los asesores</option>' + (meta.asesores || []).map(a => `<option value="${esc(a.id)}">${esc(a.id)} · ${esc(a.nombre)}</option>`).join('');
+                    sel.value = v;
+                }
+                pintar();
+            }, () => {});
+
+            const col = collection(db, 'casos');
+            let q = col;
+            if (!esSup) {
+                const claves = [String(yo.id || '').toUpperCase(), String(yo.id || ''), claveNombre(yo.nombre), claveNombre(yo.nombreCorto)]
+                    .filter((k, i, a) => k && k.length >= 3 && a.indexOf(k) === i).slice(0, 30);
+                q = query(col, where('claves', 'array-contains-any', claves));
+            }
+            desub = onSnapshot(q, (snap) => {
+                casos = {};
+                snap.forEach(d => { casos[d.id] = { id: d.id, ...d.data() }; });
+                $('chip-sync').className = 'chip chip-ok hidden sm:inline-flex';
+                pintar();
+            }, (err) => {
+                $('lista').innerHTML = `<div class="card empty"><i class="ph ph-cloud-slash"></i>No se pudieron cargar los casos.<br><span class="text-[13px]">${esc(err.code || err.message)}</span></div>`;
+                $('chip-sync').className = 'chip chip-danger hidden sm:inline-flex';
+            });
+        }
+
+        // ---------- Lista ----------
+        const STATUS_CHIP = { 'PENDIENTE': 'chip-warn', 'EN PROCESO': 'chip-quality', 'CERRADO': 'chip-ok' };
+        function dias(c) { return cerrado(c) ? null : diasDesde(c.fechaYmd || ymdDe(c.fecha)); }
+        function intentoHoy(c) { return ymdDe(c.fechaUltima) === hoyYmd(); }
+
+        function visibles() {
+            const t = norm($('buscar').value), asesor = esSup ? $('f-asesor').value : '';
+            const todos = Object.values(casos).filter(c => !asesor || c.asesor === asesor);
+            const abiertos = todos.filter(c => !cerrado(c));
+            const sinHoy = abiertos.filter(c => !intentoHoy(c));
+            $('n-abiertos').textContent = abiertos.length; $('n-hoy').textContent = sinHoy.length; $('n-todos').textContent = todos.length;
+            let l = filtro === 'abiertos' ? abiertos : filtro === 'hoy' ? sinHoy : todos;
+            if (t) l = l.filter(c => norm([c.usuario, c.lineaAfectada, c.lineaContacto, c.folio, c.tipo, c.asesor, c.notas].join(' ')).includes(t));
+            // Primero los abiertos más viejos
+            return l.sort((a, b) => (cerrado(a) - cerrado(b)) || String(a.fechaYmd).localeCompare(String(b.fechaYmd)) || String(a.folio).localeCompare(String(b.folio)));
+        }
+
+        function pintarKpis() {
+            const asesor = esSup ? $('f-asesor').value : '';
+            const l = Object.values(casos).filter(c => !asesor || c.asesor === asesor);
+            const ab = l.filter(c => !cerrado(c));
+            const viejos = ab.filter(c => (dias(c) ?? 0) >= 5).length;
+            const k = (n, t, cls = '') => `<div class="kpi-mini"><b class="${cls}">${n}</b><span>${t}</span></div>`;
+            let h = k(ab.filter(c => norm(c.status) === 'PENDIENTE').length, 'Pendientes') + k(ab.filter(c => norm(c.status) === 'EN PROCESO').length, 'En proceso')
+                + k(ab.filter(c => !intentoHoy(c)).length, 'Sin intento hoy') + k(viejos, '5+ días abiertos', viejos ? 'dias-alto' : '');
+            if (esSup && !asesor) {
+                const por = {};
+                ab.forEach(c => por[c.asesor || '—'] = (por[c.asesor || '—'] || 0) + 1);
+                h += `<div class="kpi-mini flex-1 min-w-[220px]"><span>Abiertos por asesor</span><div class="flex flex-wrap gap-1.5 mt-1">${Object.keys(por).sort().map(a => `<span class="chip chip-neutral">${esc(a)} <b>${por[a]}</b></span>`).join('') || '<span class="subtle text-[12px]">—</span>'}</div></div>`;
+            }
+            $('kpis').innerHTML = h;
+        }
+
+        function pintar() {
+            pintarKpis();
+            $('subtitulo').textContent = esSup ? 'Todos los casos de la hoja CASOS' : `${yo.nombreCorto || yo.nombre || yo.id} · solo tus casos asignados`;
+            // No repintar la tarjeta que se está editando para no borrar lo que escriben
+            const enfocado = document.activeElement && document.activeElement.closest && document.activeElement.closest('.caso');
+            const l = visibles();
+            if (!l.length) {
+                $('lista').innerHTML = `<div class="card empty"><i class="ph ph-check-circle"></i>${Object.keys(casos).length ? 'Nada por aquí con este filtro.' : (esSup ? 'Todavía no hay casos en la página. Activa el menú 📋 Casos en la hoja.' : '¡No tienes casos asignados!')}</div>`;
+                return;
+            }
+            if (enfocado && enfocado.dataset.id && l.some(c => c.id === enfocado.dataset.id)) {
+                // Solo actualiza las demás tarjetas
+                const keep = enfocado.dataset.id;
+                const html = l.map(c => c.id === keep ? `<div data-keep="${esc(keep)}"></div>` : tarjeta(c)).join('');
+                const tmp = document.createElement('div'); tmp.innerHTML = html;
+                const marcador = tmp.querySelector('[data-keep]');
+                marcador.replaceWith(enfocado);
+                $('lista').replaceChildren(...tmp.childNodes);
+                actualizarEstado(enfocado, casos[keep]);
+                return;
+            }
+            $('lista').innerHTML = l.map(tarjeta).join('');
+        }
+
+        function estadoSync(c) {
+            if (c.errorHoja) return `<span class="chip chip-danger" title="${esc(c.errorHoja)}"><i class="ph-bold ph-warning"></i>No llegó a la hoja</span>`;
+            if (c.pendienteHoja) return `<span class="chip chip-warn"><span class="spinner" style="width:11px;height:11px;border-width:2px"></span>Guardando en la hoja…</span>`;
+            return '';
+        }
+        function actualizarEstado(card, c) { const e = card.querySelector('.sync'); if (e && c) e.innerHTML = estadoSync(c); }
+
+        function tarjeta(c) {
+            const d = dias(c), b = borradores[c.id] || {};
+            const val = (k) => k in b ? b[k] : (c[k] ?? '');
+            const st = val('status'), acc = val('ultimaAccion');
+            const abiertoAhora = abierto === c.id;
+            const opcionesStatus = (meta.status || []).map(s => `<option ${s === st ? 'selected' : ''}>${esc(s)}</option>`).join('');
+            const acciones = (meta.acciones || []).map(a => `<button type="button" data-acc="${esc(a)}" class="${a === acc ? 'on' : ''}">${esc(a)}</button>`).join('');
+            const asesores = (meta.asesores || []).map(a => `<option value="${esc(a.id)}" ${a.id === val('asesor') ? 'selected' : ''}>${esc(a.id)} · ${esc(a.nombre)}</option>`).join('');
+            return `
+            <div class="card caso ${abiertoAhora ? 'abierto' : ''}" data-id="${esc(c.id)}">
+                <div class="caso-cab p-4 flex flex-wrap items-center gap-x-4 gap-y-2" data-toggle="1">
+                    <div class="min-w-0 flex-1">
+                        <div class="flex flex-wrap items-center gap-1.5 mb-1">
+                            <span class="chip chip-brand mono">${esc(c.folio)}</span>
+                            <span class="chip chip-neutral">${esc(c.tipo || '—')}</span>
+                            <span class="chip ${STATUS_CHIP[norm(c.status)] || 'chip-neutral'}">${esc(c.status || 'Sin status')}</span>
+                            ${esSup ? `<span class="chip chip-neutral"><i class="ph-bold ph-user"></i>${esc(c.asesor || 'Sin asesor')}</span>` : ''}
+                            <span class="sync">${estadoSync(c)}</span>
+                        </div>
+                        <p class="font-semibold text-1 truncate">${esc(c.usuario || 'Sin nombre')}</p>
+                        <p class="text-[13px] muted mt-0.5">
+                            Afectada <span class="linea copiable" data-copiar="${esc(c.lineaAfectada)}" title="Copiar">${esc(c.lineaAfectada || '—')}</span>
+                            &nbsp;·&nbsp; Contacto <span class="linea copiable" data-copiar="${esc(c.lineaContacto)}" title="Copiar">${esc(c.lineaContacto || '—')}</span>
+                        </p>
+                    </div>
+                    <div class="text-right text-[12.5px] leading-snug shrink-0">
+                        <p class="subtle">Desde ${esc(c.fecha || '—')}</p>
+                        ${d !== null ? `<p class="${d >= 5 ? 'dias-alto' : 'text-1 font-semibold'}">${d} día${d === 1 ? '' : 's'} abierto</p>` : ''}
+                        <p class="subtle">${c.intentos ? esc(c.intentos) + ' intento' + (c.intentos == 1 ? '' : 's') : 'Sin intentos'}${c.fechaUltima ? ' · últ. ' + esc(c.fechaUltima) : ''}</p>
+                    </div>
+                    <i class="ph-bold ph-caret-${abiertoAhora ? 'up' : 'down'} subtle"></i>
+                </div>
+                ${abiertoAhora ? `
+                <div class="px-4 pb-4 border-t divider pt-4 grid gap-4 md:grid-cols-[1fr_1fr]">
+                    <div class="flex flex-col gap-3">
+                        ${c.detalle ? `<div><p class="label">Lo que reportó el nocturno</p><div class="detalle">${esc(c.detalle)}</div></div>` : ''}
+                        ${c.observacion && !esSup ? `<div><p class="label">Observación del supervisor</p><div class="detalle" style="border-color: var(--warn-border); background: var(--warn-soft); color: var(--text)">${esc(c.observacion)}</div></div>` : ''}
+                        ${esSup ? `<div><label class="label">Observación (supervisor)</label><textarea class="input" rows="3" data-campo="observacion" placeholder="Indicación para el asesor">${esc(val('observacion'))}</textarea></div>
+                                   <div><label class="label">Asesor asignado</label><select class="input" data-campo="asesor">${asesores}</select></div>` : ''}
+                    </div>
+                    <div class="flex flex-col gap-3">
+                        <div class="grid grid-cols-2 gap-3">
+                            <div><label class="label">Status</label><select class="input" data-campo="status">${opcionesStatus}</select></div>
+                            <div><label class="label">Intentos</label>
+                                <div class="flex gap-2"><input class="input tnum" type="number" min="0" data-campo="intentos" value="${esc(val('intentos'))}">
+                                <button type="button" class="btn btn-secondary btn-sm !h-10 shrink-0" data-mas="1" title="Suma un intento con fecha de hoy"><i class="ph-bold ph-phone-outgoing"></i> +1</button></div></div>
+                        </div>
+                        <div><label class="label">Última acción <span class="subtle font-normal">· ${esc(val('fechaUltima') || 'sin fecha')}</span></label><div class="acc">${acciones}</div></div>
+                        <div><label class="label">Notas</label><textarea class="input" rows="4" data-campo="notas" placeholder="Qué pasó en la llamada de seguimiento">${esc(val('notas'))}</textarea></div>
+                        <div class="flex items-center justify-end gap-2">
+                            <span class="text-[12px] subtle mr-auto" data-estado>${Object.keys(b).length ? 'Cambios sin guardar' : ''}</span>
+                            <button type="button" class="btn btn-ghost btn-sm" data-cancelar="1">Descartar</button>
+                            <button type="button" class="btn btn-primary btn-sm" data-guardar="1"><i class="ph-bold ph-floppy-disk"></i> Guardar</button>
+                        </div>
+                    </div>
+                </div>` : ''}
+            </div>`;
+        }
+
+        // ---------- Edición ----------
+        function borrador(id, campo, valor) {
+            const c = casos[id]; if (!c) return;
+            borradores[id] = borradores[id] || {};
+            if (String(c[campo] ?? '') === String(valor ?? '')) delete borradores[id][campo];
+            else borradores[id][campo] = valor;
+            const card = document.querySelector(`.caso[data-id="${CSS.escape(id)}"] [data-estado]`);
+            if (card) card.textContent = Object.keys(borradores[id]).length ? 'Cambios sin guardar' : '';
+        }
+
+        $('lista').addEventListener('click', async (e) => {
+            const card = e.target.closest('.caso'); if (!card) return;
+            const id = card.dataset.id, c = casos[id];
+            const cp = e.target.closest('[data-copiar]');
+            if (cp) { e.stopPropagation(); if (cp.dataset.copiar) copiar(cp.dataset.copiar); return; }
+            if (e.target.closest('[data-toggle]')) { abierto = abierto === id ? null : id; pintar(); return; }
+            const a = e.target.closest('[data-acc]');
+            if (a) {
+                card.querySelectorAll('[data-acc]').forEach(x => x.classList.toggle('on', x === a));
+                borrador(id, 'ultimaAccion', a.dataset.acc);
+                borrador(id, 'fechaUltima', hoy());
+                return;
+            }
+            if (e.target.closest('[data-mas]')) {
+                const inp = card.querySelector('[data-campo="intentos"]');
+                inp.value = (Number(inp.value) || 0) + 1;
+                borrador(id, 'intentos', Number(inp.value));
+                borrador(id, 'fechaUltima', hoy());
+                const st = card.querySelector('[data-campo="status"]');
+                if (st && norm(st.value) === 'PENDIENTE' && (meta.status || []).includes('En Proceso')) { st.value = 'En Proceso'; borrador(id, 'status', 'En Proceso'); }
+                toast('Intento registrado. No olvides Guardar.');
+                return;
+            }
+            if (e.target.closest('[data-cancelar]')) { delete borradores[id]; card.querySelector('textarea, input, select')?.blur(); abierto = null; pintar(); return; }
+            if (e.target.closest('[data-guardar]')) return guardar(id, card, e.target.closest('[data-guardar]'));
+        });
+        $('lista').addEventListener('input', (e) => {
+            const t = e.target.closest('[data-campo]'); if (!t) return;
+            const id = t.closest('.caso').dataset.id;
+            let v = t.value;
+            if (t.dataset.campo === 'intentos') v = v === '' ? '' : Number(v);
+            borrador(id, t.dataset.campo, v);
+        });
+
+        async function guardar(id, card, btn) {
+            const c = casos[id], b = borradores[id] || {};
+            if (!Object.keys(b).length) { toast('No hay cambios que guardar.'); return; }
+            if (norm(b.status) === 'CERRADO' && !(b.ultimaAccion || c.ultimaAccion)) { toast('Para cerrar el caso elige la última acción.', 2600, true); return; }
+            const permitidos = esSup ? ['status', 'ultimaAccion', 'fechaUltima', 'intentos', 'notas', 'observacion', 'asesor'] : ['status', 'ultimaAccion', 'fechaUltima', 'intentos', 'notas'];
+            const datos = { pendienteHoja: true, errorHoja: '', editadoPor: esSup ? 'SUPERVISOR' : String(yo.id), editadoEn: Date.now() };
+            Object.keys(b).filter(k => permitidos.includes(k)).forEach(k => { datos[k] = b[k]; datos['cambios.' + k] = b[k]; });
+            btn.disabled = true;
+            try {
+                await updateDoc(doc(db, 'casos', id), datos);
+                delete borradores[id];
+                document.activeElement?.blur();
+                abierto = null; pintar();
+                toast('Guardado. Se está pasando a la hoja CASOS…', 2400);
+            } catch (err) {
+                toast('No se pudo guardar: ' + (err.code || err.message), 4000, true);
+            }
+            btn.disabled = false;
+        }
+
+        // ---------- Filtros ----------
+        $('filtros').addEventListener('click', (e) => {
+            const b = e.target.closest('[data-f]'); if (!b) return;
+            filtro = b.dataset.f;
+            document.querySelectorAll('.tab-f').forEach(x => x.classList.toggle('on', x === b));
+            pintar();
+        });
+        $('buscar').addEventListener('input', pintar);
+        $('f-asesor').addEventListener('change', pintar);
+        window.addEventListener('beforeunload', (e) => { if (Object.values(borradores).some(b => Object.keys(b).length)) { e.preventDefault(); e.returnValue = ''; } });
+    </script>
+</body>
+</html>
