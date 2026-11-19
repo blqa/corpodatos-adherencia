@@ -419,6 +419,22 @@
         $('btn-hoy').addEventListener('click', () => irA(getFechaISO(new Date())));
         $('filtro-agente').addEventListener('change', pintarTimeline);
 
+        // Si la pestaña se quedó abierta de un día para otro, "ayer" y "hoy" se recorren solos
+        let diaCarga = getFechaISO(new Date());
+        function revisarCambioDeDia() {
+            const hoy = getFechaISO(new Date());
+            if (hoy === diaCarga) return;
+            const ayerViejo = getFechaISO(new Date(new Date(diaCarga + 'T12:00:00').getTime() - 86400000));
+            const sel = $('fecha').value;
+            diaCarga = hoy;
+            $('fecha').max = hoy;
+            if (sel === ayerViejo) irA(getFechaISO(new Date(Date.now() - 86400000)));
+            else if (sel < hoy) pintarTitulo(sel);
+        }
+        document.addEventListener('visibilitychange', () => { if (!document.hidden) revisarCambioDeDia(); });
+        window.addEventListener('focus', revisarCambioDeDia);
+        setInterval(revisarCambioDeDia, 60000);
+
         async function __arrancar() {
             await cargarOperadores();
             // Abre directo en el resumen de AYER, que es para lo que se pidió esta página
