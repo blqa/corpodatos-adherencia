@@ -115,7 +115,7 @@
         const diasDesde = (ymd) => { if (!ymd) return null; const [a, m, d] = ymd.split('-').map(Number); const t = new Date(a, m - 1, d); const h = new Date(); h.setHours(0, 0, 0, 0); return Math.round((h - t) / 864e5); };
         const cerrado = (c) => norm(c.status) === 'CERRADO';
 
-        let metaExiste = null; let yo = null, esSup = false, casos = {}, meta = { status: ['Pendiente', 'En Proceso', 'Cerrado'], acciones: [], asesores: [] };
+        let yo = null, esSup = false, casos = {}, meta = { status: ['Pendiente', 'En Proceso', 'Cerrado'], acciones: [], asesores: [] };
         let filtro = 'abiertos', abierto = null, desub = null;
         const borradores = {};   // cambios sin guardar por folio
 
@@ -160,60 +160,32 @@
             } else {
                 $('titulo').textContent = 'Mis casos';
             }
-            let suscritoCon = null;
             onSnapshot(doc(db, 'hoja', 'casos_meta'), (s) => {
-                metaExiste = s.exists();
                 if (s.exists()) meta = Object.assign(meta, s.data());
                 if (esSup) {
                     const sel = $('f-asesor'), v = sel.value;
                     sel.innerHTML = '<option value="">Todos los asesores</option>' + (meta.asesores || []).map(a => `<option value="${esc(a.id)}">${esc(a.id)} · ${esc(a.nombre)}</option>`).join('');
                     sel.value = v;
                 }
-                suscribir();
                 pintar();
-            }, () => { metaExiste = false; suscribir(); pintar(); });
+            }, () => {});
 
-            // ¿Quién soy en ASIGN? Por ID, por # de nómina o porque todas las palabras de mi nombre están en el nombre completo
-            function miAsesor() {
-                const ids = [yo.id, yo.nomina, yo.idNomina].map(x => norm(x)).filter(Boolean);
-                const lista = meta.asesores || [];
-                let a = lista.find(a => ids.includes(norm(a.id)) || (a.nomina && ids.includes(norm(a.nomina))));
-                if (a) return a;
-                for (const n of [yo.nombre, yo.nombreCorto]) {
-                    const t = norm(n).split(' ').filter(x => x.length > 1);
-                    if (t.length < 2) continue;
-                    const hits = lista.filter(a => { const full = norm(a.nombre).split(' '); return t.every(x => full.includes(x)); });
-                    if (hits.length === 1) return hits[0];
-                }
-                return null;
+            const col = collection(db, 'casos');
+            let q = col;
+            if (!esSup) {
+                const claves = [String(yo.id || '').toUpperCase(), String(yo.id || ''), claveNombre(yo.nombre), claveNombre(yo.nombreCorto)]
+                    .filter((k, i, a) => k && k.length >= 3 && a.indexOf(k) === i).slice(0, 30);
+                q = query(col, where('claves', 'array-contains-any', claves));
             }
-
-            function suscribir() {
-                const col = collection(db, 'casos');
-                let q = col, clave = 'todos';
-                if (!esSup) {
-                    const a = miAsesor();
-                    const claves = [a && a.id, a && a.nomina, a && claveNombre(a.nombre), String(yo.id || '').toUpperCase(), claveNombre(yo.nombre)]
-                        .map(x => String(x || '')).filter((k, i, arr) => k.length >= 3 && arr.indexOf(k) === i).slice(0, 30);
-                    clave = claves.join('|');
-                    yo.asesorHoja = a ? a.id : '';
-                    q = query(col, where('claves', 'array-contains-any', claves.length ? claves : ['-']));
-                }
-                if (clave === suscritoCon) return;
-                suscritoCon = clave;
-                if (desub) desub();
-                desub = onSnapshot(q, (snap) => {
-                    casos = {};
-                    snap.forEach(d => { casos[d.id] = { id: d.id, ...d.data() }; });
-                    $('chip-sync').className = 'chip ' + (metaExiste ? 'chip-ok' : 'chip-warn') + ' hidden sm:inline-flex';
-                    $('chip-sync').querySelector('span').textContent = metaExiste ? 'Sincronizado con la hoja' : 'La hoja aún no se conecta';
-                    pintar();
-                }, (err) => {
-                    $('lista').innerHTML = `<div class="card empty"><i class="ph ph-cloud-slash"></i>No se pudieron cargar los casos.<br><span class="text-[13px]">${esc(err.code || err.message)}</span></div>`;
-                    $('chip-sync').className = 'chip chip-danger hidden sm:inline-flex';
-                });
-            }
-            window.__diag = () => ({ yo, metaExiste, miAsesor: miAsesor(), suscritoCon });
+            desub = onSnapshot(q, (snap) => {
+                casos = {};
+                snap.forEach(d => { casos[d.id] = { id: d.id, ...d.data() }; });
+                $('chip-sync').className = 'chip chip-ok hidden sm:inline-flex';
+                pintar();
+            }, (err) => {
+                $('lista').innerHTML = `<div class="card empty"><i class="ph ph-cloud-slash"></i>No se pudieron cargar los casos.<br><span class="text-[13px]">${esc(err.code || err.message)}</span></div>`;
+                $('chip-sync').className = 'chip chip-danger hidden sm:inline-flex';
+            });
         }
 
         // ---------- Lista ----------
@@ -256,7 +228,7 @@
             const enfocado = document.activeElement && document.activeElement.closest && document.activeElement.closest('.caso');
             const l = visibles();
             if (!l.length) {
-                $('lista').innerHTML = `<div class="card empty"><i class="ph ph-check-circle"></i>${Object.keys(casos).length ? 'Nada por aquí con este filtro.' : (metaExiste === false ? 'La hoja CASOS todavía no está conectada a la página.<br><span class="text-[13px]">En el documento OMT: menú 📋 Casos → 1. Activar casos automáticos.</span>' : (!esSup && !yo.asesorHoja) ? 'No encontré tu ID en la pestaña ASIGN.<br><span class="text-[13px]">Tu ID aquí: ' + esc(yo.id) + '. Pídele a tu supervisor que lo revise.</span>' : (esSup ? 'No hay casos en la hoja CASOS.' : '¡No tienes casos asignados!'))}</div>`;
+                $('lista').innerHTML = `<div class="card empty"><i class="ph ph-check-circle"></i>${Object.keys(casos).length ? 'Nada por aquí con este filtro.' : (esSup ? 'Todavía no hay casos en la página. Activa el menú 📋 Casos en la hoja.' : '¡No tienes casos asignados!')}</div>`;
                 return;
             }
             if (enfocado && enfocado.dataset.id && l.some(c => c.id === enfocado.dataset.id)) {
