@@ -281,7 +281,7 @@
                 if (d.tipo_evento === 'PAUSA_NO_PERMITIDA') { m.push({ ...base, ms: fin, tipo: 'sinturno', cat: ESTADO_NORM[d.estado] }); return; }
                 if (d.pausa_sigue) { // lo sacaron (o se salió) de Touchpoint estando en pausa
                     marcarSalida();
-                    m.push({ ...base, ms: fin, tipo: d.tipo_evento === 'EXPULSION_SISTEMA' ? 'expulsion' : 'salioTP', cat, dur: d.duracion_segundos,
+                    m.push({ ...base, ms: fin, tipo: d.tipo_evento === 'EXPULSION_SISTEMA' ? 'expulsion' : 'salioTP', cat, dur: d.duracion_segundos, inicio: d.inicio,
                         acum: (acumulado[d.asesor_id + '|' + cat] || 0) + (d.duracion_segundos || 0), lim: cat ? limiteSeg(d.asesor_id, cat) : null });
                     return;
                 }
@@ -289,7 +289,7 @@
                     marcarSalida();
                     const k = d.asesor_id + '|' + cat;
                     acumulado[k] = (acumulado[k] || 0) + (d.duracion_segundos || 0);
-                    m.push({ ...base, ms: fin, tipo: 'regresa', cat, dur: d.duracion_segundos, acum: acumulado[k], lim: limiteSeg(d.asesor_id, cat),
+                    m.push({ ...base, ms: fin, tipo: 'regresa', cat, dur: d.duracion_segundos, inicio: d.inicio, acum: acumulado[k], lim: limiteSeg(d.asesor_id, cat),
                         fuera: d.tras_desconexion ? (d.seg_fuera_touchpoint || 0) : null, motivo: d.tras_desconexion });
                     return;
                 }
@@ -303,7 +303,7 @@
                 const op = OPERADORES[sx.id] || {};
                 const base = { id: sx.id, nombre: op.nombre || op.nombreCorto || sx.id };
                 if (!yaSalio(sx.id, cat, sx.tiempoInicioEstado)) { salidas.push({ id: sx.id, cat, ms: sx.tiempoInicioEstado }); m.push({ ...base, ms: sx.tiempoInicioEstado, tipo: 'sale', cat }); }
-                m.push({ ...base, ms: Date.now(), tipo: 'sigue', cat, dur: Math.floor((Date.now() - sx.tiempoInicioEstado) / 1000), fueraTP: !!sx.desconectadoEn });
+                m.push({ ...base, ms: Date.now(), tipo: 'sigue', cat, inicio: sx.tiempoInicioEstado, dur: Math.floor((Date.now() - sx.tiempoInicioEstado) / 1000), fueraTP: !!sx.desconectadoEn });
             });
             return m.sort((a, b) => a.ms - b.ms);
         }
@@ -383,7 +383,10 @@
             let tExp = 0, tSin = 0, tNoListo = 0;
             momentos.forEach(x => {
                 const a = fila(x.id, x.nombre);
-                if (x.tipo === 'regresa' || x.tipo === 'sigue') { a[x.cat] += x.dur || 0; tNoListo += x.dur || 0; }
+                let suma = (x.tipo === 'regresa' || x.tipo === 'sigue');
+                // Pausa que terminó con salida de Touchpoint y nunca regresó (ej. fin de turno): también cuenta
+                if ((x.tipo === 'expulsion' || x.tipo === 'salioTP') && x.cat && !momentos.some(y => (y.tipo === 'regresa' || y.tipo === 'sigue') && y.id === x.id && y.cat === x.cat && Math.abs((y.inicio || y.ms - (y.dur || 0) * 1000) - (x.inicio || 0)) < 90000)) suma = true;
+                if (suma && x.cat) { a[x.cat] += x.dur || 0; tNoListo += x.dur || 0; }
                 if (x.tipo === 'expulsion') { a.expulsiones++; tExp++; }
                 if (x.tipo === 'sinturno') { a.sinTurno++; tSin++; }
             });
@@ -403,7 +406,7 @@
             };
             tbody.innerHTML = orden.map(id => {
                 const a = porAsesor[id];
-                const marcas = [a.expulsiones ? `${a.expulsiones} expulsión${a.expulsiones > 1 ? 'es' : ''}` : '', a.sinTurno ? `${a.sinTurno} sin turno` : ''].filter(Boolean).join(' · ');
+                const marcas = [a.expulsiones ? (a.expulsiones > 1 ? `${a.expulsiones} expulsiones` : '1 expulsión') : '', a.sinTurno ? `${a.sinTurno} sin turno` : ''].filter(Boolean).join(' · ');
                 return `
                 <tr class="resumen-fila" data-id="${esc(id)}">
                     <td><div class="flex items-center gap-2.5"><div class="avatar avatar-sm">${esc(iniciales(a.nombre))}</div><div><p class="font-medium leading-tight text-[13px]">${esc(a.nombre)}</p>${marcas ? `<p class="text-[11.5px] c-danger">${marcas}</p>` : ''}</div></div></td>
