@@ -14,8 +14,7 @@ Fallas e inconsistencias_NOCTURNO ──(cada 10 min)──► pestaña CASOS (d
 
 - **Casos nuevos del nocturno**: el script `apps-script/Casos.gs` los copia a CASOS con folio `OMT-xxxxx`,
   tipo de caso, status *Pendiente* y asesor asignado. Se asigna al que tenga **menos casos abiertos**, que tenga
-  **¿RECIBE CASOS? = SI** en ASIGN y que **no esté de descanso, vacaciones o permiso hoy** (lo decide `asignarFilas_`
-  del archivo principal).
+  **¿RECIBE CASOS? = SI** en ASIGN y que **no esté de descanso, vacaciones o permiso hoy** en ROL.
   Lo que escribió el nocturno (PRUEBAS) queda como **nota** en la celda USUARIO y se ve en la página.
 - **No repite casos**: si el número afectado ya está en CASOS, H_CASOS o CASOS_ANTIGUOS con una fecha de 7 días
   o menos (o sin fecha), no lo vuelve a meter. La primera vez solo trae casos desde la fecha más reciente que ya
@@ -49,14 +48,7 @@ Fallas e inconsistencias_NOCTURNO ──(cada 10 min)──► pestaña CASOS (d
 
 2. **Script en el documento OMT**: Extensiones → Apps Script → **+** → Secuencia de comandos → `Casos`,
    pega `apps-script/Casos.gs` y guarda. Necesita el archivo `Pagina` que ya tienes (usa su contraseña).
-3. En el archivo principal (el del menú "OMT"), dentro de `onOpen()`, debajo de
-   `if (typeof menuPagina_ === 'function') menuPagina_();` agrega:
-   ```
-   if (typeof menuCasos_ === 'function') menuCasos_();
-   ```
-   y recarga la hoja. La asignación de asesor y folio de los casos del nocturno la hace la misma función
-   `asignarFilas_` del archivo principal, así que se siguen las mismas reglas de siempre (ROL, VACACIONES,
-   ¿RECIBE CASOS?, menos casos abiertos). El archivado a H_CASOS también sigue igual.
+3. En el `onOpen()` donde ya está `menuPagina_();` agrega abajo **`menuCasos_();`** y recarga la hoja.
 4. Menú **📋 Casos → 1. Activar casos automáticos** y acepta los permisos.
 
 ## Ojo
