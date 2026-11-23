@@ -1,6 +1,6 @@
 /**
  * =====================================================================
- *  OMT → Página web (omt.godsplan.site/documento.html)
+ *  OMT → Página web (omt.godsplan.dev/documento.html)
  *  Copia SOLO las pestañas PRODUCTIVIDAD, ADHERENCIA y ROL a Firebase
  *  una vez al día, a las 12:00 (hora de CDMX). Lo demás del documento
  *  (scripts, autenticación, aplicativos, directorio) ya vive en la página.
